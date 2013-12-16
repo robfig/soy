@@ -1,13 +1,10 @@
-package soy
+package parse
 
 import (
 	"fmt"
 	"runtime"
 	"strconv"
 )
-
-// Tofu aggregates an application's soy files, providing convenient access.
-type Tofu struct{}
 
 // Tree is the parsed representation of a single soy file.
 type Tree struct {

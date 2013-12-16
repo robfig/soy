@@ -1,4 +1,4 @@
-package soy
+package parse
 
 import (
 	"bytes"
