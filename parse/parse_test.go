@@ -3,6 +3,7 @@ package parse
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 	"testing"
 )
 
@@ -39,10 +40,11 @@ var parseTests = []parseTest{
 	{"variable template", "{template .name}\nHello {$name}!\n{/template}",
 		tList(tTemplate(".name",
 			newText(0, "\nHello "),
-			newVariable(0, "$name"),
+			newPrint(0, &VariableNode{0, "$name"}), // implicit print
 			newText(0, "!\n"),
 		))},
 	{"soydoc", "/** Text\n*/", tList(newSoyDoc(0, "/** Text\n*/"))},
+	{"negate", "{not $var}", tList(&PrintNode{0, &NotNode{0, &VariableNode{0, "$var"}}})},
 
 	// {"spaces", " \t\n", noError, `" \t\n"`},
 	// {"text", "some text", noError, `"some text"`},
@@ -78,29 +80,33 @@ func TestParse(t *testing.T) {
 }
 
 func eqTree(actual, expected Node) bool {
-	if actual.Type() != expected.Type() {
+	if reflect.TypeOf(actual) != reflect.TypeOf(expected) {
 		return false
 	}
 
-	switch actual.Type() {
-	case NodeList:
+	switch actual.(type) {
+	case *ListNode:
 		return eqNodes(expected.(*ListNode).Nodes, actual.(*ListNode).Nodes)
-	case NodeNamespace:
+	case *NamespaceNode:
 		return expected.(*NamespaceNode).Name == actual.(*NamespaceNode).Name
-	case NodeTemplate:
+	case *TemplateNode:
 		if expected.(*TemplateNode).Name != actual.(*TemplateNode).Name {
 			return false
 		}
 		return eqTree(expected.(*TemplateNode).Body, actual.(*TemplateNode).Body)
-	case NodeText:
+	case *TextNode:
 		return bytes.Equal(expected.(*TextNode).Text, actual.(*TextNode).Text)
-	case NodeVariable:
+	case *VariableNode:
 		return expected.(*VariableNode).Name == actual.(*VariableNode).Name
-	case NodeSoyDoc:
+	case *SoyDocNode:
 		return expected.(*SoyDocNode).Comment == actual.(*SoyDocNode).Comment
+	case *NotNode:
+		return eqTree(expected.(*NotNode).Arg, actual.(*NotNode).Arg)
+	case *PrintNode:
+		return eqTree(expected.(*PrintNode).Arg, actual.(*PrintNode).Arg)
 	}
 
-	panic("type not implemented:" + actual.String())
+	panic(fmt.Sprintf("type not implemented: %#v", actual))
 }
 
 func eqNodes(actual, expected []Node) bool {

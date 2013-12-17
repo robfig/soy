@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"runtime"
 	"strconv"
+	"strings"
 )
 
 // Tree is the parsed representation of a single soy file.
@@ -112,18 +113,14 @@ func (t *Tree) beginTag() Node {
 		return t.parseNamespace(token)
 	case itemTemplate:
 		return t.parseTemplate(token)
-	case itemVariable:
-		return t.parseVariable(token)
+	case itemIdent, itemVariable, itemBool, itemFloat, itemInteger, itemString, itemList, itemMap:
+		t.backup()
+		n := &PrintNode{token.pos, t.parseExpr(0)}
+		t.expect(itemRightDelim, "print")
+		return n
 	}
 	t.errorf("not implemented")
 	return nil
-}
-
-func (t *Tree) parseVariable(token item) Node {
-	const ctx = "variable"
-	// TODO: directives
-	t.expect(itemRightDelim, ctx)
-	return newVariable(token.pos, token.val)
 }
 
 func (t *Tree) parseSoyDoc(token item) Node {
@@ -160,39 +157,195 @@ func (t *Tree) parseTemplate(token item) Node {
 // 	return ident.value
 // }
 
-// term:
-//	literal (number, string, nil, boolean)
-//	function (identifier)
-//	.
-//	$
-//	'(' pipeline ')'
-// A term is a simple "expression".
-// A nil return means the next item is not a term.
-func (t *Tree) term() Node {
-	switch token := t.next(); token.typ {
-	case itemError:
-		t.errorf("%s", token.val)
-	case itemIdent:
-		return NewIdent(token.val).SetPos(token.pos)
-	case itemVariable:
+// Expressions ----------
+
+var precedence = map[itemType]int{
+	itemNot:   6,
+	itemMul:   5,
+	itemDiv:   5,
+	itemMod:   5,
+	itemAdd:   4,
+	itemSub:   4,
+	itemEq:    3,
+	itemNotEq: 3,
+	itemGt:    3,
+	itemGte:   3,
+	itemLt:    3,
+	itemLte:   3,
+	itemOr:    2,
+	itemAnd:   1,
+}
+
+// parseExpr parses an arbitrary expression involving function applications and
+// arithmetic.
+// test: ((2*4-6/3)*(3*5+8/4))-(2+3)
+// test: not $var and (isFirst($foo) or $x - 5 > 3)
+func (t *Tree) parseExpr(prec int) Node {
+	n := t.parseExprFirstTerm()
+	var tok item
+	for {
+		tok = t.next()
+		q := precedence[tok.typ]
+		if !isBinaryOp(tok.typ) || q < prec {
+			break
+		}
+		q++
+		n = newBinaryOpNode(tok, n, t.parseExpr(q))
+	}
+	if prec == 0 && tok.typ == itemTernIf {
+		return t.parseTernary(n)
+	}
+	t.backup()
+	return n
+}
+
+func (t *Tree) parseExprFirstTerm() Node {
+	switch tok := t.next(); {
+	case isUnaryOp(tok):
+		return newUnaryOpNode(tok, t.parseExpr(precedence[tok.typ]))
+	case tok.typ == itemLeftParen:
+		n := t.parseExpr(0)
+		t.expect(itemRightParen, "expression")
+		return n
+	case isValue(tok):
+		return t.newValueNode(tok)
+	default:
+		t.errorf("unexpected token %q", tok)
+	}
+	return nil
+}
+
+// parseTernary parses the ternary operator within an expression.
+// itemTernIf has already been read, and the condition is provided.
+func (t *Tree) parseTernary(cond Node) Node {
+	n1 := t.parseExpr(0)
+	t.expect(itemTernElse, "ternary")
+	n2 := t.parseExpr(0)
+	result := &TernaryOpNode{cond.Position(), cond, n1, n2}
+	if t.peek().typ == itemTernElse {
+		t.next()
+		return t.parseTernary(result)
+	}
+	return result
+}
+
+func isBinaryOp(typ itemType) bool {
+	switch typ {
+	case itemMul, itemDiv, itemMod,
+		itemAdd, itemSub,
+		itemEq, itemNotEq, itemGt, itemGte, itemLt, itemLte,
+		itemOr, itemAnd:
+		return true
+	}
+	return false
+}
+
+func isUnaryOp(t item) bool {
+	switch t.typ {
+	case itemNot:
+		return true
+	}
+	return false
+}
+
+func isValue(t item) bool {
+	switch t.typ {
+	case itemBool, itemInteger, itemFloat, itemVariable, itemString:
+		return true
+	}
+	return false
+}
+
+func op(n binaryOpNode, name string) binaryOpNode {
+	n.Name = name
+	return n
+}
+
+func newBinaryOpNode(t item, n1, n2 Node) Node {
+	var bin = binaryOpNode{"", t.pos, n1, n2}
+	switch t.typ {
+	case itemMul:
+		return &MulNode{op(bin, "*")}
+	case itemDiv:
+		return &DivNode{op(bin, "/")}
+	case itemMod:
+		return &ModNode{op(bin, "%")}
+	case itemAdd:
+		return &AddNode{op(bin, "+")}
+	case itemSub:
+		return &SubNode{op(bin, "-")}
+	case itemEq:
+		return &EqNode{op(bin, "=")}
+	case itemNotEq:
+		return &NotEqNode{op(bin, "!=")}
+	case itemGt:
+		return &GtNode{op(bin, ">")}
+	case itemGte:
+		return &GteNode{op(bin, ">=")}
+	case itemLt:
+		return &LtNode{op(bin, "<")}
+	case itemLte:
+		return &LteNode{op(bin, "<=")}
+	case itemOr:
+		return &OrNode{op(bin, "or")}
+	case itemAnd:
+		return &AndNode{op(bin, "and")}
+	}
+	panic("unimplemented")
+}
+
+func newUnaryOpNode(t item, n1 Node) Node {
+	switch t.typ {
+	case itemNot:
+		return &NotNode{t.pos, n1}
+	}
+	panic("unreachable")
+}
+
+func (t *Tree) newValueNode(tok item) Node {
+	switch tok.typ {
+	case itemNull:
+		return &NullNode{tok.pos}
 	case itemBool:
-		return newBool(token.pos, token.val == "true")
-	// case itemCharConstant, itemComplex, itemNumber:
-	// 	number, err := newNumber(token.pos, token.val, token.typ)
-	// 	if err != nil {
-	// 		t.error(err)
-	// 	}
-	// 	return number
-	case itemString:
-		s, err := strconv.Unquote(token.val)
+		return &BoolNode{tok.pos, tok.val == "true"}
+	case itemInteger:
+		// decimal or hex?
+		var base = 10
+		if strings.HasPrefix(tok.val, "0x") {
+			base = 16
+		}
+		value, err := strconv.ParseInt(tok.val, base, 64)
 		if err != nil {
 			t.error(err)
 		}
-		return newString(token.pos, token.val, s)
+		return &IntNode{tok.pos, value}
+	case itemFloat:
+		// todo: support scientific notation e.g. 6.02e23
+		value, err := strconv.ParseFloat(tok.val, 64)
+		if err != nil {
+			t.error(err)
+		}
+		return &FloatNode{tok.pos, value}
+	case itemString:
+		s, err := strconv.Unquote(tok.val)
+		if err != nil {
+			t.error(err)
+		}
+		return &StringNode{tok.pos, tok.val, s}
+	case itemList:
+		panic("unimplemented")
+	case itemMap:
+		panic("unimplemented")
+	case itemVariable:
+		return &VariableNode{tok.pos, tok.val}
+	case itemIdent:
+		panic("unimplemented")
+		// TODO: function
 	}
-	t.backup()
-	return nil
+	panic("unreachable")
 }
+
+// Helpers ----------
 
 // startParse initializes the parser, using the lexer.
 func (t *Tree) startParse(funcs []map[string]interface{}, lex *lexer) {

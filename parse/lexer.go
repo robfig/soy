@@ -37,30 +37,61 @@ type itemType int
 
 // All items.
 const (
-	itemNil           itemType = iota // not used
-	itemEOF                           // EOF
-	itemError                         // error occurred; value is text of error
-	itemLeftDelim                     // tag left delimiter: {
-	itemRightDelim                    // tag right delimiter: }
-	itemRightDelimEnd                 // tag right self-closing delimiter: /}
-	itemText                          // plain text
-	itemIdent                         // identifier
-	itemVariable                      // $variable
-	itemEquals                        // =
-	// Primitive literals.
-	itemBool
-	itemFloat
-	itemInteger
-	itemList
-	itemMap
-	itemString
-	itemSoyDocStart
-	itemSoyDocParam
-	itemSoyDocEnd
+	itemNil   itemType = iota // not used
+	itemEOF                   // EOF
+	itemError                 // error occurred; value is text of error
+
+	// Command delimiters
+	itemLeftDelim     // tag left delimiter: {
+	itemRightDelim    // tag right delimiter: }
+	itemRightDelimEnd // tag right self-closing delimiter: /}
+
+	itemText   // plain text
+	itemIdent  // identifier (function name, ...)
+	itemEquals // =
+
+	// Expression values
+	itemNull     // e.g. null
+	itemBool     // e.g. true
+	itemInteger  // e.g. 42
+	itemFloat    // e.g. 1.0
+	itemString   // e.g. 'hello world'
+	itemList     // e.g. [1, 'two', [3, false]]
+	itemMap      // e.g. ['aaa': 42, 'bbb': 'hello']
+	itemVariable // e.g. $variable
+	// function application: itemIdent itemLeftParen .. itemRightParen
+
+	// Expression operations
+	itemMul        // *
+	itemDiv        // /
+	itemMod        // %
+	itemAdd        // +
+	itemSub        // - (binary)
+	itemEq         // ==
+	itemNotEq      // !=
+	itemGt         // >
+	itemGte        // >=
+	itemLt         // <
+	itemLte        // <=
+	itemOr         // or
+	itemAnd        // and
+	itemTernIf     // ?
+	itemTernElse   // :
+	itemElvis      // ?:
+	itemNot        // not
+	itemLeftParen  // (
+	itemRightParen // )
+
+	// Soy doc
+	itemSoyDocStart // /* or //
+	itemSoyDocParam // @param name or @param? name
+	itemSoyDocEnd   // */ or \n
+
 	// Print directives - |<directive>[:arg1[,arg2..]]
 	itemDirective
 	itemDirectiveArg
-	// Commands.
+
+	// Commands
 	itemCommand     // used only to delimit the commands
 	itemCall        // {call ...}
 	itemCase        // {case ...}
@@ -150,6 +181,28 @@ var commands = map[string]itemType{
 	`\r`:  itemCarriageReturn,
 	"lb":  itemLeftBrace,
 	"rb":  itemRightBrace,
+}
+
+var arithmeticItemsBySymbol = map[string]itemType{
+	"*":   itemMul,
+	"/":   itemDiv,
+	"%":   itemMod,
+	"+":   itemAdd,
+	"-":   itemSub,
+	"==":  itemEq,
+	"!=":  itemNotEq,
+	">":   itemGt,
+	">=":  itemGte,
+	"<":   itemLt,
+	"<=":  itemLte,
+	"or":  itemOr,
+	"and": itemAnd,
+	"?":   itemTernIf,
+	":":   itemTernElse,
+	"?:":  itemElvis,
+	"not": itemNot,
+	"(":   itemLeftParen,
+	")":   itemRightParen,
 }
 
 // isCommandEnd returns true if this is a command closing tag.
@@ -337,7 +390,7 @@ func lexLeftDelim(l *lexer) stateFn {
 		l.doubleDelim = false
 	}
 	l.emit(itemLeftDelim)
-	return lexInsideTag
+	return lexBeginTag
 }
 
 // lexRightDelim scans the right template tag delimiter
@@ -348,6 +401,16 @@ func lexRightDelim(l *lexer) stateFn {
 	}
 	l.emit(itemRightDelim)
 	return lexText
+}
+
+// lexBeginTag handles these ambiguities:
+//  - "/" is arithmetic or begins the "/if" command?
+func lexBeginTag(l *lexer) stateFn {
+	switch l.peek() {
+	case '/', '\\':
+		return lexIdent
+	}
+	return lexInsideTag
 }
 
 // lexInsideTag scans the elements inside a template tag.
@@ -413,27 +476,40 @@ func lexInsideTag(l *lexer) stateFn {
 	switch r := l.next(); {
 	case isSpace(r):
 		l.ignore()
-		return lexInsideTag
-	case r == '$':
-		return lexVariable
-	case r == '}':
-		return lexRightDelim
-	case r == '"':
-		return lexString
 	case r == '/' && l.peek() == '}':
 		l.next()
 		l.emit(itemRightDelimEnd)
 		return lexText
+	case r == '$':
+		return lexVariable
+	case r == '}':
+		return lexRightDelim
+	case r == '*', r == '/', r == '%', r == '+', r == '-', r == ':', r == '(', r == ')':
+		// the single-character symbols
+		l.emit(arithmeticItemsBySymbol[string(r)])
+	case r == '>', r == '!', r == '<', r == '?', r == '=' && l.peek() == '=':
+		// 1 or 2 character symbols
+		l.accept("*/%+-=!<>|&?:")
+		sym := l.input[l.start:l.pos]
+		item, ok := arithmeticItemsBySymbol[sym]
+		if !ok {
+			return l.errorf("unexpected symbol: %s", sym)
+		}
+		l.emit(item)
+	case r >= '0' && r <= '9':
+		l.backup()
+		return lexNumber
+	case r == '"':
+		return lexString
 	case r == '=':
 		l.emit(itemEquals)
-		return lexInsideTag
 	case r == eof || isEndOfLine(r):
 		return l.errorf("unclosed tag")
 	case r == '|':
 		return lexDirective
-	case r == '.':
+	case r == '.': // todo: this could also be a float
 		return lexIdent
-	case isLetterOrUnderscore(r), r == '/', r == '\\':
+	case isLetterOrUnderscore(r):
 		l.backup()
 		return lexIdent
 	default:
@@ -510,8 +586,14 @@ Loop:
 				l.emit(commands[word])
 			case word == "true", word == "false":
 				l.emit(itemBool)
+			case word == "and":
+				l.emit(itemAnd)
+			case word == "or":
+				l.emit(itemOr)
+			case word == "not":
+				l.emit(itemNot)
 			default:
-				if word[0] == '/' {
+				if word[0] == '/' || word[0] == '\\' {
 					// TODO: this doesn't leave the position in the correct spot.
 					return l.errorf("bad character %#U", word[0])
 				}

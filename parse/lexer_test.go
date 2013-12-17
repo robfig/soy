@@ -182,6 +182,35 @@ var lexTests = []lexTest{
 		tEOF,
 	}},
 
+	{"not expr", `{(not $var)}`, []item{
+		tLeft,
+		{itemLeftParen, 0, "("},
+		{itemNot, 0, "not"},
+		{itemVariable, 0, "$var"},
+		{itemRightParen, 0, ")"},
+		tRight,
+		tEOF,
+	}},
+
+	{"arithmetic", `{2+2.0 == 4 and ? not : true <= "10" ?:/}`, []item{
+		tLeft,
+		{itemInteger, 0, "2"},
+		{itemAdd, 0, "+"},
+		{itemFloat, 0, "2.0"},
+		{itemEq, 0, "=="},
+		{itemInteger, 0, "4"},
+		{itemAnd, 0, "and"},
+		{itemTernIf, 0, "?"},
+		{itemNot, 0, "not"},
+		{itemTernElse, 0, ":"},
+		{itemBool, 0, "true"},
+		{itemLte, 0, "<="},
+		{itemString, 0, `"10"`},
+		{itemElvis, 0, "?:"},
+		{itemRightDelimEnd, 0, "/}"},
+		tEOF,
+	}},
+
 	{"namespace and template", `{namespace example}
 
 {template .templateName}
