@@ -156,8 +156,30 @@ var lexTests = []lexTest{
 		tRight, tLeft, {itemRightBrace, 0, "rb"}, // {rb}
 		tRight, tEOF,
 	}},
-	{"not", `{not $var}`, []item{
+
+	{"foreach", `{foreach $foo in $bars}{$foo}{ifempty}No bars{/foreach}`, []item{
 		tLeft,
+		{itemForeach, 0, "foreach"},
+		{itemVariable, 0, "$foo"},
+		{itemIdent, 0, "in"},
+		{itemVariable, 0, "$bars"},
+		tRight,
+		tLeft, {itemVariable, 0, "$foo"}, tRight,
+		tLeft, {itemIfempty, 0, "ifempty"}, tRight,
+		{itemText, 0, "No bars"},
+		tLeft, {itemForeachEnd, 0, "/foreach"}, tRight,
+		tEOF,
+	}},
+
+	{"call", `{call .other data="all"/}`, []item{
+		tLeft,
+		{itemCall, 0, "call"},
+		{itemIdent, 0, ".other"},
+		{itemIdent, 0, "data"},
+		{itemEquals, 0, "="},
+		{itemString, 0, `"all"`},
+		{itemRightDelimEnd, 0, "/}"},
+		tEOF,
 	}},
 
 	{"namespace and template", `{namespace example}

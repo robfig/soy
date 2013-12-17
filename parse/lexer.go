@@ -37,15 +37,16 @@ type itemType int
 
 // All items.
 const (
-	itemNil        itemType = iota // not used
-	itemEOF                        // EOF
-	itemError                      // error occurred; value is text of error
-	itemLeftDelim                  // tag left delimiter: {
-	itemRightDelim                 // tag right delimiter: }
-	itemText                       // plain text
-	itemIdent                      // identifier
-	itemVariable                   // $variable
-	itemEquals                     // =
+	itemNil           itemType = iota // not used
+	itemEOF                           // EOF
+	itemError                         // error occurred; value is text of error
+	itemLeftDelim                     // tag left delimiter: {
+	itemRightDelim                    // tag right delimiter: }
+	itemRightDelimEnd                 // tag right self-closing delimiter: /}
+	itemText                          // plain text
+	itemIdent                         // identifier
+	itemVariable                      // $variable
+	itemEquals                        // =
 	// Primitive literals.
 	itemBool
 	itemFloat
@@ -417,6 +418,15 @@ func lexInsideTag(l *lexer) stateFn {
 		return lexVariable
 	case r == '}':
 		return lexRightDelim
+	case r == '"':
+		return lexString
+	case r == '/' && l.peek() == '}':
+		l.next()
+		l.emit(itemRightDelimEnd)
+		return lexText
+	case r == '=':
+		l.emit(itemEquals)
+		return lexInsideTag
 	case r == eof || isEndOfLine(r):
 		return l.errorf("unclosed tag")
 	case r == '|':
@@ -466,6 +476,21 @@ func lexSoyDoc(l *lexer) stateFn {
 func lexDirective(l *lexer) stateFn {
 	// TODO
 	return lexInsideTag
+}
+
+// lexString scans a literal quoted string.
+// " has already been read.
+func lexString(l *lexer) stateFn {
+	// TODO: need to support quote escaping?
+	for {
+		switch l.next() {
+		case eof:
+			l.errorf("unexpected eof while scanning string")
+		case '"':
+			l.emit(itemString)
+			return lexInsideTag
+		}
+	}
 }
 
 func lexIdent(l *lexer) stateFn {
