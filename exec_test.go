@@ -18,21 +18,21 @@ type execTest struct {
 
 var execTests = []execTest{
 	// Namespace + static template
-	{"empty", ".empty",
+	{"empty", "test.empty",
 		"{namespace test}\n{template .empty}{/template}",
 		"",
 		nil, true},
-	{"hello world", ".sayHello",
+	{"hello world", "test.sayHello",
 		"{namespace test}\n{template .sayHello}Hello world!{/template}",
 		"Hello world!",
 		nil, true},
-	{"hello world w/ soydoc", ".sayHello",
+	{"hello world w/ soydoc", "test.sayHello",
 		"{namespace test}\n/** Says hello */\n{template .sayHello}Hello world!{/template}",
 		"Hello world!",
 		nil, true},
 
 	// Variables
-	{"hello world w/ variable", ".sayHello",
+	{"hello world w/ variable", "test.sayHello",
 		`{namespace test}
 
 /** @param name */

@@ -116,6 +116,49 @@ var lexTests = []lexTest{
 		{itemSoyDocEnd, 0, ""},
 		tEOF,
 	}},
+	{"if", `{if $var}{$var} is true{/if}`, []item{
+		tLeft,
+		{itemIf, 0, "if"},
+		{itemVariable, 0, "$var"},
+		tRight,
+		tLeft,
+		{itemVariable, 0, "$var"},
+		tRight,
+		{itemText, 0, ` is true`},
+		tLeft,
+		{itemIfEnd, 0, "/if"},
+		tRight,
+		tEOF,
+	}},
+	{"if-else", `{if $var}true{else}false{/if}`, []item{
+		tLeft,
+		{itemIf, 0, "if"},
+		{itemVariable, 0, "$var"},
+		tRight,
+		{itemText, 0, `true`},
+		tLeft,
+		{itemElse, 0, "else"},
+		tRight,
+		{itemText, 0, `false`},
+		tLeft,
+		{itemIfEnd, 0, "/if"},
+		tRight,
+		tEOF,
+	}},
+
+	{"special characters", `{sp}{nil}{\r}{\n}{\t}{lb}{rb}`, []item{
+		tLeft, {itemSpace, 0, "sp"}, // {sp}
+		tRight, tLeft, {itemEmptyString, 0, "nil"}, // {nil}
+		tRight, tLeft, {itemCarriageReturn, 0, "\\r"}, // {\r}
+		tRight, tLeft, {itemNewline, 0, "\\n"}, // {\n}
+		tRight, tLeft, {itemTab, 0, "\\t"}, // {\t}
+		tRight, tLeft, {itemLeftBrace, 0, "lb"}, // {lb}
+		tRight, tLeft, {itemRightBrace, 0, "rb"}, // {rb}
+		tRight, tEOF,
+	}},
+	{"not", `{not $var}`, []item{
+		tLeft,
+	}},
 
 	{"namespace and template", `{namespace example}
 

@@ -26,15 +26,18 @@ func (tofu Tofu) Parse(input string) error {
 	if len(nodes) == 0 {
 		return errors.New("empty")
 	}
-	// Maybe don't require namespaces
-	// if nodes[0].Type() != NodeNamespace {
-	// 	return errors.New("input must begin with a namespace declaration")
-	// }
-	// var namespace = nodes[0].Name
-	for _, n := range tree.Root.Nodes {
+
+	// require namespace as the first node.
+	if nodes[0].Type() != parse.NodeNamespace {
+		return errors.New("input must begin with a namespace declaration")
+	}
+
+	// get all the template nodes
+	var namespace = nodes[0].(*parse.NamespaceNode).Name
+	for _, n := range tree.Root.Nodes[1:] {
 		if n.Type() == parse.NodeTemplate {
 			tmpl := n.(*parse.TemplateNode)
-			tofu.templates[tmpl.Name] = tmpl
+			tofu.templates[namespace+tmpl.Name] = tmpl
 		}
 	}
 	return nil

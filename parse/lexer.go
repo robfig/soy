@@ -141,6 +141,14 @@ var commands = map[string]itemType{
 	"/param":       itemParamEnd,
 	"/switch":      itemSwitchEnd,
 	"/template":    itemTemplateEnd,
+
+	"sp":  itemSpace,
+	"nil": itemEmptyString,
+	`\t`:  itemTab,
+	`\n`:  itemNewline,
+	`\r`:  itemCarriageReturn,
+	"lb":  itemLeftBrace,
+	"rb":  itemRightBrace,
 }
 
 // isCommandEnd returns true if this is a command closing tag.
@@ -415,7 +423,7 @@ func lexInsideTag(l *lexer) stateFn {
 		return lexDirective
 	case r == '.':
 		return lexIdent
-	case isLetterOrUnderscore(r), r == '/':
+	case isLetterOrUnderscore(r), r == '/', r == '\\':
 		l.backup()
 		return lexIdent
 	default:
@@ -464,7 +472,7 @@ func lexIdent(l *lexer) stateFn {
 Loop:
 	for {
 		switch r := l.next(); {
-		case isAlphaNumeric(r), r == '/':
+		case isAlphaNumeric(r), r == '/', r == '\\':
 			// absorb.
 		default:
 			l.backup()
