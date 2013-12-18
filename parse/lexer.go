@@ -507,11 +507,14 @@ func lexInsideTag(l *lexer) stateFn {
 		return l.errorf("unclosed tag")
 	case r == '|':
 		return lexDirective
-	case r == '.': // todo: this could also be a float
+	case r == '.': // template name is an ident
 		return lexIdent
 	case isLetterOrUnderscore(r):
 		l.backup()
 		return lexIdent
+	case r == ',':
+		// comma separates function parameters.
+		l.ignore()
 	default:
 		return l.errorf("unrecognized character in action: %#U", r)
 	}
@@ -578,9 +581,6 @@ Loop:
 		default:
 			l.backup()
 			word := l.input[l.start:l.pos]
-			if !l.atTerminator() {
-				return l.errorf("bad character %#U", r)
-			}
 			switch {
 			case commands[word] > itemNil:
 				l.emit(commands[word])
@@ -588,6 +588,8 @@ Loop:
 				l.emit(itemBool)
 			case word == "and":
 				l.emit(itemAnd)
+			case word == "null":
+				l.emit(itemNull)
 			case word == "or":
 				l.emit(itemOr)
 			case word == "not":
@@ -742,20 +744,6 @@ func isSpace(r rune) bool {
 // isEndOfLine reports whether r is an end-of-line character.
 func isEndOfLine(r rune) bool {
 	return r == '\r' || r == '\n'
-}
-
-// atTerminator reports whether the input is at valid termination character to
-// appear after an identifier.
-func (l *lexer) atTerminator() bool {
-	r := l.peek()
-	if isSpace(r) || isEndOfLine(r) {
-		return true
-	}
-	switch r {
-	case eof, '|', '=', '}':
-		return true
-	}
-	return false
 }
 
 func isLetterOrUnderscore(r rune) bool {

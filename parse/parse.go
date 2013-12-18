@@ -1,6 +1,7 @@
 package parse
 
 import (
+	"errors"
 	"fmt"
 	"runtime"
 	"strconv"
@@ -113,13 +114,16 @@ func (t *Tree) beginTag() Node {
 		return t.parseNamespace(token)
 	case itemTemplate:
 		return t.parseTemplate(token)
-	case itemIdent, itemVariable, itemBool, itemFloat, itemInteger, itemString, itemList, itemMap:
+	case itemIdent, itemVariable, itemNull, itemBool, itemFloat, itemInteger, itemString, itemList, itemMap, itemNot:
+		// print is implicit, so the tag may also begin with any value type, or the
+		// "not" operator.
 		t.backup()
 		n := &PrintNode{token.pos, t.parseExpr(0)}
 		t.expect(itemRightDelim, "print")
 		return n
+	default:
+		t.errorf("not implemented: %#v", token)
 	}
-	t.errorf("not implemented")
 	return nil
 }
 
@@ -174,6 +178,7 @@ var precedence = map[itemType]int{
 	itemLte:   3,
 	itemOr:    2,
 	itemAnd:   1,
+	itemElvis: 0,
 }
 
 // parseExpr parses an arbitrary expression involving function applications and
@@ -221,7 +226,7 @@ func (t *Tree) parseTernary(cond Node) Node {
 	n1 := t.parseExpr(0)
 	t.expect(itemTernElse, "ternary")
 	n2 := t.parseExpr(0)
-	result := &TernaryOpNode{cond.Position(), cond, n1, n2}
+	result := &TernNode{cond.Position(), cond, n1, n2}
 	if t.peek().typ == itemTernElse {
 		t.next()
 		return t.parseTernary(result)
@@ -234,7 +239,7 @@ func isBinaryOp(typ itemType) bool {
 	case itemMul, itemDiv, itemMod,
 		itemAdd, itemSub,
 		itemEq, itemNotEq, itemGt, itemGte, itemLt, itemLte,
-		itemOr, itemAnd:
+		itemOr, itemAnd, itemElvis:
 		return true
 	}
 	return false
@@ -250,8 +255,10 @@ func isUnaryOp(t item) bool {
 
 func isValue(t item) bool {
 	switch t.typ {
-	case itemBool, itemInteger, itemFloat, itemVariable, itemString:
+	case itemNull, itemBool, itemInteger, itemFloat, itemVariable, itemString:
 		return true
+	case itemIdent:
+		return true // function application returns a value
 	}
 	return false
 }
@@ -290,6 +297,8 @@ func newBinaryOpNode(t item, n1, n2 Node) Node {
 		return &OrNode{op(bin, "or")}
 	case itemAnd:
 		return &AndNode{op(bin, "and")}
+	case itemElvis:
+		return &ElvisNode{op(bin, "?:")}
 	}
 	panic("unimplemented")
 }
@@ -309,7 +318,6 @@ func (t *Tree) newValueNode(tok item) Node {
 	case itemBool:
 		return &BoolNode{tok.pos, tok.val == "true"}
 	case itemInteger:
-		// decimal or hex?
 		var base = 10
 		if strings.HasPrefix(tok.val, "0x") {
 			base = 16
@@ -339,8 +347,22 @@ func (t *Tree) newValueNode(tok item) Node {
 	case itemVariable:
 		return &VariableNode{tok.pos, tok.val}
 	case itemIdent:
-		panic("unimplemented")
-		// TODO: function
+		// this is a function call.  get all the arguments.
+		node := &FunctionNode{tok.pos, tok.val, nil}
+		t.expect(itemLeftParen, "expression: function call")
+		for {
+			switch tok := t.next(); tok.typ {
+			case itemRightParen:
+				return node
+			case eof:
+				t.errorf("unexpected eof reading function params")
+			default:
+				if !isValue(tok) {
+					t.errorf("expected value type in function params")
+				}
+				node.Args = append(node.Args, t.newValueNode(tok))
+			}
+		}
 	}
 	panic("unreachable")
 }
@@ -410,6 +432,10 @@ func (t *Tree) recover(errp *error) {
 		}
 		if t != nil {
 			t.stopParse()
+		}
+		if str, ok := e.(string); ok {
+			*errp = errors.New(str)
+			return
 		}
 		*errp = e.(error)
 	}

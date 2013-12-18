@@ -257,11 +257,11 @@ type (
 	ElvisNode struct{ binaryOpNode }
 )
 
-type TernaryOpNode struct {
+type TernNode struct {
 	Pos
 	Arg1, Arg2, Arg3 Node
 }
 
-func (n *TernaryOpNode) String() string {
+func (n *TernNode) String() string {
 	return "?:"
 }
