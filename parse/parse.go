@@ -1,5 +1,7 @@
 package parse
 
+// TODO: How to leave out ListNode when its only one item
+
 import (
 	"errors"
 	"fmt"
@@ -60,7 +62,7 @@ func (t *Tree) parse() {
 // itemList:
 //	textOrTag*
 // Terminates when it comes across the given end tag.
-func (t *Tree) itemList(until itemType) *ListNode {
+func (t *Tree) itemList(until ...itemType) *ListNode {
 	var (
 		list = newList(0) // todo
 	)
@@ -68,14 +70,13 @@ func (t *Tree) itemList(until itemType) *ListNode {
 		// Two ways to end a list:
 		// 1. We found the until token (e.g. EOF)
 		var token = t.next()
-		if token.typ == until {
+		if isOneOf(token.typ, until) {
 			return list
 		}
 
-		// 2. The until token is a command end, e.g. {/template}
+		// 2. The until token is a command, e.g. {else} {/template}
 		var token2 = t.next()
-		if token.typ == itemLeftDelim && token2.typ == until {
-			t.expect(itemRightDelim, "close tag")
+		if token.typ == itemLeftDelim && isOneOf(token2.typ, until) {
 			return list
 		}
 
@@ -105,6 +106,14 @@ func (t *Tree) parseSoydoc() Node {
 	return nil
 }
 
+var specialChars = map[itemType]string{
+	itemTab:            "\t",
+	itemNewline:        "\n",
+	itemCarriageReturn: "\r",
+	itemLeftBrace:      "{",
+	itemRightBrace:     "}",
+}
+
 // beginTag parses the contents of delimiters (within a template)
 // The contents could be a command, variable, function call, expression, etc.
 // { already read.
@@ -114,6 +123,17 @@ func (t *Tree) beginTag() Node {
 		return t.parseNamespace(token)
 	case itemTemplate:
 		return t.parseTemplate(token)
+	case itemIf:
+		return t.parseIf(token)
+	case itemMsg:
+		return t.parseMsg(token)
+	case itemForeach, itemFor:
+		return t.parseFor(token)
+	case itemSwitch:
+		return t.parseSwitch(token)
+	case itemTab, itemNewline, itemCarriageReturn, itemLeftBrace, itemRightBrace:
+		t.expect(itemRightDelim, "special char")
+		return newText(token.pos, specialChars[token.typ])
 	case itemIdent, itemVariable, itemNull, itemBool, itemFloat, itemInteger, itemString, itemList, itemMap, itemNot:
 		// print is implicit, so the tag may also begin with any value type, or the
 		// "not" operator.
@@ -127,12 +147,178 @@ func (t *Tree) beginTag() Node {
 	return nil
 }
 
+// "switch" has just been read.
+func (t *Tree) parseSwitch(token item) Node {
+	const ctx = "switch"
+	var switchValue = t.parseExpr(0)
+	t.expect(itemRightDelim, ctx)
+	t.expect(itemLeftDelim, "switch")
+	var cases []*SwitchCaseNode
+	for {
+		fmt.Println("starting case lloop:", t.peek())
+		switch tok := t.next(); tok.typ {
+		case itemCase, itemDefault:
+			cases = append(cases, t.parseCase(tok))
+		case itemSwitchEnd:
+			t.expect(itemRightDelim, ctx)
+			return &SwitchNode{token.pos, switchValue, cases}
+		}
+	}
+}
+
+// "case" has just been read.
+func (t *Tree) parseCase(token item) *SwitchCaseNode {
+	var values []Node
+	for {
+		if token.typ != itemDefault {
+			values = append(values, t.parseExpr(0))
+		}
+		switch tok := t.next(); tok.typ {
+		case itemComma:
+			continue
+		case itemRightDelim:
+			var body = t.itemList(itemCase, itemDefault, itemSwitchEnd)
+			t.backup()
+			fmt.Println("returning case:", t.peek())
+			return &SwitchCaseNode{token.pos, values, body}
+		default:
+			t.errorf("unexpected item when parsing case: %v", tok)
+		}
+	}
+}
+
+// "for" or "foreach" has just been read.
+func (t *Tree) parseFor(token item) Node {
+	var ctx = token.val
+	// for and foreach have the same syntax, differing only in the requirement they impose:
+	// - for requires the collection to be a function call to "range"
+	// - foreach requires the collection to be a variable reference.
+	var vartoken = t.expect(itemVariable, ctx)
+	var intoken = t.expect(itemIdent, ctx)
+	if intoken.val != "in" {
+		t.errorf("expected 'in' in for")
+	}
+
+	// get the collection to iterate through and enforce the requirements
+	var collection = t.parseExpr(0)
+	t.expect(itemRightDelim, "foreach")
+	switch token.typ {
+	case itemFor:
+		f, ok := collection.(*FunctionNode)
+		if !ok || f.Name != "range" {
+			t.errorf("for: expected to iterate through range()")
+		}
+	case itemForeach:
+		if _, ok := collection.(*VariableNode); !ok {
+			t.errorf("foreach: expected to iterate through a variable")
+		}
+	}
+
+	var body = t.itemList(itemIfempty, itemForeachEnd, itemForEnd)
+	t.backup()
+	var ifempty Node
+	if t.next().typ == itemIfempty {
+		t.expect(itemRightDelim, "ifempty")
+		ifempty = t.itemList(itemForeachEnd, itemForEnd)
+	}
+	t.expect(itemRightDelim, "/foreach")
+	return &ForNode{token.pos, vartoken.val, collection, body, ifempty}
+}
+
+// "foreach" has just been read.
+func (t *Tree) parseForeach(token item) Node {
+	var vartoken = t.expect(itemVariable, "foreach")
+	var intoken = t.expect(itemIdent, "foreach")
+	if intoken.val != "in" {
+		t.errorf("expected 'in' in for")
+	}
+	var collection = t.expect(itemVariable, "foreach")
+	t.expect(itemRightDelim, "foreach")
+
+	var body = t.itemList(itemIfempty, itemForeachEnd)
+	t.backup()
+	var ifempty Node
+	if t.next().typ == itemIfempty {
+		t.expect(itemRightDelim, "ifempty")
+		ifempty = t.itemList(itemForeachEnd)
+	}
+	t.expect(itemRightDelim, "/foreach")
+	return &ForNode{token.pos, vartoken.val,
+		&VariableNode{collection.pos, collection.val}, body, ifempty}
+}
+
+// "if" has just been read.
+func (t *Tree) parseIf(token item) Node {
+	var conds []*IfCondNode
+	var isElse = false
+	for {
+		var condExpr Node
+		if !isElse {
+			condExpr = t.parseExpr(0)
+		}
+		t.expect(itemRightDelim, "if")
+		var body = t.itemList(itemElseif, itemElse, itemIfEnd)
+		conds = append(conds, &IfCondNode{token.pos, condExpr, body})
+		t.backup()
+		switch t.next().typ {
+		case itemElseif:
+			// continue
+		case itemElse:
+			isElse = true
+		case itemIfEnd:
+			t.expect(itemRightDelim, "/if")
+			return &IfNode{token.pos, conds}
+		}
+	}
+}
+
 func (t *Tree) parseSoyDoc(token item) Node {
 	const ctx = "soydoc"
 	// TODO: params
 	var text = t.expect(itemText, ctx)
 	t.expect(itemSoyDocEnd, ctx)
 	return newSoyDoc(token.pos, text.val)
+}
+
+func inStringSlice(item string, group []string) bool {
+	for _, x := range group {
+		if x == item {
+			return true
+		}
+	}
+	return false
+}
+
+func (t *Tree) parseAttrs(allowedNames ...string) map[string]string {
+	var result = make(map[string]string)
+	for {
+		switch tok := t.next(); tok.typ {
+		case itemIdent:
+			if !inStringSlice(tok.val, allowedNames) {
+				t.errorf("unexpected attribute: %s", tok.val)
+			}
+			t.expect(itemEquals, "attribute")
+			var attrval = t.expect(itemString, "attribute")
+			var err error
+			result[tok.val], err = strconv.Unquote(attrval.val)
+			if err != nil {
+				t.error(err)
+			}
+		case itemRightDelim:
+			return result
+		default:
+			t.errorf("unexpected item parsing attributes: %v", tok)
+		}
+	}
+}
+
+// "msg" has just been read.
+func (t *Tree) parseMsg(token item) Node {
+	const ctx = "msg"
+	var attrs = t.parseAttrs("desc", "meaning")
+	var node = &MsgNode{token.pos, attrs["desc"], t.itemList(itemMsgEnd)}
+	t.expect(itemRightDelim, ctx)
+	return node
 }
 
 func (t *Tree) parseNamespace(token item) Node {
@@ -148,6 +334,7 @@ func (t *Tree) parseTemplate(token item) Node {
 	t.expect(itemRightDelim, ctx)
 	tmpl := newTemplate(token.pos, id.val)
 	tmpl.Body = t.itemList(itemTemplateEnd)
+	t.expect(itemRightDelim, "template tag")
 	return tmpl
 }
 
@@ -351,16 +538,16 @@ func (t *Tree) newValueNode(tok item) Node {
 		node := &FunctionNode{tok.pos, tok.val, nil}
 		t.expect(itemLeftParen, "expression: function call")
 		for {
+			node.Args = append(node.Args, t.parseExpr(0))
 			switch tok := t.next(); tok.typ {
+			case itemComma:
+				// continue to get the next arg
 			case itemRightParen:
-				return node
+				return node // all done
 			case eof:
 				t.errorf("unexpected eof reading function params")
 			default:
-				if !isValue(tok) {
-					t.errorf("expected value type in function params")
-				}
-				node.Args = append(node.Args, t.newValueNode(tok))
+				t.errorf("unexpected %v reading function params", tok)
 			}
 		}
 	}
@@ -489,4 +676,13 @@ func (t *Tree) errorf(format string, args ...interface{}) {
 // error terminates processing.
 func (t *Tree) error(err error) {
 	t.errorf("%s", err)
+}
+
+func isOneOf(tocheck itemType, against []itemType) bool {
+	for _, x := range against {
+		if tocheck == x {
+			return true
+		}
+	}
+	return false
 }

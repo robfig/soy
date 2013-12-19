@@ -49,7 +49,10 @@ var execTests = []execTest{
 		"helloworld",
 		nil, true},
 
+	// TODO: Elvis only checks if cond is defined, not truthy.
+
 	// Variables
+	// TODO: "undefined data keys are falsy"
 	{"hello world w/ variable", "test.sayHello",
 		`{namespace test}
 

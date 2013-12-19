@@ -135,7 +135,6 @@ func (n *PrintNode) String() string {
 	return n.Arg.String()
 }
 
-// IdentNode holds an ident.
 type IdentNode struct {
 	Pos
 	Ident string // The ident's name.
@@ -143,6 +142,110 @@ type IdentNode struct {
 
 func (i *IdentNode) String() string {
 	return i.Ident
+}
+
+type MsgNode struct {
+	Pos
+	Desc string
+	Body Node
+}
+
+func (n *MsgNode) String() string {
+	return fmt.Sprintf("{msg desc=%q}", n.Desc)
+}
+
+// Control flow ----------
+
+type IfNode struct {
+	Pos
+	Conds []*IfCondNode
+}
+
+func (n *IfNode) String() string {
+	var expr string
+	for i, cond := range n.Conds {
+		if i == 0 {
+			expr += "{if "
+		} else if cond.Cond == nil {
+			expr += "{else}"
+		} else {
+			expr += "{elseif "
+		}
+		expr += cond.String()
+	}
+	return expr + "{/if}"
+}
+
+type IfCondNode struct {
+	Pos
+	Cond Node // nil if "else"
+	Body Node
+}
+
+func (n *IfCondNode) String() string {
+	var expr string
+	if n.Cond != nil {
+		expr = n.Cond.String() + "}"
+	}
+	return expr + n.Body.String()
+}
+
+type SwitchNode struct {
+	Pos
+	Value Node
+	Cases []*SwitchCaseNode
+}
+
+func (n *SwitchNode) String() string {
+	var expr = "{switch " + n.Value.String() + "}"
+	for _, caseNode := range n.Cases {
+		expr += caseNode.String()
+	}
+	return expr + "{/switch}"
+}
+
+type SwitchCaseNode struct {
+	Pos
+	Values []Node // len(Values) == 0 => default case
+	Body   Node
+}
+
+func (n *SwitchCaseNode) String() string {
+	var expr = "{case "
+
+	for i, val := range n.Values {
+		if i > 0 {
+			expr += ","
+		}
+		expr += val.String()
+	}
+	return expr + "}" + n.Body.String()
+}
+
+// Note:
+// - "For" node is required to have a range() call as the List
+// - "Foreach" node is required to have a VariableNode as the List
+type ForNode struct {
+	Pos
+	Var     string
+	List    Node
+	Body    Node
+	IfEmpty Node
+}
+
+func (n *ForNode) String() string {
+	var _, isForeach = n.List.(*VariableNode)
+	var name = "for"
+	if isForeach {
+		name = "foreach"
+	}
+
+	var expr = "{" + name + " "
+	expr += n.Var + " in " + n.List.String() + "}" + n.Body.String()
+	if n.IfEmpty != nil {
+		expr += "{ifempty}" + n.IfEmpty.String()
+	}
+	return expr + "{/" + name + "}"
 }
 
 // Values ----------
@@ -155,7 +258,6 @@ func (s *NullNode) String() string {
 	return "null"
 }
 
-// BoolNode holds a boolean constant.
 type BoolNode struct {
 	Pos
 	True bool // The value of the boolean constant.

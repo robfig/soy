@@ -6,81 +6,6 @@ import (
 	"testing"
 )
 
-// func TestScanNumber(t *testing.T) {
-// 	validIntegers := []string{
-// 		// Decimal.
-// 		"42",
-// 		"-827",
-// 		// Hexadecimal.
-// 		"0x1A2B",
-// 	}
-// 	invalidIntegers := []string{
-// 		// Decimal.
-// 		"042",
-// 		"-0827",
-// 		// Hexadecimal.
-// 		"-0x1A2B",
-// 		"0X1A2B",
-// 		"0x1a2b",
-// 		"0x1A2B.2B",
-// 	}
-// 	validFloats := []string{
-// 		"0.5",
-// 		"-100.0",
-// 		"-3e-3",
-// 		"6.02e23",
-// 		"5.1e-9",
-// 	}
-// 	invalidFloats := []string{
-// 		".5",
-// 		"-.5",
-// 		"100.",
-// 		"-100.",
-// 		"-3E-3",
-// 		"6.02E23",
-// 		"5.1E-9",
-// 		"-3e",
-// 		"6.02e",
-// 	}
-
-// 	for _, v := range validIntegers {
-// 		l := newLexer("", v)
-// 		typ, ok := scanNumber(l)
-// 		res := l.input[l.start:l.pos]
-// 		if !ok || typ != itemInteger {
-// 			t.Fatalf("Expected a valid integer for %q", v)
-// 		}
-// 		if res != v {
-// 			t.Fatalf("Expected %q, got %q", v, res)
-// 		}
-// 	}
-// 	for _, v := range invalidIntegers {
-// 		l := newLexer("", v)
-// 		_, ok := scanNumber(l)
-// 		if ok {
-// 			t.Fatalf("Expected an invalid integer for %q", v)
-// 		}
-// 	}
-// 	for _, v := range validFloats {
-// 		l := newLexer("", v)
-// 		typ, ok := scanNumber(l)
-// 		res := l.input[l.start:l.pos]
-// 		if !ok || typ != itemFloat {
-// 			t.Fatalf("Expected a valid float for %q", v)
-// 		}
-// 		if res != v {
-// 			t.Fatalf("Expected %q, got %q", v, res)
-// 		}
-// 	}
-// 	for _, v := range invalidFloats {
-// 		l := newLexer("", v)
-// 		_, ok := scanNumber(l)
-// 		if ok {
-// 			t.Fatalf("Expected an invalid float for %q", v)
-// 		}
-// 	}
-// }
-
 type lexTest struct {
 	name  string
 	input string
@@ -104,9 +29,9 @@ var lexTests = []lexTest{
 		tRight,
 		tEOF,
 	}},
-	{"variable", `{$name}`, []item{
+	{"variable", `{$name.bar}`, []item{
 		tLeft,
-		{itemVariable, 0, "$name"},
+		{itemVariable, 0, "$name.bar"},
 		tRight,
 		tEOF,
 	}},
@@ -168,6 +93,38 @@ var lexTests = []lexTest{
 		tLeft, {itemIfempty, 0, "ifempty"}, tRight,
 		{itemText, 0, "No bars"},
 		tLeft, {itemForeachEnd, 0, "/foreach"}, tRight,
+		tEOF,
+	}},
+
+	{"switch", `{switch $boo} {case 0}Blah{case $foo.goo}Bleh{case -1, 1, $moo} {default}{/switch}`, []item{
+		tLeft,
+		{itemSwitch, 0, "switch"},
+		{itemVariable, 0, "$boo"},
+		tRight,
+		tLeft,
+		{itemCase, 0, "case"},
+		{itemInteger, 0, "0"},
+		tRight,
+		{itemText, 0, "Blah"},
+		tLeft,
+		{itemCase, 0, "case"},
+		{itemVariable, 0, "$foo.goo"},
+		tRight,
+		{itemText, 0, "Bleh"},
+		tLeft,
+		{itemCase, 0, "case"},
+		{itemInteger, 0, "-1"},
+		{itemComma, 0, ","},
+		{itemInteger, 0, "1"},
+		{itemComma, 0, ","},
+		{itemVariable, 0, "$moo"},
+		tRight,
+		tLeft,
+		{itemDefault, 0, "default"},
+		tRight,
+		tLeft,
+		{itemSwitchEnd, 0, "/switch"},
+		tRight,
 		tEOF,
 	}},
 
@@ -258,8 +215,23 @@ var lexTests = []lexTest{
 		{itemIdent, 0, "foo"},
 		{itemLeftParen, 0, "("},
 		{itemInteger, 0, "5"},
+		{itemComma, 0, ","},
 		{itemVariable, 0, "$foo"},
 		{itemRightParen, 0, ")"},
+		tRight,
+		tEOF,
+	}},
+
+	{"msg", `{msg desc="msg description"}Hello{/msg}`, []item{
+		tLeft,
+		{itemMsg, 0, "msg"},
+		{itemIdent, 0, "desc"},
+		{itemEquals, 0, "="},
+		{itemString, 0, `"msg description"`},
+		tRight,
+		{itemText, 0, "Hello"},
+		tLeft,
+		{itemMsgEnd, 0, "/msg"},
 		tRight,
 		tEOF,
 	}},
@@ -336,6 +308,83 @@ func TestLex(t *testing.T) {
 		items := collect(&test)
 		if !equal(items, test.items, false) {
 			t.Errorf("%s: got\n\t%+v\nexpected\n\t%v", test.name, items, test.items)
+		}
+	}
+}
+
+func TestScanNumber(t *testing.T) {
+	validIntegers := []string{
+		// Decimal.
+		"0",
+		"-1",
+		"42",
+		"-827",
+		// Hexadecimal.
+		"0x1A2B",
+	}
+	invalidIntegers := []string{
+		// Decimal.
+		"042",
+		"-0827",
+		// Hexadecimal.
+		"-0x1A2B",
+		"0X1A2B",
+		"0x1a2b",
+		"0x1A2B.2B",
+	}
+	validFloats := []string{
+		"0.5",
+		"-100.0",
+		"-3e-3",
+		"6.02e23",
+		"5.1e-9",
+	}
+	invalidFloats := []string{
+		".5",
+		"-.5",
+		"100.",
+		"-100.",
+		"-3E-3",
+		"6.02E23",
+		"5.1E-9",
+		"-3e",
+		"6.02e",
+	}
+
+	for _, v := range validIntegers {
+		l := lex("", v)
+		typ, ok := scanNumber(l)
+		res := l.input[l.start:l.pos]
+		if !ok || typ != itemInteger {
+			t.Fatalf("Expected a valid integer for %q", v)
+		}
+		if res != v {
+			t.Fatalf("Expected %q, got %q", v, res)
+		}
+	}
+	for _, v := range invalidIntegers {
+		l := lex("", v)
+		_, ok := scanNumber(l)
+		if ok {
+			t.Fatalf("Expected an invalid integer for %q", v)
+		}
+	}
+	for _, v := range validFloats {
+		l := lex("", v)
+		typ, ok := scanNumber(l)
+		res := l.input[l.start:l.pos]
+		if !ok || typ != itemFloat {
+			t.Fatalf("Expected a valid float for %q", v)
+		}
+		if res != v {
+			t.Fatalf("Expected %q, got %q", v, res)
+		}
+	}
+	for _, v := range invalidFloats {
+		l := lex("", v)
+		_, ok := scanNumber(l)
+		if ok {
+			t.Fatalf("Expected an invalid float for %q", v)
 		}
 	}
 }

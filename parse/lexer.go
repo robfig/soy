@@ -59,7 +59,7 @@ const (
 	itemList     // e.g. [1, 'two', [3, false]]
 	itemMap      // e.g. ['aaa': 42, 'bbb': 'hello']
 	itemVariable // e.g. $variable
-	// function application: itemIdent itemLeftParen .. itemRightParen
+	itemComma    // , (used in function invocations)
 
 	// Expression operations
 	itemMul        // *
@@ -484,6 +484,9 @@ func lexInsideTag(l *lexer) stateFn {
 		return lexVariable
 	case r == '}':
 		return lexRightDelim
+	case r >= '0' && r <= '9' || r == '-' && l.peek() >= '0' && l.peek() <= '9':
+		l.backup()
+		return lexNumber
 	case r == '*', r == '/', r == '%', r == '+', r == '-', r == ':', r == '(', r == ')':
 		// the single-character symbols
 		l.emit(arithmeticItemsBySymbol[string(r)])
@@ -496,9 +499,6 @@ func lexInsideTag(l *lexer) stateFn {
 			return l.errorf("unexpected symbol: %s", sym)
 		}
 		l.emit(item)
-	case r >= '0' && r <= '9':
-		l.backup()
-		return lexNumber
 	case r == '"':
 		return lexString
 	case r == '=':
@@ -514,7 +514,7 @@ func lexInsideTag(l *lexer) stateFn {
 		return lexIdent
 	case r == ',':
 		// comma separates function parameters.
-		l.ignore()
+		l.emit(itemComma)
 	default:
 		return l.errorf("unrecognized character in action: %#U", r)
 	}
@@ -525,7 +525,7 @@ func lexInsideTag(l *lexer) stateFn {
 // lexVariable scans a variable: $Alphanumeric
 // $ has already been read.
 func lexVariable(l *lexer) stateFn {
-	for r := l.next(); isAlphaNumeric(r); r = l.next() {
+	for r := l.next(); isAlphaNumeric(r) || r == '.'; r = l.next() {
 	}
 	l.backup()
 	l.emit(itemVariable)
@@ -666,7 +666,7 @@ func scanNumber(l *lexer) (typ itemType, ok bool) {
 	typ = itemInteger
 	// Optional leading sign.
 	hasSign := l.accept("+-")
-	if l.input[l.pos:l.pos+2] == "0x" {
+	if Pos(len(l.input)) >= l.pos+2 && l.input[l.pos:l.pos+2] == "0x" {
 		// Hexadecimal.
 		if hasSign {
 			// No signs for hexadecimals.
@@ -695,8 +695,8 @@ func scanNumber(l *lexer) (typ itemType, ok bool) {
 			}
 			typ = itemFloat
 		} else {
-			if (!hasSign && l.input[l.start] == '0') ||
-				(hasSign && l.input[l.start+1] == '0') {
+			if (!hasSign && l.input[l.start] == '0' && l.pos > l.start+1) ||
+				(hasSign && l.input[l.start+1] == '0' && l.pos > l.start+2) {
 				// Integers can't start with 0.
 				return
 			}
