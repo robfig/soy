@@ -61,24 +61,33 @@ const (
 	itemVariable // e.g. $variable
 	itemComma    // , (used in function invocations)
 
+	// Data ref access tokens
+	itemDot         // .
+	itemQuestionDot // ?.
+	itemKey         // [
+	itemKeyEnd      // ]
+	itemQuestionKey // ?[
+
 	// Expression operations
-	itemMul        // *
-	itemDiv        // /
-	itemMod        // %
-	itemAdd        // +
-	itemSub        // - (binary)
-	itemEq         // ==
-	itemNotEq      // !=
-	itemGt         // >
-	itemGte        // >=
-	itemLt         // <
-	itemLte        // <=
-	itemOr         // or
-	itemAnd        // and
-	itemTernIf     // ?
-	itemTernElse   // :
-	itemElvis      // ?:
-	itemNot        // not
+	itemNegate   // - (unary)
+	itemMul      // *
+	itemDiv      // /
+	itemMod      // %
+	itemAdd      // +
+	itemSub      // - (binary)
+	itemEq       // ==
+	itemNotEq    // !=
+	itemGt       // >
+	itemGte      // >=
+	itemLt       // <
+	itemLte      // <=
+	itemNot      // not
+	itemOr       // or
+	itemAnd      // and
+	itemTernIf   // ?
+	itemTernElse // :
+	itemElvis    // ?:
+
 	itemLeftParen  // (
 	itemRightParen // )
 
@@ -142,6 +151,11 @@ const (
 	// itemPlural               // {plural}{/plural}
 	// itemSelect               // {select}{/select}
 )
+
+// isOp returns true if the item is an expression operation
+func (t itemType) isOp() bool {
+	return itemNegate <= t && t <= itemElvis
+}
 
 var commands = map[string]itemType{
 	"namespace": itemNamespace,
@@ -238,6 +252,7 @@ type lexer struct {
 	items       chan item // channel of scanned items.
 	doubleDelim bool      // flag for tags starting with double braces.
 	lastPos     Pos       // position of most recent item returned by nextItem
+	lastEmit    itemType  // type of most recent item emitted
 }
 
 // nextItem returns the next item from the input.
@@ -295,6 +310,7 @@ func (l *lexer) emit(t itemType) {
 	}
 	l.items <- item{t, l.pos, l.input[l.start:l.pos]}
 	l.start = l.pos
+	l.lastEmit = t
 }
 
 // ignore skips over the pending input before this point.
@@ -482,15 +498,35 @@ func lexInsideTag(l *lexer) stateFn {
 		return lexText
 	case r == '$':
 		return lexVariable
+	case r == '.':
+		l.emit(itemDot)
+	case r == '[':
+		l.emit(itemKey)
+	case r == ']':
+		l.emit(itemKeyEnd)
+	case r == '?': // used by data refs and arithmetic
+		switch l.next() {
+		case '.':
+			l.emit(itemQuestionDot)
+		case '[':
+			l.emit(itemQuestionKey)
+		case ':':
+			l.emit(itemElvis)
+		default:
+			l.backup()
+			l.emit(itemTernIf)
+		}
+	case r == '-':
+		return lexNegative(l)
 	case r == '}':
 		return lexRightDelim
-	case r >= '0' && r <= '9' || r == '-' && l.peek() >= '0' && l.peek() <= '9':
+	case r >= '0' && r <= '9':
 		l.backup()
 		return lexNumber
-	case r == '*', r == '/', r == '%', r == '+', r == '-', r == ':', r == '(', r == ')':
+	case r == '*', r == '/', r == '%', r == '+', r == ':', r == '(', r == ')':
 		// the single-character symbols
 		l.emit(arithmeticItemsBySymbol[string(r)])
-	case r == '>', r == '!', r == '<', r == '?', r == '=' && l.peek() == '=':
+	case r == '>', r == '!', r == '<', r == '=' && l.peek() == '=':
 		// 1 or 2 character symbols
 		l.accept("*/%+-=!<>|&?:")
 		sym := l.input[l.start:l.pos]
@@ -499,16 +535,14 @@ func lexInsideTag(l *lexer) stateFn {
 			return l.errorf("unexpected symbol: %s", sym)
 		}
 		l.emit(item)
-	case r == '"':
-		return lexString
+	case r == '"', r == '\'':
+		return stringLexer(r)
 	case r == '=':
 		l.emit(itemEquals)
 	case r == eof || isEndOfLine(r):
 		return l.errorf("unclosed tag")
 	case r == '|':
 		return lexDirective
-	case r == '.': // template name is an ident
-		return lexIdent
 	case isLetterOrUnderscore(r):
 		l.backup()
 		return lexIdent
@@ -522,10 +556,27 @@ func lexInsideTag(l *lexer) stateFn {
 	return lexInsideTag
 }
 
+func lexNegative(l *lexer) stateFn {
+	// is it a negative number?
+	if l.peek() >= '0' && l.peek() <= '9' {
+		l.backup()
+		return lexNumber
+	}
+
+	// is it unary or binary op?
+	// unary if it starts a group ('{' or '(') or an op came just before.
+	if l.lastEmit.isOp() || l.lastEmit == itemLeftDelim || l.lastEmit == itemLeftParen {
+		l.emit(itemNegate)
+	} else {
+		l.emit(itemSub)
+	}
+	return lexInsideTag
+}
+
 // lexVariable scans a variable: $Alphanumeric
 // $ has already been read.
 func lexVariable(l *lexer) stateFn {
-	for r := l.next(); isAlphaNumeric(r) || r == '.'; r = l.next() {
+	for r := l.next(); isAlphaNumeric(r); r = l.next() {
 	}
 	l.backup()
 	l.emit(itemVariable)
@@ -557,17 +608,20 @@ func lexDirective(l *lexer) stateFn {
 	return lexInsideTag
 }
 
-// lexString scans a literal quoted string.
-// " has already been read.
-func lexString(l *lexer) stateFn {
-	// TODO: need to support quote escaping?
-	for {
-		switch l.next() {
-		case eof:
-			l.errorf("unexpected eof while scanning string")
-		case '"':
-			l.emit(itemString)
-			return lexInsideTag
+// stringLexer returns a stateFn that lexes strings surrounded by the given quote character.
+func stringLexer(quoteChar rune) stateFn {
+	// the quote char has already been read.
+	return func(l *lexer) stateFn {
+		for {
+			switch l.next() {
+			case eof:
+				l.errorf("unexpected eof while scanning string")
+			case '\\':
+				l.next() // skip escape sequences
+			case quoteChar:
+				l.emit(itemString)
+				return lexInsideTag
+			}
 		}
 	}
 }

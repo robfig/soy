@@ -36,7 +36,7 @@ func (tofu Tofu) Parse(input string) error {
 	// get all the template nodes
 	for _, n := range tree.Root.Nodes[1:] {
 		if tmpl, ok := n.(*parse.TemplateNode); ok {
-			tofu.templates[namespace.Name+tmpl.Name] = tmpl
+			tofu.templates[namespace.Name+"."+tmpl.Name] = tmpl
 		}
 	}
 	return nil

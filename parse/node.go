@@ -234,7 +234,7 @@ type ForNode struct {
 }
 
 func (n *ForNode) String() string {
-	var _, isForeach = n.List.(*VariableNode)
+	var _, isForeach = n.List.(*DataRefNode)
 	var name = "for"
 	if isForeach {
 		name = "foreach"
@@ -288,28 +288,16 @@ func (n *FloatNode) String() string {
 	return strconv.FormatFloat(n.Value, 'g', -1, 64)
 }
 
-// StringNode holds a string constant. The value has been "unquoted".
 type StringNode struct {
 	Pos
-	Quoted string // The original text of the string, with quotes.
-	Text   string // The string, after quote processing.
+	Value string
 }
 
 func (s *StringNode) String() string {
-	return s.Quoted
+	return quoteString(s.Value)
 }
 
 // TODO: ValueListNode, MapNode
-
-// VariableNode represents a variable term in a Soy expression
-type VariableNode struct {
-	Pos
-	Name string
-}
-
-func (n *VariableNode) String() string {
-	return n.Name
-}
 
 type FunctionNode struct {
 	Pos
@@ -318,7 +306,72 @@ type FunctionNode struct {
 }
 
 func (n *FunctionNode) String() string {
-	return n.Name
+	var expr = n.Name + "("
+	for i, arg := range n.Args {
+		if i > 0 {
+			expr += ","
+		}
+		expr += arg.String()
+	}
+	return expr + ")"
+}
+
+// Data References ----------
+
+type DataRefNode struct {
+	Pos
+	Key    string
+	Access []Node
+}
+
+func (n *DataRefNode) String() string {
+	var expr = "$" + n.Key
+	for _, access := range n.Access {
+		expr += access.String()
+	}
+	return expr
+}
+
+type DataRefIndexNode struct {
+	Pos
+	NullSafe bool
+	Index    int
+}
+
+func (n *DataRefIndexNode) String() string {
+	var expr = "."
+	if n.NullSafe {
+		expr = "?" + expr
+	}
+	return expr + strconv.Itoa(n.Index)
+}
+
+type DataRefExprNode struct {
+	Pos
+	NullSafe bool
+	Arg      Node
+}
+
+func (n *DataRefExprNode) String() string {
+	var expr = "["
+	if n.NullSafe {
+		expr = "?" + expr
+	}
+	return expr + n.Arg.String() + "]"
+}
+
+type DataRefKeyNode struct {
+	Pos
+	NullSafe bool
+	Key      string
+}
+
+func (n *DataRefKeyNode) String() string {
+	var expr = "."
+	if n.NullSafe {
+		expr = "?" + expr
+	}
+	return expr + n.Key
 }
 
 // Operators ----------
@@ -329,7 +382,16 @@ type NotNode struct {
 }
 
 func (n *NotNode) String() string {
-	return "not"
+	return "not " + n.Arg.String()
+}
+
+type NegateNode struct {
+	Pos
+	Arg Node
+}
+
+func (n *NegateNode) String() string {
+	return "-" + n.Arg.String()
 }
 
 type binaryOpNode struct {
@@ -339,7 +401,7 @@ type binaryOpNode struct {
 }
 
 func (n *binaryOpNode) String() string {
-	return n.Name
+	return n.Arg1.String() + n.Name + n.Arg2.String()
 }
 
 type (

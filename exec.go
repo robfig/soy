@@ -138,8 +138,8 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 		if _, err := s.wr.Write([]byte(s.toString(s.val))); err != nil {
 			s.errorf("%s", err)
 		}
-	case *parse.VariableNode:
-		s.val = s.evalVariable(dot, node)
+	case *parse.DataRefNode:
+		s.val = s.evalDataRef(dot, node)
 	case *parse.ListNode:
 		for _, node := range node.Nodes {
 			s.walk(dot, node)
@@ -152,7 +152,7 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 	case *parse.NullNode:
 		s.val = nullValue()
 	case *parse.StringNode:
-		s.val = strValue(node.Text)
+		s.val = strValue(node.Value)
 	case *parse.IntNode:
 		s.val = intValue(node.Value)
 	case *parse.FloatNode:
@@ -249,10 +249,11 @@ func (s *state) toString(val value) string {
 	}
 }
 
-func (s *state) evalVariable(dot reflect.Value, node *parse.VariableNode) value {
-	val := dot.MapIndex(reflect.ValueOf(node.Name[1:])).Elem() // peel off the $
+func (s *state) evalDataRef(dot reflect.Value, node *parse.DataRefNode) value {
+	// TODO: Evaluate data refs
+	val := dot.MapIndex(reflect.ValueOf(node.Key)).Elem()
 	if !val.IsValid() {
-		s.errorf("variable %s is not valid", node.Name)
+		s.errorf("variable %s is not valid", node.Key)
 	}
 	switch val.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,

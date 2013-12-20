@@ -3,7 +3,7 @@ package parse
 import (
 	"fmt"
 	"reflect"
-	"strconv"
+
 	"strings"
 
 	"testing"
@@ -37,72 +37,64 @@ func bin(n1, n2 Node) binaryOpNode {
 	return binaryOpNode{Arg1: n1, Arg2: n2}
 }
 
-func newString(val string) *StringNode {
-	s, err := strconv.Unquote(val)
-	if err != nil {
-		panic(err)
-	}
-	return &StringNode{0, val, s}
-}
-
 var parseTests = []parseTest{
 	{"empty", "", tList()},
 	{"namespace", "{namespace example}", tList(newNamespace(0, "example"))},
-	{"empty template", "{template .name}{/template}", tList(tTemplate(".name"))},
+	{"empty template", "{template .name}{/template}", tList(tTemplate("name"))},
 	{"text template", "{template .name}\nHello world!\n{/template}",
-		tList(tTemplate(".name", newText(0, "\nHello world!\n")))},
+		tList(tTemplate("name", newText(0, "\nHello world!\n")))},
 	{"variable template", "{template .name}\nHello {$name}!\n{/template}",
-		tList(tTemplate(".name",
+		tList(tTemplate("name",
 			newText(0, "\nHello "),
-			newPrint(0, &VariableNode{0, "$name"}), // implicit print
+			newPrint(0, &DataRefNode{0, "name", nil}), // implicit print
 			newText(0, "!\n"),
 		))},
 	{"soydoc", "/** Text\n*/", tList(newSoyDoc(0, "/** Text\n*/"))},
-	{"negate", "{not $var}", tList(&PrintNode{0, &NotNode{0, &VariableNode{0, "$var"}}})},
-	{"concat", `{"hello" + "world"}`, tList(&PrintNode{0,
+	{"negate", "{not $var}", tList(&PrintNode{0, &NotNode{0, &DataRefNode{0, "var", nil}}})},
+	{"concat", `{'hello' + 'world'}`, tList(&PrintNode{0,
 		&AddNode{bin(
-			newString(`"hello"`),
-			newString(`"world"`))},
+			&StringNode{0, "hello"},
+			&StringNode{0, "world"})},
 	})},
 
-	{"expression1", "{not false and (isFirst($foo) or ($x - 5) > 3.1)}", tList(&PrintNode{0,
+	{"expression1", "{not false and (isFirst($foo) or (-$x - 5) > 3.1)}", tList(&PrintNode{0,
 		&AndNode{bin(
 			&NotNode{0, &BoolNode{0, false}},
 			&OrNode{bin(
-				&FunctionNode{0, "isFirst", []Node{&VariableNode{0, "$foo"}}},
+				&FunctionNode{0, "isFirst", []Node{&DataRefNode{0, "foo", nil}}},
 				&GtNode{bin(
 					&SubNode{bin(
-						&VariableNode{0, "$x"},
+						&NegateNode{0, &DataRefNode{0, "x", nil}},
 						&IntNode{0, 5})},
 					&FloatNode{0, 3.1})})})},
 	})},
 
-	{"expression2", `{null or ("foo" == "f"+true ? 3 <= 5 : not $foo ?: bar(5))}`, tList(&PrintNode{0,
+	{"expression2", `{null or ('foo' == 'f'+true ? -3 <= 5 : not $foo ?: bar(5))}`, tList(&PrintNode{0,
 		&OrNode{bin(
 			&NullNode{0},
 			&TernNode{0,
 				&EqNode{bin(
-					newString(`"foo"`),
+					&StringNode{0, "foo"},
 					&AddNode{bin(
-						newString(`"f"`),
+						&StringNode{0, "f"},
 						&BoolNode{0, true})})},
 				&LteNode{bin(
-					&IntNode{0, 3},
+					&IntNode{0, -3},
 					&IntNode{0, 5})},
 				&ElvisNode{bin(
-					&NotNode{0, &VariableNode{0, "$foo"}},
+					&NotNode{0, &DataRefNode{0, "foo", nil}},
 					&FunctionNode{0, "bar", []Node{&IntNode{0, 5}}})}})},
 	})},
 
-	{"expression3", `{"a"+"b" != "ab" and (2 >= 5.0 or (null ?: true))}`, tList(&PrintNode{0,
+	{"expression3", `{'a'+'b' != 'ab' and (2 >= -5.0 or (null ?: true))}`, tList(&PrintNode{0,
 		&AndNode{bin(
 			&NotEqNode{bin(
 				&AddNode{bin(
-					newString(`"a"`),
-					newString(`"b"`))},
-				newString(`"ab"`))},
+					&StringNode{0, "a"},
+					&StringNode{0, "b"})},
+				&StringNode{0, "ab"})},
 			&OrNode{bin(
-				&GteNode{bin(&IntNode{0, 2}, &FloatNode{0, 5.0})},
+				&GteNode{bin(&IntNode{0, 2}, &FloatNode{0, -5.0})},
 				&ElvisNode{bin(
 					&NullNode{0},
 					&BoolNode{0, true})})})},
@@ -118,18 +110,18 @@ var parseTests = []parseTest{
   Blah {$moo}
 {/if}`, tList(
 		&IfNode{0, []*IfCondNode{
-			&IfCondNode{0, &VariableNode{0, "$zoo"}, tList(&PrintNode{0, &VariableNode{0, "$zoo"}})},
+			&IfCondNode{0, &DataRefNode{0, "zoo", nil}, tList(&PrintNode{0, &DataRefNode{0, "zoo", nil}})},
 		}},
 		&IfNode{0, []*IfCondNode{
-			&IfCondNode{0, &VariableNode{0, "$boo"}, tList(newText(0, "\n  Blah\n"))},
+			&IfCondNode{0, &DataRefNode{0, "boo", nil}, tList(newText(0, "\n  Blah\n"))},
 			&IfCondNode{0,
 				&GtNode{bin(
-					&VariableNode{0, "$foo.goo"},
+					&DataRefNode{0, "foo", []Node{&DataRefKeyNode{0, false, "goo"}}},
 					&IntNode{0, 2})},
-				tList(&PrintNode{0, &VariableNode{0, "$boo"}})},
+				tList(&PrintNode{0, &DataRefNode{0, "boo", nil}})},
 			&IfCondNode{0,
 				nil,
-				tList(newText(0, "\n  Blah "), &PrintNode{0, &VariableNode{0, "$moo"}})},
+				tList(newText(0, "\n  Blah "), &PrintNode{0, &DataRefNode{0, "moo", nil}})},
 		}},
 	)},
 
@@ -142,13 +134,14 @@ var parseTests = []parseTest{
   {default}
     Bloh
 {/switch}`, tList(
-		&SwitchNode{0, &VariableNode{0, "$boo"}, []*SwitchCaseNode{
+		&SwitchNode{0, &DataRefNode{0, "boo", nil}, []*SwitchCaseNode{
 			&SwitchCaseNode{0, []Node{&IntNode{0, 0}}, tList(newText(0, "Blah\n  "))},
-			&SwitchCaseNode{0, []Node{&VariableNode{0, "$foo.goo"}}, tList(newText(0, "\n    Bleh\n  "))},
+			&SwitchCaseNode{0, []Node{&DataRefNode{0, "foo", []Node{&DataRefKeyNode{0, false, "goo"}}}},
+				tList(newText(0, "\n    Bleh\n  "))},
 			&SwitchCaseNode{0, []Node{
 				&IntNode{0, -1},
 				&IntNode{0, 1},
-				&VariableNode{0, "$moo"}}, tList(newText(0, "\n    Bluh\n  "))},
+				&DataRefNode{0, "moo", nil}}, tList(newText(0, "\n    Bluh\n  "))},
 			&SwitchCaseNode{0, nil, tList(newText(0, "\n    Bloh\n"))},
 		}},
 	)},
@@ -163,46 +156,61 @@ var parseTests = []parseTest{
 {ifempty}
   Sorry, no booze.
 {/foreach}`, tList(
-		&ForNode{0, "$goo", &VariableNode{0, "$goose"}, tList(
-			&PrintNode{0, &VariableNode{0, "$goose.numKids"}},
+		&ForNode{0, "$goo", &DataRefNode{0, "goose", nil}, tList(
+			&PrintNode{0, &DataRefNode{0, "goose", []Node{&DataRefKeyNode{0, false, "numKids"}}}},
 			newText(0, " goslings."),
 			newText(0, "\n"),
 		), nil},
-		&ForNode{0, "$boo", &VariableNode{0, "$foo.booze"},
+		&ForNode{0, "$boo", &DataRefNode{0, "foo", []Node{&DataRefKeyNode{0, false, "booze"}}},
 			tList(
 				newText(0, "\n  Scary drink "),
-				&PrintNode{0, &VariableNode{0, "$boo.name"}},
+				&PrintNode{0, &DataRefNode{0, "boo", []Node{&DataRefKeyNode{0, false, "name"}}}},
 				newText(0, "!\n  "),
 				&IfNode{0,
 					[]*IfCondNode{&IfCondNode{0,
-						&NotNode{0, &FunctionNode{0, "isLast", []Node{&VariableNode{0, "$boo"}}}},
+						&NotNode{0, &FunctionNode{0, "isLast", []Node{&DataRefNode{0, "boo", nil}}}},
 						tList(newText(0, "\n"))}}}),
 			tList(
 				newText(0, "\n  Sorry, no booze.\n"))},
 	)},
 
-	// todo: {$items[$i - 1]}
 	{"for", `
 {for $i in range(1, $items.length + 1)}
   {msg desc="Numbered item."}
-    {$i}: {$items}{\n}
+    {$i}: {$items[$i - 1]}{\n}
   {/msg}
 {/for}`, tList(
 		&ForNode{0, "$i",
 			&FunctionNode{0, "range", []Node{
 				&IntNode{0, 1},
 				&AddNode{bin(
-					&VariableNode{0, "$items.length"},
+					&DataRefNode{0, "items", []Node{&DataRefKeyNode{0, false, "length"}}},
 					&IntNode{0, 1})}}},
 			tList(
 				&MsgNode{0, "Numbered item.", tList(
-					&PrintNode{0, &VariableNode{0, "$i"}},
+					&PrintNode{0, &DataRefNode{0, "i", nil}},
 					newText(0, ": "),
-					&PrintNode{0, &VariableNode{0, "$items"}},
+					&PrintNode{0, &DataRefNode{0, "items", []Node{
+						&DataRefExprNode{0, false,
+							&SubNode{bin(
+								&DataRefNode{0, "i", nil},
+								&IntNode{0, 1})}}}}},
 					newText(0, "\n"), // {\n}
 				)}),
 			nil},
 	)},
+
+	{"data ref", "{$boo.0['foo'+'bar'][5]?.goo}", tList(&PrintNode{0,
+		&DataRefNode{0, "boo", []Node{
+			&DataRefIndexNode{0, false, 0},
+			&DataRefExprNode{0,
+				false,
+				&AddNode{bin(
+					&StringNode{0, "foo"},
+					&StringNode{0, "bar"})}},
+			&DataRefExprNode{0, false, &IntNode{0, 5}},
+			&DataRefKeyNode{0, true, "goo"}},
+		}})},
 
 	// 	{"call", `
 	// {call name=".booTemplate_" /}
@@ -284,8 +292,6 @@ func eqTree(t *testing.T, expected, actual Node) bool {
 		return eqTree(t, expected.(*TemplateNode).Body, actual.(*TemplateNode).Body)
 	case *TextNode:
 		return eqstr(t, "text", string(expected.(*TextNode).Text), string(actual.(*TextNode).Text))
-	case *VariableNode:
-		return eqstr(t, "var", expected.(*VariableNode).Name, actual.(*VariableNode).Name)
 	case *NullNode:
 		return true
 	case *BoolNode:
@@ -295,7 +301,7 @@ func eqTree(t *testing.T, expected, actual Node) bool {
 	case *FloatNode:
 		return eqfloat(t, "float", expected.(*FloatNode).Value, actual.(*FloatNode).Value)
 	case *StringNode:
-		return eqstr(t, "stringnode", expected.(*StringNode).Quoted, actual.(*StringNode).Quoted)
+		return eqstr(t, "stringnode", expected.(*StringNode).Value, actual.(*StringNode).Value)
 	case *TernNode:
 		return eqTree(t, expected.(*TernNode).Arg1, actual.(*TernNode).Arg1) &&
 			eqTree(t, expected.(*TernNode).Arg2, actual.(*TernNode).Arg2) &&
@@ -307,6 +313,8 @@ func eqTree(t *testing.T, expected, actual Node) bool {
 		return expected.(*SoyDocNode).Comment == actual.(*SoyDocNode).Comment
 	case *NotNode:
 		return eqTree(t, expected.(*NotNode).Arg, actual.(*NotNode).Arg)
+	case *NegateNode:
+		return eqTree(t, expected.(*NegateNode).Arg, actual.(*NegateNode).Arg)
 	case *PrintNode:
 		return eqTree(t, expected.(*PrintNode).Arg, actual.(*PrintNode).Arg)
 	case *MulNode, *DivNode, *ModNode, *AddNode, *SubNode, *EqNode, *NotEqNode,
@@ -316,6 +324,19 @@ func eqTree(t *testing.T, expected, actual Node) bool {
 	case *MsgNode:
 		return eqstr(t, "msg", expected.(*MsgNode).Desc, actual.(*MsgNode).Desc) &&
 			eqTree(t, expected.(*MsgNode).Body, actual.(*MsgNode).Body)
+
+	case *DataRefNode:
+		return eqstr(t, "var", expected.(*DataRefNode).Key, actual.(*DataRefNode).Key) &&
+			eqNodes(t, expected.(*DataRefNode).Access, actual.(*DataRefNode).Access)
+	case *DataRefExprNode:
+		return eqbool(t, "datarefexpr", expected.(*DataRefExprNode).NullSafe, actual.(*DataRefExprNode).NullSafe) &&
+			eqTree(t, expected.(*DataRefExprNode).Arg, actual.(*DataRefExprNode).Arg)
+	case *DataRefKeyNode:
+		return eqbool(t, "datarefkey", expected.(*DataRefKeyNode).NullSafe, actual.(*DataRefKeyNode).NullSafe) &&
+			eqstr(t, "datarefkey", expected.(*DataRefKeyNode).Key, actual.(*DataRefKeyNode).Key)
+	case *DataRefIndexNode:
+		return eqbool(t, "datarefindex", expected.(*DataRefIndexNode).NullSafe, actual.(*DataRefIndexNode).NullSafe) &&
+			eqint(t, "datarefindex", int64(expected.(*DataRefIndexNode).Index), int64(actual.(*DataRefIndexNode).Index))
 
 	case *IfNode:
 		return eqNodes(t, expected.(*IfNode).Conds, actual.(*IfNode).Conds)

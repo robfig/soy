@@ -33,19 +33,19 @@ var execTests = []execTest{
 
 	// Expression
 	{"arithmetic", "test.arith",
-		"{namespace test}\n{template .arith}{2*(1+1)/(2%4)}{/template}",
+		"{namespace test}{template .arith}{2*(1+1)/(2%4)}{/template}",
 		"2",
 		nil, true},
 	{"bools", "test.bools",
-		"{namespace test}\n{template .bools}{not false and (2 > 5.0 or (null ?: true))}{/template}",
+		"{namespace test}{template .bools}{not false and (2 > 5.0 or (null ?: true))}{/template}",
 		"true",
 		nil, true},
 	{"comparisons", "test.compare",
-		`{namespace test}\n{template .compare}{0.5<=1 ? null?:"hello" : (1!=1)}{/template}`,
+		`{namespace test}{template .compare}{0.5<=1 ? null?:'hello' : (1!=1)}{/template}`,
 		"hello",
 		nil, true},
 	{"string concat", "test.concat",
-		`{namespace test}\n{template .concat}{"hello" + "world"}{/template}`,
+		`{namespace test}{template .concat}{'hello' + 'world'}{/template}`,
 		"helloworld",
 		nil, true},
 

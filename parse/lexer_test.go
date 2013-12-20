@@ -31,7 +31,9 @@ var lexTests = []lexTest{
 	}},
 	{"variable", `{$name.bar}`, []item{
 		tLeft,
-		{itemVariable, 0, "$name.bar"},
+		{itemVariable, 0, "$name"},
+		{itemDot, 0, "."},
+		{itemIdent, 0, "bar"},
 		tRight,
 		tEOF,
 	}},
@@ -108,7 +110,9 @@ var lexTests = []lexTest{
 		{itemText, 0, "Blah"},
 		tLeft,
 		{itemCase, 0, "case"},
-		{itemVariable, 0, "$foo.goo"},
+		{itemVariable, 0, "$foo"},
+		{itemDot, 0, "."},
+		{itemIdent, 0, "goo"},
 		tRight,
 		{itemText, 0, "Bleh"},
 		tLeft,
@@ -131,7 +135,8 @@ var lexTests = []lexTest{
 	{"call", `{call .other data="all"/}`, []item{
 		tLeft,
 		{itemCall, 0, "call"},
-		{itemIdent, 0, ".other"},
+		{itemDot, 0, "."},
+		{itemIdent, 0, "other"},
 		{itemIdent, 0, "data"},
 		{itemEquals, 0, "="},
 		{itemString, 0, `"all"`},
@@ -236,6 +241,25 @@ var lexTests = []lexTest{
 		tEOF,
 	}},
 
+	{"data ref", "{$boo.0['foo'+'bar'][5]?.goo}", []item{
+		tLeft,
+		{itemVariable, 0, "$boo"},
+		{itemDot, 0, "."},
+		{itemInteger, 0, "0"},
+		{itemKey, 0, "["},
+		{itemString, 0, "'foo'"},
+		{itemAdd, 0, "+"},
+		{itemString, 0, "'bar'"},
+		{itemKeyEnd, 0, "]"},
+		{itemKey, 0, "["},
+		{itemInteger, 0, "5"},
+		{itemKeyEnd, 0, "]"},
+		{itemQuestionDot, 0, "?."},
+		{itemIdent, 0, "goo"},
+		tRight,
+		tEOF,
+	}},
+
 	{"namespace and template", `{namespace example}
 
 {template .templateName}
@@ -248,7 +272,8 @@ Hello world.
 		tRight,
 		tLeft,
 		{itemTemplate, 0, "template"},
-		{itemIdent, 0, ".templateName"},
+		{itemDot, 0, "."},
+		{itemIdent, 0, "templateName"},
 		tRight,
 		{itemText, 0, "\nHello world.\n"},
 		tLeft,

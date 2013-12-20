@@ -155,7 +155,6 @@ func (t *Tree) parseSwitch(token item) Node {
 	t.expect(itemLeftDelim, "switch")
 	var cases []*SwitchCaseNode
 	for {
-		fmt.Println("starting case lloop:", t.peek())
 		switch tok := t.next(); tok.typ {
 		case itemCase, itemDefault:
 			cases = append(cases, t.parseCase(tok))
@@ -179,7 +178,6 @@ func (t *Tree) parseCase(token item) *SwitchCaseNode {
 		case itemRightDelim:
 			var body = t.itemList(itemCase, itemDefault, itemSwitchEnd)
 			t.backup()
-			fmt.Println("returning case:", t.peek())
 			return &SwitchCaseNode{token.pos, values, body}
 		default:
 			t.errorf("unexpected item when parsing case: %v", tok)
@@ -209,7 +207,7 @@ func (t *Tree) parseFor(token item) Node {
 			t.errorf("for: expected to iterate through range()")
 		}
 	case itemForeach:
-		if _, ok := collection.(*VariableNode); !ok {
+		if _, ok := collection.(*DataRefNode); !ok {
 			t.errorf("foreach: expected to iterate through a variable")
 		}
 	}
@@ -244,7 +242,7 @@ func (t *Tree) parseForeach(token item) Node {
 	}
 	t.expect(itemRightDelim, "/foreach")
 	return &ForNode{token.pos, vartoken.val,
-		&VariableNode{collection.pos, collection.val}, body, ifempty}
+		&DataRefNode{collection.pos, collection.val, nil}, body, ifempty}
 }
 
 // "if" has just been read.
@@ -330,6 +328,7 @@ func (t *Tree) parseNamespace(token item) Node {
 
 func (t *Tree) parseTemplate(token item) Node {
 	const ctx = "template"
+	t.expect(itemDot, ctx)
 	var id = t.expect(itemIdent, ctx)
 	t.expect(itemRightDelim, ctx)
 	tmpl := newTemplate(token.pos, id.val)
@@ -351,27 +350,29 @@ func (t *Tree) parseTemplate(token item) Node {
 // Expressions ----------
 
 var precedence = map[itemType]int{
-	itemNot:   6,
-	itemMul:   5,
-	itemDiv:   5,
-	itemMod:   5,
-	itemAdd:   4,
-	itemSub:   4,
-	itemEq:    3,
-	itemNotEq: 3,
-	itemGt:    3,
-	itemGte:   3,
-	itemLt:    3,
-	itemLte:   3,
-	itemOr:    2,
-	itemAnd:   1,
-	itemElvis: 0,
+	itemNot:    6,
+	itemNegate: 6,
+	itemMul:    5,
+	itemDiv:    5,
+	itemMod:    5,
+	itemAdd:    4,
+	itemSub:    4,
+	itemEq:     3,
+	itemNotEq:  3,
+	itemGt:     3,
+	itemGte:    3,
+	itemLt:     3,
+	itemLte:    3,
+	itemOr:     2,
+	itemAnd:    1,
+	itemElvis:  0,
 }
 
 // parseExpr parses an arbitrary expression involving function applications and
 // arithmetic.
-// test: ((2*4-6/3)*(3*5+8/4))-(2+3)
-// test: not $var and (isFirst($foo) or $x - 5 > 3)
+//
+// For handling binary operators, we use the Precedence Climbing algorithm described in:
+//   http://www.engr.mun.ca/~theo/Misc/exp_parsing.htm
 func (t *Tree) parseExpr(prec int) Node {
 	n := t.parseExprFirstTerm()
 	var tok item
@@ -391,6 +392,9 @@ func (t *Tree) parseExpr(prec int) Node {
 	return n
 }
 
+// Primary ->   "(" Expr ")"
+//            | u=UnaryOp PrecExpr(prec(u))
+//            | FunctionCall | DataRef | Global | ListLiteral | MapLiteral | Primitive
 func (t *Tree) parseExprFirstTerm() Node {
 	switch tok := t.next(); {
 	case isUnaryOp(tok):
@@ -405,6 +409,62 @@ func (t *Tree) parseExprFirstTerm() Node {
 		t.errorf("unexpected token %q", tok)
 	}
 	return nil
+}
+
+// DataRef ->  ( "$ij." Ident | "$ij?." Ident | DollarIdent )
+//             (   DotIdent | QuestionDotIdent | DotIndex | QuestionDotIndex
+//               | "[" Expr "]" | "?[" Expr "]" )*
+// TODO: Injected data
+func (t *Tree) parseDataRef(tok item) Node {
+	var ref = &DataRefNode{tok.pos, tok.val[1:], nil}
+	for {
+		var accessNode Node
+		switch tok := t.next(); tok.typ {
+		case itemDot:
+			accessNode = t.parseDataRefDot(tok, false)
+		case itemQuestionDot:
+			accessNode = t.parseDataRefDot(tok, true)
+		case itemKey:
+			accessNode = t.parseDataRefExpr(tok, false)
+		case itemQuestionKey:
+			accessNode = t.parseDataRefExpr(tok, true)
+		default:
+			t.backup()
+			return ref
+		}
+		ref.Access = append(ref.Access, accessNode)
+	}
+}
+
+func (t *Tree) parseDataRefDot(start item, nullsafe bool) Node {
+	switch tok := t.next(); tok.typ {
+	case itemInteger:
+		index, err := strconv.ParseInt(tok.val, 10, 0)
+		if err != nil {
+			t.error(err)
+		}
+		return &DataRefIndexNode{start.pos, nullsafe, int(index)}
+	case itemIdent:
+		return &DataRefKeyNode{start.pos, nullsafe, tok.val}
+	}
+	t.errorf("unexpected type in data reference")
+	return nil
+}
+
+func (t *Tree) parseDataRefExpr(start item, nullsafe bool) Node {
+	var expr = t.parseExpr(0)
+	t.expect(itemKeyEnd, "dataref")
+	return &DataRefExprNode{start.pos, nullsafe, expr}
+}
+
+//  ListLiteral -> "[" [ Expr ( "," Expr )* [ "," ] ] "]"
+func (t *Tree) parseListLiteral(token item) Node {
+	panic("unimplemented")
+}
+
+// MapLiteral -> "[" ( ":" | Expr ":" Expr ( "," Expr ":" Expr )* [ "," ] ) "]"
+func (t *Tree) parseMapLiteral(token item) Node {
+	panic("unimplemented")
 }
 
 // parseTernary parses the ternary operator within an expression.
@@ -434,7 +494,7 @@ func isBinaryOp(typ itemType) bool {
 
 func isUnaryOp(t item) bool {
 	switch t.typ {
-	case itemNot:
+	case itemNot, itemNegate:
 		return true
 	}
 	return false
@@ -494,6 +554,8 @@ func newUnaryOpNode(t item, n1 Node) Node {
 	switch t.typ {
 	case itemNot:
 		return &NotNode{t.pos, n1}
+	case itemNegate:
+		return &NegateNode{t.pos, n1}
 	}
 	panic("unreachable")
 }
@@ -522,17 +584,17 @@ func (t *Tree) newValueNode(tok item) Node {
 		}
 		return &FloatNode{tok.pos, value}
 	case itemString:
-		s, err := strconv.Unquote(tok.val)
+		s, err := unquoteString(tok.val)
 		if err != nil {
-			t.error(err)
+			t.errorf("error unquoting %s: %s", tok.val, err)
 		}
-		return &StringNode{tok.pos, tok.val, s}
+		return &StringNode{tok.pos, s}
 	case itemList:
 		panic("unimplemented")
 	case itemMap:
 		panic("unimplemented")
 	case itemVariable:
-		return &VariableNode{tok.pos, tok.val}
+		return t.parseDataRef(tok)
 	case itemIdent:
 		// this is a function call.  get all the arguments.
 		node := &FunctionNode{tok.pos, tok.val, nil}
