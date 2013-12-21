@@ -134,7 +134,7 @@ func (t *Tree) beginTag() Node {
 	case itemTab, itemNewline, itemCarriageReturn, itemLeftBrace, itemRightBrace:
 		t.expect(itemRightDelim, "special char")
 		return newText(token.pos, specialChars[token.typ])
-	case itemIdent, itemVariable, itemNull, itemBool, itemFloat, itemInteger, itemString, itemList, itemMap, itemNot:
+	case itemIdent, itemVariable, itemNull, itemBool, itemFloat, itemInteger, itemString, itemNot, itemLeftBracket:
 		// print is implicit, so the tag may also begin with any value type, or the
 		// "not" operator.
 		t.backup()
@@ -414,7 +414,7 @@ func (t *Tree) parseDataRef(tok item) Node {
 			accessNode = t.parseDataRefDot(tok, false)
 		case itemQuestionDot:
 			accessNode = t.parseDataRefDot(tok, true)
-		case itemKey:
+		case itemLeftBracket:
 			accessNode = t.parseDataRefExpr(tok, false)
 		case itemQuestionKey:
 			accessNode = t.parseDataRefExpr(tok, true)
@@ -443,28 +443,93 @@ func (t *Tree) parseDataRefDot(start item, nullsafe bool) Node {
 
 func (t *Tree) parseDataRefExpr(start item, nullsafe bool) Node {
 	var expr = t.parseExpr(0)
-	t.expect(itemKeyEnd, "dataref")
+	t.expect(itemRightBracket, "dataref")
 	return &DataRefExprNode{start.pos, nullsafe, expr}
 }
 
-//  ListLiteral -> "[" [ Expr ( "," Expr )* [ "," ] ] "]"
-func (t *Tree) parseListLiteral(token item) Node {
-	panic("unimplemented")
+// "[" has just been read
+func (t *Tree) parseListOrMap(token item) Node {
+	// check if it's empty
+	switch t.next().typ {
+	case itemColon:
+		t.expect(itemRightBracket, "map literal")
+		return &ValueMapNode{token.pos, nil}
+	case itemRightBracket:
+		return &ValueListNode{token.pos, nil}
+	}
+	t.backup()
+
+	// parse the first expression, and check the subsequent delimiter
+	var firstExpr = t.parseExpr(0)
+	switch tok := t.next(); tok.typ {
+	case itemColon:
+		return t.parseValueMap(token, firstExpr)
+	case itemComma:
+		return t.parseValueList(token, firstExpr)
+	case itemRightBracket:
+		return &ValueListNode{token.pos, []Node{firstExpr}}
+	default:
+		t.unexpected(tok, "list/map literal")
+	}
+	return nil
 }
 
+// the first item in the list is provided.
+// "," has just been read.
+//  ListLiteral -> "[" [ Expr ( "," Expr )* [ "," ] ] "]"
+func (t *Tree) parseValueList(first item, expr Node) Node {
+	var items []Node
+	items = append(items, expr)
+	for {
+		items = append(items, t.parseExpr(0))
+		next := t.next()
+		if next.typ == itemRightBracket {
+			return &ValueListNode{first.pos, items}
+		}
+		if next.typ != itemComma {
+			t.unexpected(next, "parsing value list")
+		}
+	}
+}
+
+// the first key in the map is provided
+// ":" has just been read.
 // MapLiteral -> "[" ( ":" | Expr ":" Expr ( "," Expr ":" Expr )* [ "," ] ) "]"
-func (t *Tree) parseMapLiteral(token item) Node {
-	panic("unimplemented")
+func (t *Tree) parseValueMap(first item, expr Node) Node {
+	firstKey, ok := expr.(*StringNode)
+	if !ok {
+		t.errorf("expected a string as map key, got: %T", expr)
+	}
+
+	var items = make(map[string]Node)
+	var key = firstKey.Value
+	for {
+		items[key] = t.parseExpr(0)
+		next := t.next()
+		if next.typ == itemRightBracket {
+			return &ValueMapNode{first.pos, items}
+		}
+		if next.typ != itemComma {
+			t.unexpected(next, "map literal")
+		}
+		tok := t.expect(itemString, "map literal")
+		var err error
+		key, err = unquoteString(tok.val)
+		if err != nil {
+			t.error(err)
+		}
+		t.expect(itemColon, "map literal")
+	}
 }
 
 // parseTernary parses the ternary operator within an expression.
 // itemTernIf has already been read, and the condition is provided.
 func (t *Tree) parseTernary(cond Node) Node {
 	n1 := t.parseExpr(0)
-	t.expect(itemTernElse, "ternary")
+	t.expect(itemColon, "ternary")
 	n2 := t.parseExpr(0)
 	result := &TernNode{cond.Position(), cond, n1, n2}
-	if t.peek().typ == itemTernElse {
+	if t.peek().typ == itemColon {
 		t.next()
 		return t.parseTernary(result)
 	}
@@ -496,6 +561,8 @@ func isValue(t item) bool {
 		return true
 	case itemIdent:
 		return true // function application returns a value
+	case itemLeftBracket:
+		return true // list or map literal
 	}
 	return false
 }
@@ -579,10 +646,8 @@ func (t *Tree) newValueNode(tok item) Node {
 			t.errorf("error unquoting %s: %s", tok.val, err)
 		}
 		return &StringNode{tok.pos, s}
-	case itemList:
-		panic("unimplemented")
-	case itemMap:
-		panic("unimplemented")
+	case itemLeftBracket:
+		return t.parseListOrMap(tok)
 	case itemVariable:
 		return t.parseDataRef(tok)
 	case itemIdent:

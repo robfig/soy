@@ -56,37 +56,36 @@ const (
 	itemInteger  // e.g. 42
 	itemFloat    // e.g. 1.0
 	itemString   // e.g. 'hello world'
-	itemList     // e.g. [1, 'two', [3, false]]
-	itemMap      // e.g. ['aaa': 42, 'bbb': 'hello']
 	itemVariable // e.g. $variable
 	itemComma    // , (used in function invocations)
+	itemColon    // : (used in maps)
 
 	// Data ref access tokens
-	itemDot         // .
-	itemQuestionDot // ?.
-	itemKey         // [
-	itemKeyEnd      // ]
-	itemQuestionKey // ?[
+	itemDot          // .
+	itemQuestionDot  // ?.
+	itemLeftBracket  // [
+	itemRightBracket // ]
+	itemQuestionKey  // ?[
 
 	// Expression operations
-	itemNegate   // - (unary)
-	itemMul      // *
-	itemDiv      // /
-	itemMod      // %
-	itemAdd      // +
-	itemSub      // - (binary)
-	itemEq       // ==
-	itemNotEq    // !=
-	itemGt       // >
-	itemGte      // >=
-	itemLt       // <
-	itemLte      // <=
-	itemNot      // not
-	itemOr       // or
-	itemAnd      // and
-	itemTernIf   // ?
-	itemTernElse // :
-	itemElvis    // ?:
+	itemNegate // - (unary)
+	itemMul    // *
+	itemDiv    // /
+	itemMod    // %
+	itemAdd    // +
+	itemSub    // - (binary)
+	itemEq     // ==
+	itemNotEq  // !=
+	itemGt     // >
+	itemGte    // >=
+	itemLt     // <
+	itemLte    // <=
+	itemNot    // not
+	itemOr     // or
+	itemAnd    // and
+	itemTernIf // ?
+	//	itemTernElse // :
+	itemElvis // ?:
 
 	itemLeftParen  // (
 	itemRightParen // )
@@ -212,7 +211,7 @@ var arithmeticItemsBySymbol = map[string]itemType{
 	"or":  itemOr,
 	"and": itemAnd,
 	"?":   itemTernIf,
-	":":   itemTernElse,
+	":":   itemColon,
 	"?:":  itemElvis,
 	"not": itemNot,
 	"(":   itemLeftParen,
@@ -501,9 +500,9 @@ func lexInsideTag(l *lexer) stateFn {
 	case r == '.':
 		l.emit(itemDot)
 	case r == '[':
-		l.emit(itemKey)
+		l.emit(itemLeftBracket)
 	case r == ']':
-		l.emit(itemKeyEnd)
+		l.emit(itemRightBracket)
 	case r == '?': // used by data refs and arithmetic
 		switch l.next() {
 		case '.':

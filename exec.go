@@ -19,37 +19,49 @@ type value struct {
 	floatValue float64
 	boolValue  bool
 	strValue   string
+	listValue  []interface{}
+	mapValue   map[string]interface{}
 }
 
 func nullValue() value {
-	return value{valueType: null}
+	return value{valueType: nullType}
 }
 
 func intValue(val int64) value {
-	return value{valueType: integer, intValue: val}
+	return value{valueType: intType, intValue: val}
 }
 
 func floatValue(val float64) value {
-	return value{valueType: float, floatValue: val}
+	return value{valueType: floatType, floatValue: val}
 }
 
 func boolValue(val bool) value {
-	return value{valueType: boolean, boolValue: val}
+	return value{valueType: boolType, boolValue: val}
 }
 
 func strValue(val string) value {
-	return value{valueType: str, strValue: val}
+	return value{valueType: stringType, strValue: val}
+}
+
+func listValue(val []interface{}) value {
+	return value{valueType: listType, listValue: val}
+}
+
+func mapValue(val map[string]interface{}) value {
+	return value{valueType: mapType, mapValue: val}
 }
 
 type valueType int
 
 const (
 	invalid valueType = iota
-	null
-	integer
-	float
-	boolean
-	str
+	nullType
+	intType
+	floatType
+	boolType
+	stringType
+	listType
+	mapType
 )
 
 var none = value{}
@@ -163,26 +175,26 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 	case *parse.AddNode:
 		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2)
 		switch {
-		case arg1.valueType == integer && arg2.valueType == integer:
+		case arg1.valueType == intType && arg2.valueType == intType:
 			s.val = intValue(arg1.intValue + arg2.intValue)
-		case arg1.valueType == str || arg2.valueType == str:
+		case arg1.valueType == stringType || arg2.valueType == stringType:
 			s.val = strValue(s.toString(arg1) + s.toString(arg2))
 		default:
 			s.val = floatValue(s.toFloat(arg1) + s.toFloat(arg2))
 		}
 	case *parse.DivNode:
-		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, integer, float)
+		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, intType, floatType)
 		s.val = floatValue(s.toFloat(arg1) / s.toFloat(arg2))
 	case *parse.MulNode:
-		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, integer, float)
+		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, intType, floatType)
 		switch {
-		case arg1.valueType == integer && arg2.valueType == integer:
+		case arg1.valueType == intType && arg2.valueType == intType:
 			s.val = intValue(arg1.intValue * arg2.intValue)
 		default:
 			s.val = floatValue(s.toFloat(arg1) * s.toFloat(arg2))
 		}
 	case *parse.ModNode:
-		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, integer)
+		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, intType)
 		s.val = intValue(arg1.intValue % arg2.intValue)
 
 	case *parse.EqNode:
@@ -191,16 +203,16 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 		s.val = s.evalEq(dot, node.Arg1, node.Arg2)
 		s.val.boolValue = !s.val.boolValue
 	case *parse.LtNode:
-		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, integer, float)
+		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, intType, floatType)
 		s.val = boolValue(s.toFloat(arg1) < s.toFloat(arg2))
 	case *parse.LteNode:
-		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, integer, float)
+		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, intType, floatType)
 		s.val = boolValue(s.toFloat(arg1) <= s.toFloat(arg2))
 	case *parse.GtNode:
-		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, integer, float)
+		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, intType, floatType)
 		s.val = boolValue(s.toFloat(arg1) > s.toFloat(arg2))
 	case *parse.GteNode:
-		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, integer, float)
+		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, intType, floatType)
 		s.val = boolValue(s.toFloat(arg1) >= s.toFloat(arg2))
 
 	case *parse.NotNode:
@@ -233,16 +245,20 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 
 func (s *state) toString(val value) string {
 	switch val.valueType {
-	case integer:
+	case intType:
 		return strconv.FormatInt(val.intValue, 10)
-	case float:
+	case floatType:
 		return strconv.FormatFloat(val.floatValue, 'g', -1, 64)
-	case boolean:
+	case boolType:
 		return fmt.Sprint(val.boolValue)
-	case str:
+	case stringType:
 		return val.strValue
-	case null:
+	case nullType:
 		return "null"
+	case listType:
+		return fmt.Sprint(val.listValue)
+	case mapType:
+		return fmt.Sprint(val.mapValue)
 	default:
 		s.errorf("no value")
 		return ""
@@ -277,13 +293,13 @@ func (s *state) evalEq(dot reflect.Value, arg1, arg2 parse.Node) value {
 		s.errorf("can only compare same types")
 	}
 	switch val1.valueType {
-	case integer:
+	case intType:
 		return boolValue(val1.intValue == val2.intValue)
-	case float:
+	case floatType:
 		return boolValue(val1.floatValue == val2.floatValue)
-	case boolean:
+	case boolType:
 		return boolValue(val1.boolValue == val2.boolValue)
-	case str:
+	case stringType:
 		return boolValue(val1.strValue == val2.strValue)
 	default:
 		return boolValue(false)
@@ -292,15 +308,15 @@ func (s *state) evalEq(dot reflect.Value, arg1, arg2 parse.Node) value {
 
 func truthiness(val value) bool {
 	switch val.valueType {
-	case integer:
+	case intType:
 		return val.intValue != 0
-	case float:
+	case floatType:
 		return val.floatValue != 0.0
-	case boolean:
+	case boolType:
 		return val.boolValue
-	case str:
+	case stringType:
 		return val.strValue != ""
-	case null:
+	case nullType:
 		return false
 	}
 	panic("invalid value")
@@ -309,9 +325,9 @@ func truthiness(val value) bool {
 // toFloat returns a float for given int or float value
 func (s *state) toFloat(val value) float64 {
 	switch val.valueType {
-	case float:
+	case floatType:
 		return val.floatValue
-	case integer:
+	case intType:
 		return float64(val.intValue)
 	}
 	s.errorf("expected int or float, got: %#v", val)

@@ -373,6 +373,40 @@ func (n *DataRefKeyNode) String() string {
 	return expr + n.Key
 }
 
+type ValueListNode struct {
+	Pos
+	Items []Node
+}
+
+func (n *ValueListNode) String() string {
+	var expr = "["
+	for i, item := range n.Items {
+		if i > 0 {
+			expr += ", "
+		}
+		expr += item.String()
+	}
+	return expr + "]"
+}
+
+type ValueMapNode struct {
+	Pos
+	Items map[string]Node
+}
+
+func (n *ValueMapNode) String() string {
+	var expr = "["
+	var first = true
+	for k, v := range n.Items {
+		if !first {
+			expr += ", "
+		}
+		expr += fmt.Sprintf("'%s': %s", k, v.String())
+		first = false
+	}
+	return expr + "]"
+}
+
 // Operators ----------
 
 type NotNode struct {

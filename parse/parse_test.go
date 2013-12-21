@@ -111,6 +111,33 @@ var parseTests = []parseTest{
 					&BoolNode{0, true})})})},
 	})},
 
+	{"empty list", `{[]}`, tList(&PrintNode{0,
+		&ValueListNode{0, nil},
+	})},
+
+	{"list", `{[1, 'two', [3, false]]}`, tList(&PrintNode{0,
+		&ValueListNode{0, []Node{
+			&IntNode{0, 1},
+			&StringNode{0, "two"},
+			&ValueListNode{0, []Node{
+				&IntNode{0, 3},
+				&BoolNode{0, false},
+			}},
+		}},
+	})},
+
+	{"empty map", `{[:]}`, tList(&PrintNode{0,
+		&ValueMapNode{0, make(map[string]Node)},
+	})},
+
+	{"map", `{['aaa': 42, 'bbb': 'hello', 'ccc':[1]]}`, tList(&PrintNode{0,
+		&ValueMapNode{0, map[string]Node{
+			"aaa": &IntNode{0, 42},
+			"bbb": &StringNode{0, "hello"},
+			"ccc": &ValueListNode{0, []Node{&IntNode{0, 1}}},
+		}},
+	})},
+
 	{"if", `
 {if $zoo}{$zoo}{/if}
 {if $boo}
@@ -303,6 +330,7 @@ func eqTree(t *testing.T, expected, actual Node) bool {
 		return eqTree(t, expected.(*TemplateNode).Body, actual.(*TemplateNode).Body)
 	case *RawTextNode:
 		return eqstr(t, "text", string(expected.(*RawTextNode).Text), string(actual.(*RawTextNode).Text))
+
 	case *NullNode:
 		return true
 	case *BoolNode:
@@ -313,28 +341,21 @@ func eqTree(t *testing.T, expected, actual Node) bool {
 		return eqfloat(t, "float", expected.(*FloatNode).Value, actual.(*FloatNode).Value)
 	case *StringNode:
 		return eqstr(t, "stringnode", expected.(*StringNode).Value, actual.(*StringNode).Value)
-	case *TernNode:
-		return eqTree(t, expected.(*TernNode).Arg1, actual.(*TernNode).Arg1) &&
-			eqTree(t, expected.(*TernNode).Arg2, actual.(*TernNode).Arg2) &&
-			eqTree(t, expected.(*TernNode).Arg3, actual.(*TernNode).Arg3)
-	case *FunctionNode:
-		return eqstr(t, "function", expected.(*FunctionNode).Name, actual.(*FunctionNode).Name) &&
-			eqNodes(t, expected.(*FunctionNode).Args, actual.(*FunctionNode).Args)
-	case *SoyDocNode:
-		return expected.(*SoyDocNode).Comment == actual.(*SoyDocNode).Comment
-	case *NotNode:
-		return eqTree(t, expected.(*NotNode).Arg, actual.(*NotNode).Arg)
-	case *NegateNode:
-		return eqTree(t, expected.(*NegateNode).Arg, actual.(*NegateNode).Arg)
-	case *PrintNode:
-		return eqTree(t, expected.(*PrintNode).Arg, actual.(*PrintNode).Arg)
-	case *MulNode, *DivNode, *ModNode, *AddNode, *SubNode, *EqNode, *NotEqNode,
-		*GtNode, *GteNode, *LtNode, *LteNode, *OrNode, *AndNode, *ElvisNode:
-		return eqBinOp(t, expected, actual)
-
-	case *MsgNode:
-		return eqstr(t, "msg", expected.(*MsgNode).Desc, actual.(*MsgNode).Desc) &&
-			eqTree(t, expected.(*MsgNode).Body, actual.(*MsgNode).Body)
+	case *ValueListNode:
+		return eqNodes(t, expected.(*ValueListNode).Items, actual.(*ValueListNode).Items)
+	case *ValueMapNode:
+		e, a := expected.(*ValueMapNode).Items, actual.(*ValueMapNode).Items
+		if len(e) != len(a) {
+			t.Errorf("map differed in size. expected %d, got %d", len(e), len(a))
+			return false
+		}
+		for k, v := range e {
+			av := a[k]
+			if !eqTree(t, v, av) {
+				return false
+			}
+		}
+		return true
 
 	case *DataRefNode:
 		return eqstr(t, "var", expected.(*DataRefNode).Key, actual.(*DataRefNode).Key) &&
@@ -348,6 +369,29 @@ func eqTree(t *testing.T, expected, actual Node) bool {
 	case *DataRefIndexNode:
 		return eqbool(t, "datarefindex", expected.(*DataRefIndexNode).NullSafe, actual.(*DataRefIndexNode).NullSafe) &&
 			eqint(t, "datarefindex", int64(expected.(*DataRefIndexNode).Index), int64(actual.(*DataRefIndexNode).Index))
+
+	case *NotNode:
+		return eqTree(t, expected.(*NotNode).Arg, actual.(*NotNode).Arg)
+	case *NegateNode:
+		return eqTree(t, expected.(*NegateNode).Arg, actual.(*NegateNode).Arg)
+	case *MulNode, *DivNode, *ModNode, *AddNode, *SubNode, *EqNode, *NotEqNode,
+		*GtNode, *GteNode, *LtNode, *LteNode, *OrNode, *AndNode, *ElvisNode:
+		return eqBinOp(t, expected, actual)
+	case *TernNode:
+		return eqTree(t, expected.(*TernNode).Arg1, actual.(*TernNode).Arg1) &&
+			eqTree(t, expected.(*TernNode).Arg2, actual.(*TernNode).Arg2) &&
+			eqTree(t, expected.(*TernNode).Arg3, actual.(*TernNode).Arg3)
+	case *FunctionNode:
+		return eqstr(t, "function", expected.(*FunctionNode).Name, actual.(*FunctionNode).Name) &&
+			eqNodes(t, expected.(*FunctionNode).Args, actual.(*FunctionNode).Args)
+
+	case *SoyDocNode:
+		return expected.(*SoyDocNode).Comment == actual.(*SoyDocNode).Comment
+	case *PrintNode:
+		return eqTree(t, expected.(*PrintNode).Arg, actual.(*PrintNode).Arg)
+	case *MsgNode:
+		return eqstr(t, "msg", expected.(*MsgNode).Desc, actual.(*MsgNode).Desc) &&
+			eqTree(t, expected.(*MsgNode).Body, actual.(*MsgNode).Body)
 
 	case *IfNode:
 		return eqNodes(t, expected.(*IfNode).Conds, actual.(*IfNode).Conds)
