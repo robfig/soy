@@ -42,12 +42,12 @@ var parseTests = []parseTest{
 	{"namespace", "{namespace example}", tList(newNamespace(0, "example"))},
 	{"empty template", "{template .name}{/template}", tList(tTemplate("name"))},
 	{"text template", "{template .name}\nHello world!\n{/template}",
-		tList(tTemplate("name", newText(0, "\nHello world!\n")))},
+		tList(tTemplate("name", newText(0, "Hello world!")))},
 	{"variable template", "{template .name}\nHello {$name}!\n{/template}",
 		tList(tTemplate("name",
-			newText(0, "\nHello "),
+			newText(0, "Hello "),
 			newPrint(0, &DataRefNode{0, "name", nil}), // implicit print
-			newText(0, "!\n"),
+			newText(0, "!"),
 		))},
 	{"soydoc", "/** Text\n*/", tList(newSoyDoc(0, "/** Text\n*/"))},
 	{"negate", "{not $var}", tList(&PrintNode{0, &NotNode{0, &DataRefNode{0, "var", nil}}})},
@@ -56,6 +56,17 @@ var parseTests = []parseTest{
 			&StringNode{0, "hello"},
 			&StringNode{0, "world"})},
 	})},
+
+	{"rawtext (linejoin)", "\n  a \n\tb\r\n  c  \n\n", tList(newText(0, "a b c"))},
+	{"rawtext+html", "\n  a <br>\n\tb\r\n\n  c\n\n<br> ", tList(newText(0, "a <br>b c<br> "))},
+	{"rawtext+comment", "a <br> // comment \n\tb\t// comment2\r\n  c\n\n", tList(newText(0, "a <br>b c"))},
+	{"rawtext+tag", "a {$foo}\n\t  b\r\n\n  {$bar} c", tList(
+		newText(0, "a "),
+		&PrintNode{0, &DataRefNode{0, "foo", nil}},
+		newText(0, "b"),
+		&PrintNode{0, &DataRefNode{0, "bar", nil}},
+		newText(0, " c"),
+	)},
 
 	{"expression1", "{not false and (isFirst($foo) or (-$x - 5) > 3.1)}", tList(&PrintNode{0,
 		&AndNode{bin(
@@ -113,7 +124,7 @@ var parseTests = []parseTest{
 			&IfCondNode{0, &DataRefNode{0, "zoo", nil}, tList(&PrintNode{0, &DataRefNode{0, "zoo", nil}})},
 		}},
 		&IfNode{0, []*IfCondNode{
-			&IfCondNode{0, &DataRefNode{0, "boo", nil}, tList(newText(0, "\n  Blah\n"))},
+			&IfCondNode{0, &DataRefNode{0, "boo", nil}, tList(newText(0, "Blah"))},
 			&IfCondNode{0,
 				&GtNode{bin(
 					&DataRefNode{0, "foo", []Node{&DataRefKeyNode{0, false, "goo"}}},
@@ -121,7 +132,7 @@ var parseTests = []parseTest{
 				tList(&PrintNode{0, &DataRefNode{0, "boo", nil}})},
 			&IfCondNode{0,
 				nil,
-				tList(newText(0, "\n  Blah "), &PrintNode{0, &DataRefNode{0, "moo", nil}})},
+				tList(newText(0, "Blah "), &PrintNode{0, &DataRefNode{0, "moo", nil}})},
 		}},
 	)},
 
@@ -135,14 +146,14 @@ var parseTests = []parseTest{
     Bloh
 {/switch}`, tList(
 		&SwitchNode{0, &DataRefNode{0, "boo", nil}, []*SwitchCaseNode{
-			&SwitchCaseNode{0, []Node{&IntNode{0, 0}}, tList(newText(0, "Blah\n  "))},
+			&SwitchCaseNode{0, []Node{&IntNode{0, 0}}, tList(newText(0, "Blah"))},
 			&SwitchCaseNode{0, []Node{&DataRefNode{0, "foo", []Node{&DataRefKeyNode{0, false, "goo"}}}},
-				tList(newText(0, "\n    Bleh\n  "))},
+				tList(newText(0, "Bleh"))},
 			&SwitchCaseNode{0, []Node{
 				&IntNode{0, -1},
 				&IntNode{0, 1},
-				&DataRefNode{0, "moo", nil}}, tList(newText(0, "\n    Bluh\n  "))},
-			&SwitchCaseNode{0, nil, tList(newText(0, "\n    Bloh\n"))},
+				&DataRefNode{0, "moo", nil}}, tList(newText(0, "Bluh"))},
+			&SwitchCaseNode{0, nil, tList(newText(0, "Bloh"))},
 		}},
 	)},
 
@@ -163,15 +174,15 @@ var parseTests = []parseTest{
 		), nil},
 		&ForNode{0, "$boo", &DataRefNode{0, "foo", []Node{&DataRefKeyNode{0, false, "booze"}}},
 			tList(
-				newText(0, "\n  Scary drink "),
+				newText(0, "Scary drink "),
 				&PrintNode{0, &DataRefNode{0, "boo", []Node{&DataRefKeyNode{0, false, "name"}}}},
-				newText(0, "!\n  "),
+				newText(0, "!"),
 				&IfNode{0,
 					[]*IfCondNode{&IfCondNode{0,
 						&NotNode{0, &FunctionNode{0, "isLast", []Node{&DataRefNode{0, "boo", nil}}}},
 						tList(newText(0, "\n"))}}}),
 			tList(
-				newText(0, "\n  Sorry, no booze.\n"))},
+				newText(0, "Sorry, no booze."))},
 	)},
 
 	{"for", `
@@ -257,6 +268,7 @@ func TestParse(t *testing.T) {
 			// 	continue
 		}
 		if !eqTree(t, test.tree, tmpl.Root) {
+			t.Errorf("%s=(%q): got\n\t%v\nexpected\n\t%v", test.name, test.input, tmpl.Root, test.tree)
 			t.Log("Expected:")
 			printTree(t, test.tree, 0)
 			t.Log("Actual:")
@@ -265,7 +277,6 @@ func TestParse(t *testing.T) {
 			} else {
 				printTree(t, tmpl.Root, 0)
 			}
-			t.Errorf("%s=(%q): got\n\t%v\nexpected\n\t%v", test.name, test.input, tmpl.Root, test.tree)
 		}
 	}
 }
@@ -290,8 +301,8 @@ func eqTree(t *testing.T, expected, actual Node) bool {
 			return false
 		}
 		return eqTree(t, expected.(*TemplateNode).Body, actual.(*TemplateNode).Body)
-	case *TextNode:
-		return eqstr(t, "text", string(expected.(*TextNode).Text), string(actual.(*TextNode).Text))
+	case *RawTextNode:
+		return eqstr(t, "text", string(expected.(*RawTextNode).Text), string(actual.(*RawTextNode).Text))
 	case *NullNode:
 		return true
 	case *BoolNode:
@@ -597,7 +608,7 @@ func printTree(t *testing.T, n Node, depth int) {
 
 // //     List<StandaloneNode> nodes = parseTemplateBody(templateBody);
 // //     assertEquals(1, nodes.size());
-// //     assertEquals("   http://www.google.com", ((RawTextNode) nodes.get(0)).getRawText());
+// //     assertEquals("   http://www.google.com", ((RawRawTextNode) nodes.get(0)).getRawText());
 // //   }
 
 // // public void testParseRawText() throws Exception {
@@ -613,7 +624,7 @@ func printTree(t *testing.T, n Node, depth int) {
 
 // //   List<StandaloneNode> nodes = parseTemplateBody(templateBody);
 // //   assertEquals(1, nodes.size());
-// //   RawTextNode rtn = (RawTextNode) nodes.get(0);
+// //   RawRawTextNode rtn = (RawRawTextNode) nodes.get(0);
 // //   assertEquals(
 // //       "  aaa bbb ccc {} ddd \neee <br>fffggg\nhhh }{  \u2222\uEEEE\u9EC4\u607A",
 // //       rtn.getRawText());

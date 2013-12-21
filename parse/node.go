@@ -43,17 +43,16 @@ func (l *ListNode) String() string {
 	return b.String()
 }
 
-// TextNode holds plain text.
-type TextNode struct {
+type RawTextNode struct {
 	Pos
 	Text []byte // The text; may span newlines.
 }
 
-func newText(pos Pos, text string) *TextNode {
-	return &TextNode{Pos: pos, Text: []byte(text)}
+func newText(pos Pos, text string) *RawTextNode {
+	return &RawTextNode{Pos: pos, Text: []byte(text)}
 }
 
-func (t *TextNode) String() string {
+func (t *RawTextNode) String() string {
 	return fmt.Sprintf(textFormat, t.Text)
 }
 

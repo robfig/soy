@@ -90,7 +90,7 @@ func (t *Tree) itemList(until ...itemType) *ListNode {
 func (t *Tree) textOrTag() Node {
 	switch token := t.next(); token.typ {
 	case itemText:
-		return newText(token.pos, token.val)
+		return &RawTextNode{token.pos, rawtext(token.val, true, true)}
 	case itemLeftDelim:
 		return t.beginTag()
 	case itemSoyDocStart:
@@ -336,16 +336,6 @@ func (t *Tree) parseTemplate(token item) Node {
 	t.expect(itemRightDelim, "template tag")
 	return tmpl
 }
-
-// // requireNamespace return the namespace name
-// func (t *Tree) requireNamespace() string {
-// 	const ctx = "namespace declaration"
-// 	t.expect(itemLeftDelim, ctx)
-// 	t.expect(itemNamespace, ctx)
-// 	ident := t.expect(itemIdent, ctx)
-// 	t.expect(itemRightDelim, ctx)
-// 	return ident.value
-// }
 
 // Expressions ----------
 

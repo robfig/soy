@@ -144,7 +144,7 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 		for _, node := range node.Nodes {
 			s.walk(dot, node)
 		}
-	case *parse.TextNode:
+	case *parse.RawTextNode:
 		if _, err := s.wr.Write(node.Text); err != nil {
 			s.errorf("%s", err)
 		}

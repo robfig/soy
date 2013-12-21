@@ -51,6 +51,12 @@ var execTests = []execTest{
 
 	// TODO: Elvis only checks if cond is defined, not truthy.
 
+	// Line joining
+	{"linejoin hello", "test.sayHello",
+		"{namespace test}\n{template .sayHello}\n  Hello\n\n  world!\n{/template}",
+		"Hello world!",
+		nil, true},
+
 	// Variables
 	// TODO: "undefined data keys are falsy"
 	{"hello world w/ variable", "test.sayHello",
@@ -60,8 +66,22 @@ var execTests = []execTest{
 {template .sayHello}
 Hello {$name}!
 {/template}`,
-		"\nHello Rob!\n",
+		"Hello Rob!",
 		data{"name": "Rob"}, true},
+
+	// 	{"call w/ line join", "test.callLine",
+	// 		`{namespace test}
+
+	// {template .callLine}
+	// Hello <a>{call .guy}</a>!
+	// {/template}
+
+	// {template .guy}
+	//   Rob
+	// {/template}
+	// `,
+	// 		" Hello <a>Rob</a>! ",
+	// 		nil, true},
 
 	// // Invalid
 	// {"missing namespace", ".sayHello",
