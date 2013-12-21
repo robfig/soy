@@ -90,7 +90,7 @@ func (t *Tree) itemList(until ...itemType) *ListNode {
 func (t *Tree) textOrTag() Node {
 	switch token := t.next(); token.typ {
 	case itemText:
-		return &RawTextNode{token.pos, rawtext(token.val, true, true)}
+		return &RawTextNode{token.pos, rawtext(token.val)}
 	case itemLeftDelim:
 		return t.beginTag()
 	case itemSoyDocStart:

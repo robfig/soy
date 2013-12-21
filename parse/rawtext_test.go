@@ -41,36 +41,9 @@ func TestRawText(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		var actual = string(rawtext(test.input, true, true))
+		var actual = string(rawtext(test.input))
 		if test.output != actual {
 			t.Errorf("input: %q, expected %q, got %q", test.input, test.output, actual)
 		}
 	}
 }
-
-// TODO: Remove when I'm sure we don't need this functionality.
-// func TestRawTextPrefixSuffix(t *testing.T) {
-// 	type test struct {
-// 		trimPrefix, trimSuffix bool
-// 		input, output          string
-// 	}
-// 	var tests = []test{
-// 		{false, false, "", ""},
-// 		{false, false, "\n", " "},
-// 		{false, true, "\n", ""},
-// 		{true, false, "\n", ""},
-// 		{false, true, "\na\n", " a"},
-// 		{true, false, "\na\n", "a "},
-// 		{false, false, "\na\n", " a "},
-// 		{false, false, " \n\t\n a", " a"},
-// 		{false, false, " <a>\n\t\n a\n\t ", " <a>a "},
-// 		{true, false, " <a>\n\t\n a\n\t ", "<a>a "},
-// 		{false, true, " <a>\n\t\n a\n\t ", " <a>a"},
-// 	}
-// 	for _, test := range tests {
-// 		var actual = string(rawtext(test.input, test.trimPrefix, test.trimSuffix))
-// 		if test.output != actual {
-// 			t.Errorf("input: %q, expected %q, got %q", test.input, test.output, actual)
-// 		}
-// 	}
-// }

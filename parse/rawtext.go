@@ -30,12 +30,11 @@ func (l *rawtextlexer) emitRune(result []byte) []byte {
 
 // rawtext processes the raw text found in templates:
 // - strip comments (// to end of line)
-// - trim leading/trailing whitespace if trimPrefix/trimSuffix are true.
+// - trim leading/trailing whitespace if it includes a newline
 // - trim leading and trailing whitespace on each internal line
 // - join lines with no space if '<' or '>' are on either side, else with 1 space.
 // - everywhere, collapse multiple spaces to single space
-// - trim leading/trailing space only if there is a newline before/after anything else.
-func rawtext(s string, trimPrefix, trimSuffix bool) []byte {
+func rawtext(s string) []byte {
 	var lex = rawtextlexer{s, 0, 0, 0}
 	var (
 		trimming       = false
@@ -49,7 +48,7 @@ func rawtext(s string, trimPrefix, trimSuffix bool) []byte {
 			// add a space if we've been trimming, unless either:
 			// - trimSuffix == true and we've seen a newline
 			// - trimPrefix == true and we're still at prefix and we've seen a newline
-			if (!(seenNewline && (trimSuffix || (trimPrefix && charBeforeTrim == 0)))) && trimming {
+			if !seenNewline && trimming {
 				result = append(result, ' ')
 			}
 			return result
@@ -86,9 +85,8 @@ func rawtext(s string, trimPrefix, trimSuffix bool) []byte {
 			// done with the trim. add a space if either:
 			// - we haven't seen an newline
 			// - the character before and after are not tight joiners
-			// unless we are trimming the prefix, and trimPrefix == true, and we've seen a newline
 			var isPrefix = charBeforeTrim == 0
-			if !(trimPrefix && isPrefix && seenNewline) &&
+			if !(isPrefix && seenNewline) &&
 				(!seenNewline || (!isTightJoiner(charBeforeTrim) && !isTightJoiner(r))) {
 				result = append(result, ' ')
 			}
