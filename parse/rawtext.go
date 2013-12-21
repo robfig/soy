@@ -56,7 +56,7 @@ func rawtext(s string) []byte {
 		var r = lex.next()
 
 		// comment removal
-		if r == '/' {
+		if (trimming || lastChar == 0) && r == '/' {
 			if lex.next() == '/' {
 				for {
 					r = lex.next()

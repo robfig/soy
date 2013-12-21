@@ -12,6 +12,7 @@ Now:
 - {debugger}
 - {css}
 - {alias}
+- /* comment */
 - attributes for all the commands
 - Map and List literals
 - Source location
