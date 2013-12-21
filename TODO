@@ -1,6 +1,6 @@
 Now:
-- ident vs dotted-ident vs leading-dot-ident
 - exec for if/for/switch
+- evaluate data ref expression language
 - {call}
 - print directives (html escaping by default)
 - implement builtin functions / user provided functions
@@ -26,3 +26,5 @@ Now:
 - Message extractor
 - CSS renaming
 - generate Go code for template
+
+? ident vs dotted-ident vs leading-dot-ident
