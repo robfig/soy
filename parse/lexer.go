@@ -47,25 +47,27 @@ const (
 	itemRightDelimEnd // tag right self-closing delimiter: /}
 
 	itemText   // plain text
-	itemIdent  // identifier (function name, ...)
 	itemEquals // =
 
 	// Expression values
-	itemNull     // e.g. null
-	itemBool     // e.g. true
-	itemInteger  // e.g. 42
-	itemFloat    // e.g. 1.0
-	itemString   // e.g. 'hello world'
-	itemVariable // e.g. $variable
-	itemComma    // , (used in function invocations)
-	itemColon    // : (used in maps)
+	itemNull    // e.g. null
+	itemBool    // e.g. true
+	itemInteger // e.g. 42
+	itemFloat   // e.g. 1.0
+	itemString  // e.g. 'hello world'
+	itemComma   // , (used in function invocations)
+	itemColon   // : (used in maps)
 
 	// Data ref access tokens
-	itemDot          // .
-	itemQuestionDot  // ?.
-	itemLeftBracket  // [
-	itemRightBracket // ]
-	itemQuestionKey  // ?[
+	itemIdent            // identifier (e.g. function name)
+	itemDollarIdent      // $ident
+	itemDotIdent         // .ident
+	itemQuestionDotIdent // ?.ident
+	itemDotIndex         // .N
+	itemQuestionDotIndex // ?.N
+	itemLeftBracket      // [
+	itemRightBracket     // ]
+	itemQuestionKey      // ?[
 
 	// Expression operations
 	itemNegate // - (unary)
@@ -122,6 +124,7 @@ const (
 	itemSwitch      // {switch ...}
 	itemTemplate    // {template ...}
 	// Character commands.
+	itemSpecialChar
 	itemCarriageReturn // {\r}
 	itemEmptyString    // {nil}
 	itemLeftBrace      // {lb}
@@ -156,7 +159,7 @@ func (t itemType) isOp() bool {
 	return itemNegate <= t && t <= itemElvis
 }
 
-var commands = map[string]itemType{
+var builtinIdents = map[string]itemType{
 	"namespace": itemNamespace,
 	"template":  itemTemplate,
 	"call":      itemCall,
@@ -194,6 +197,13 @@ var commands = map[string]itemType{
 	`\r`:  itemCarriageReturn,
 	"lb":  itemLeftBrace,
 	"rb":  itemRightBrace,
+
+	"true":  itemBool,
+	"false": itemBool,
+	"and":   itemAnd,
+	"null":  itemNull,
+	"or":    itemOr,
+	"not":   itemNot,
 }
 
 var arithmeticItemsBySymbol = map[string]itemType{
@@ -495,10 +505,9 @@ func lexInsideTag(l *lexer) stateFn {
 		l.next()
 		l.emit(itemRightDelimEnd)
 		return lexText
-	case r == '$':
-		return lexVariable
-	case r == '.':
-		l.emit(itemDot)
+	case r == '$', r == '.':
+		l.backup()
+		return lexIdent
 	case r == '[':
 		l.emit(itemLeftBracket)
 	case r == ']':
@@ -506,7 +515,8 @@ func lexInsideTag(l *lexer) stateFn {
 	case r == '?': // used by data refs and arithmetic
 		switch l.next() {
 		case '.':
-			l.emit(itemQuestionDot)
+			l.pos -= 2 // ghetto.
+			return lexIdent
 		case '[':
 			l.emit(itemQuestionKey)
 		case ':':
@@ -546,7 +556,6 @@ func lexInsideTag(l *lexer) stateFn {
 		l.backup()
 		return lexIdent
 	case r == ',':
-		// comma separates function parameters.
 		l.emit(itemComma)
 	default:
 		return l.errorf("unrecognized character in action: %#U", r)
@@ -569,16 +578,6 @@ func lexNegative(l *lexer) stateFn {
 	} else {
 		l.emit(itemSub)
 	}
-	return lexInsideTag
-}
-
-// lexVariable scans a variable: $Alphanumeric
-// $ has already been read.
-func lexVariable(l *lexer) stateFn {
-	for r := l.next(); isAlphaNumeric(r); r = l.next() {
-	}
-	l.backup()
-	l.emit(itemVariable)
 	return lexInsideTag
 }
 
@@ -625,38 +624,57 @@ func stringLexer(quoteChar rune) stateFn {
 	}
 }
 
+// lexIdent recognizes the various kinds of identifiers
 func lexIdent(l *lexer) stateFn {
-Loop:
-	for {
-		switch r := l.next(); {
-		case isAlphaNumeric(r), r == '/', r == '\\':
-			// absorb.
-		default:
-			l.backup()
-			word := l.input[l.start:l.pos]
-			switch {
-			case commands[word] > itemNil:
-				l.emit(commands[word])
-			case word == "true", word == "false":
-				l.emit(itemBool)
-			case word == "and":
-				l.emit(itemAnd)
-			case word == "null":
-				l.emit(itemNull)
-			case word == "or":
-				l.emit(itemOr)
-			case word == "not":
-				l.emit(itemNot)
-			default:
-				if word[0] == '/' || word[0] == '\\' {
-					// TODO: this doesn't leave the position in the correct spot.
-					return l.errorf("bad character %#U", word[0])
-				}
-				l.emit(itemIdent)
-			}
-			break Loop
+	// the different idents start with different unique characters.
+	// peel those off.
+	var itemType = itemIdent
+	switch l.next() {
+	case '.':
+		if isDigit(l.next()) {
+			itemType = itemDotIndex
+		} else {
+			itemType = itemDotIdent
 		}
+		l.backup()
+	case '$':
+		itemType = itemDollarIdent
+	case '/':
+		itemType = itemCommandEnd
+	case '\\':
+		itemType = itemSpecialChar
+	case '?':
+		dot := l.next()
+		if dot != '.' {
+			l.errorf("unexpected beginning to ident: ?%s", dot)
+		}
+		if isDigit(l.next()) {
+			itemType = itemQuestionDotIndex
+		} else {
+			itemType = itemQuestionDotIdent
+		}
+		l.backup()
 	}
+
+	// absorb the rest of the identifier
+	for isAlphaNumeric(l.next()) {
+	}
+	l.backup()
+	word := l.input[l.start:l.pos]
+
+	// if it's a builtin, return that item type
+	if itemType, ok := builtinIdents[word]; ok {
+		l.emit(itemType)
+		return lexInsideTag
+	}
+	// if not a builtin, it shouldn't start with / or \
+	if itemType == itemCommandEnd || itemType == itemSpecialChar {
+		l.pos = l.start
+		return l.errorf("unrecognized identifier %#U", l.input[l.start:l.pos])
+	}
+
+	// else, use the type determined at the beginning.
+	l.emit(itemType)
 	return lexInsideTag
 }
 

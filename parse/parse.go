@@ -134,7 +134,7 @@ func (t *Tree) beginTag() Node {
 	case itemTab, itemNewline, itemCarriageReturn, itemLeftBrace, itemRightBrace:
 		t.expect(itemRightDelim, "special char")
 		return newText(token.pos, specialChars[token.typ])
-	case itemIdent, itemVariable, itemNull, itemBool, itemFloat, itemInteger, itemString, itemNot, itemLeftBracket:
+	case itemIdent, itemDollarIdent, itemNull, itemBool, itemFloat, itemInteger, itemString, itemNot, itemLeftBracket:
 		// print is implicit, so the tag may also begin with any value type, or the
 		// "not" operator.
 		t.backup()
@@ -191,7 +191,7 @@ func (t *Tree) parseFor(token item) Node {
 	// for and foreach have the same syntax, differing only in the requirement they impose:
 	// - for requires the collection to be a function call to "range"
 	// - foreach requires the collection to be a variable reference.
-	var vartoken = t.expect(itemVariable, ctx)
+	var vartoken = t.expect(itemDollarIdent, ctx)
 	var intoken = t.expect(itemIdent, ctx)
 	if intoken.val != "in" {
 		t.errorf("expected 'in' in for")
@@ -225,12 +225,12 @@ func (t *Tree) parseFor(token item) Node {
 
 // "foreach" has just been read.
 func (t *Tree) parseForeach(token item) Node {
-	var vartoken = t.expect(itemVariable, "foreach")
+	var vartoken = t.expect(itemDollarIdent, "foreach")
 	var intoken = t.expect(itemIdent, "foreach")
 	if intoken.val != "in" {
 		t.errorf("expected 'in' in for")
 	}
-	var collection = t.expect(itemVariable, "foreach")
+	var collection = t.expect(itemDollarIdent, "foreach")
 	t.expect(itemRightDelim, "foreach")
 
 	var body = t.itemList(itemIfempty, itemForeachEnd)
@@ -328,8 +328,7 @@ func (t *Tree) parseNamespace(token item) Node {
 
 func (t *Tree) parseTemplate(token item) Node {
 	const ctx = "template"
-	t.expect(itemDot, ctx)
-	var id = t.expect(itemIdent, ctx)
+	var id = t.expect(itemDotIdent, ctx)
 	t.expect(itemRightDelim, ctx)
 	tmpl := newTemplate(token.pos, id.val)
 	tmpl.Body = t.itemList(itemTemplateEnd)
@@ -409,42 +408,34 @@ func (t *Tree) parseDataRef(tok item) Node {
 	var ref = &DataRefNode{tok.pos, tok.val[1:], nil}
 	for {
 		var accessNode Node
+		var nullsafe = 0
 		switch tok := t.next(); tok.typ {
-		case itemDot:
-			accessNode = t.parseDataRefDot(tok, false)
-		case itemQuestionDot:
-			accessNode = t.parseDataRefDot(tok, true)
-		case itemLeftBracket:
-			accessNode = t.parseDataRefExpr(tok, false)
+		case itemQuestionDotIdent:
+			nullsafe = 1
+			fallthrough
+		case itemDotIdent:
+			accessNode = &DataRefKeyNode{tok.pos, nullsafe == 1, tok.val[nullsafe+1:]}
+		case itemQuestionDotIndex:
+			nullsafe = 1
+			fallthrough
+		case itemDotIndex:
+			index, err := strconv.ParseInt(tok.val[nullsafe+1:], 10, 0)
+			if err != nil {
+				t.error(err)
+			}
+			accessNode = &DataRefIndexNode{tok.pos, nullsafe == 1, int(index)}
 		case itemQuestionKey:
-			accessNode = t.parseDataRefExpr(tok, true)
+			nullsafe = 1
+			fallthrough
+		case itemLeftBracket:
+			accessNode = &DataRefExprNode{tok.pos, nullsafe == 1, t.parseExpr(0)}
+			t.expect(itemRightBracket, "dataref")
 		default:
 			t.backup()
 			return ref
 		}
 		ref.Access = append(ref.Access, accessNode)
 	}
-}
-
-func (t *Tree) parseDataRefDot(start item, nullsafe bool) Node {
-	switch tok := t.next(); tok.typ {
-	case itemInteger:
-		index, err := strconv.ParseInt(tok.val, 10, 0)
-		if err != nil {
-			t.error(err)
-		}
-		return &DataRefIndexNode{start.pos, nullsafe, int(index)}
-	case itemIdent:
-		return &DataRefKeyNode{start.pos, nullsafe, tok.val}
-	}
-	t.errorf("unexpected type in data reference")
-	return nil
-}
-
-func (t *Tree) parseDataRefExpr(start item, nullsafe bool) Node {
-	var expr = t.parseExpr(0)
-	t.expect(itemRightBracket, "dataref")
-	return &DataRefExprNode{start.pos, nullsafe, expr}
 }
 
 // "[" has just been read
@@ -557,7 +548,7 @@ func isUnaryOp(t item) bool {
 
 func isValue(t item) bool {
 	switch t.typ {
-	case itemNull, itemBool, itemInteger, itemFloat, itemVariable, itemString:
+	case itemNull, itemBool, itemInteger, itemFloat, itemDollarIdent, itemString:
 		return true
 	case itemIdent:
 		return true // function application returns a value
@@ -648,7 +639,7 @@ func (t *Tree) newValueNode(tok item) Node {
 		return &StringNode{tok.pos, s}
 	case itemLeftBracket:
 		return t.parseListOrMap(tok)
-	case itemVariable:
+	case itemDollarIdent:
 		return t.parseDataRef(tok)
 	case itemIdent:
 		// this is a function call.  get all the arguments.

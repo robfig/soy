@@ -1,4 +1,6 @@
 Now:
+- evaluation inside attribute values
+  e.g. "help text", "ident", "true", "$data.ref", "'str'"
 - exec for if/for/switch
 - evaluate data ref expression language (incl map/list access)
 - {call}
@@ -24,5 +26,3 @@ Now:
 - Message extractor
 - CSS renaming
 - generate Go code for template
-
-? ident vs dotted-ident vs leading-dot-ident

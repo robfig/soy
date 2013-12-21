@@ -40,11 +40,11 @@ func bin(n1, n2 Node) binaryOpNode {
 var parseTests = []parseTest{
 	{"empty", "", tList()},
 	{"namespace", "{namespace example}", tList(newNamespace(0, "example"))},
-	{"empty template", "{template .name}{/template}", tList(tTemplate("name"))},
+	{"empty template", "{template .name}{/template}", tList(tTemplate(".name"))},
 	{"text template", "{template .name}\nHello world!\n{/template}",
-		tList(tTemplate("name", newText(0, "Hello world!")))},
+		tList(tTemplate(".name", newText(0, "Hello world!")))},
 	{"variable template", "{template .name}\nHello {$name}!\n{/template}",
-		tList(tTemplate("name",
+		tList(tTemplate(".name",
 			newText(0, "Hello "),
 			newPrint(0, &DataRefNode{0, "name", nil}), // implicit print
 			newText(0, "!"),
