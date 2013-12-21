@@ -1,0 +1,27 @@
+Now:
+- ident vs dotted-ident vs leading-dot-ident
+- exec for if/for/switch
+- {call}
+- print directives (html escaping by default)
+- implement builtin functions / user provided functions
+- Globals
+- {msg}
+- {log}
+- {let}
+- {literal}
+- {debugger}
+- {css}
+- {alias}
+- attributes for all the commands
+- Map and List literals
+- Source location
+- test coverage
+--- v1
+- parsepasses (optimizations) (Simplify, CombineConsecutiveRawText)
+- Contextual autoescape
+- Delegates (delpackage, delcall, deltemplate)
+- Injected data
+- Bidi
+- Message extractor
+- CSS renaming
+- generate Go code for template
