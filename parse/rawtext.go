@@ -43,6 +43,8 @@ func rawtext(s string) []byte {
 		charBeforeTrim rune
 		result         = make([]byte, 0, len(s))
 	)
+
+TOP:
 	for {
 		if lex.eof() {
 			// add a space if we've been trimming, unless either:
@@ -55,7 +57,7 @@ func rawtext(s string) []byte {
 		}
 		var r = lex.next()
 
-		// comment removal
+		// '//' comment removal
 		if (trimming || lastChar == 0) && r == '/' {
 			if lex.next() == '/' {
 				for {
@@ -65,6 +67,27 @@ func rawtext(s string) []byte {
 					}
 					if isEndOfLine(r) {
 						break
+					}
+				}
+			}
+			lex.backup()
+		}
+
+		// '/*' comment removal
+		if r == '/' {
+			if lex.next() == '*' {
+				var asterisk = false
+				for {
+					r = lex.next()
+					switch {
+					case lex.eof():
+						return result
+					case r == '*':
+						asterisk = true
+					case r == '/' && asterisk:
+						continue TOP
+					default:
+						asterisk = false
 					}
 				}
 			}
