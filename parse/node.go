@@ -330,8 +330,6 @@ func (s *StringNode) String() string {
 	return quoteString(s.Value)
 }
 
-// TODO: ValueListNode, MapNode
-
 type FunctionNode struct {
 	Pos
 	Name string
@@ -347,6 +345,40 @@ func (n *FunctionNode) String() string {
 		expr += arg.String()
 	}
 	return expr + ")"
+}
+
+type ListLiteralNode struct {
+	Pos
+	Items []Node
+}
+
+func (n *ListLiteralNode) String() string {
+	var expr = "["
+	for i, item := range n.Items {
+		if i > 0 {
+			expr += ", "
+		}
+		expr += item.String()
+	}
+	return expr + "]"
+}
+
+type MapLiteralNode struct {
+	Pos
+	Items map[string]Node
+}
+
+func (n *MapLiteralNode) String() string {
+	var expr = "["
+	var first = true
+	for k, v := range n.Items {
+		if !first {
+			expr += ", "
+		}
+		expr += fmt.Sprintf("'%s': %s", k, v.String())
+		first = false
+	}
+	return expr + "]"
 }
 
 // Data References ----------
@@ -405,40 +437,6 @@ func (n *DataRefKeyNode) String() string {
 		expr = "?" + expr
 	}
 	return expr + n.Key
-}
-
-type ValueListNode struct {
-	Pos
-	Items []Node
-}
-
-func (n *ValueListNode) String() string {
-	var expr = "["
-	for i, item := range n.Items {
-		if i > 0 {
-			expr += ", "
-		}
-		expr += item.String()
-	}
-	return expr + "]"
-}
-
-type ValueMapNode struct {
-	Pos
-	Items map[string]Node
-}
-
-func (n *ValueMapNode) String() string {
-	var expr = "["
-	var first = true
-	for k, v := range n.Items {
-		if !first {
-			expr += ", "
-		}
-		expr += fmt.Sprintf("'%s': %s", k, v.String())
-		first = false
-	}
-	return expr + "]"
 }
 
 // Operators ----------

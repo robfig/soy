@@ -112,14 +112,14 @@ var parseTests = []parseTest{
 	})},
 
 	{"empty list", `{[]}`, tList(&PrintNode{0,
-		&ValueListNode{0, nil},
+		&ListLiteralNode{0, nil},
 	})},
 
 	{"list", `{[1, 'two', [3, false]]}`, tList(&PrintNode{0,
-		&ValueListNode{0, []Node{
+		&ListLiteralNode{0, []Node{
 			&IntNode{0, 1},
 			&StringNode{0, "two"},
-			&ValueListNode{0, []Node{
+			&ListLiteralNode{0, []Node{
 				&IntNode{0, 3},
 				&BoolNode{0, false},
 			}},
@@ -127,14 +127,14 @@ var parseTests = []parseTest{
 	})},
 
 	{"empty map", `{[:]}`, tList(&PrintNode{0,
-		&ValueMapNode{0, make(map[string]Node)},
+		&MapLiteralNode{0, make(map[string]Node)},
 	})},
 
 	{"map", `{['aaa': 42, 'bbb': 'hello', 'ccc':[1]]}`, tList(&PrintNode{0,
-		&ValueMapNode{0, map[string]Node{
+		&MapLiteralNode{0, map[string]Node{
 			"aaa": &IntNode{0, 42},
 			"bbb": &StringNode{0, "hello"},
-			"ccc": &ValueListNode{0, []Node{&IntNode{0, 1}}},
+			"ccc": &ListLiteralNode{0, []Node{&IntNode{0, 1}}},
 		}},
 	})},
 
@@ -363,10 +363,10 @@ func eqTree(t *testing.T, expected, actual Node) bool {
 		return eqfloat(t, "float", expected.(*FloatNode).Value, actual.(*FloatNode).Value)
 	case *StringNode:
 		return eqstr(t, "stringnode", expected.(*StringNode).Value, actual.(*StringNode).Value)
-	case *ValueListNode:
-		return eqNodes(t, expected.(*ValueListNode).Items, actual.(*ValueListNode).Items)
-	case *ValueMapNode:
-		e, a := expected.(*ValueMapNode).Items, actual.(*ValueMapNode).Items
+	case *ListLiteralNode:
+		return eqNodes(t, expected.(*ListLiteralNode).Items, actual.(*ListLiteralNode).Items)
+	case *MapLiteralNode:
+		e, a := expected.(*MapLiteralNode).Items, actual.(*MapLiteralNode).Items
 		if len(e) != len(a) {
 			t.Errorf("map differed in size. expected %d, got %d", len(e), len(a))
 			return false

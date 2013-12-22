@@ -582,9 +582,9 @@ func (t *Tree) parseListOrMap(token item) Node {
 	switch t.next().typ {
 	case itemColon:
 		t.expect(itemRightBracket, "map literal")
-		return &ValueMapNode{token.pos, nil}
+		return &MapLiteralNode{token.pos, nil}
 	case itemRightBracket:
-		return &ValueListNode{token.pos, nil}
+		return &ListLiteralNode{token.pos, nil}
 	}
 	t.backup()
 
@@ -592,11 +592,11 @@ func (t *Tree) parseListOrMap(token item) Node {
 	var firstExpr = t.parseExpr(0)
 	switch tok := t.next(); tok.typ {
 	case itemColon:
-		return t.parseValueMap(token, firstExpr)
+		return t.parseMapLiteral(token, firstExpr)
 	case itemComma:
-		return t.parseValueList(token, firstExpr)
+		return t.parseListLiteral(token, firstExpr)
 	case itemRightBracket:
-		return &ValueListNode{token.pos, []Node{firstExpr}}
+		return &ListLiteralNode{token.pos, []Node{firstExpr}}
 	default:
 		t.unexpected(tok, "list/map literal")
 	}
@@ -606,14 +606,14 @@ func (t *Tree) parseListOrMap(token item) Node {
 // the first item in the list is provided.
 // "," has just been read.
 //  ListLiteral -> "[" [ Expr ( "," Expr )* [ "," ] ] "]"
-func (t *Tree) parseValueList(first item, expr Node) Node {
+func (t *Tree) parseListLiteral(first item, expr Node) Node {
 	var items []Node
 	items = append(items, expr)
 	for {
 		items = append(items, t.parseExpr(0))
 		next := t.next()
 		if next.typ == itemRightBracket {
-			return &ValueListNode{first.pos, items}
+			return &ListLiteralNode{first.pos, items}
 		}
 		if next.typ != itemComma {
 			t.unexpected(next, "parsing value list")
@@ -624,7 +624,7 @@ func (t *Tree) parseValueList(first item, expr Node) Node {
 // the first key in the map is provided
 // ":" has just been read.
 // MapLiteral -> "[" ( ":" | Expr ":" Expr ( "," Expr ":" Expr )* [ "," ] ) "]"
-func (t *Tree) parseValueMap(first item, expr Node) Node {
+func (t *Tree) parseMapLiteral(first item, expr Node) Node {
 	firstKey, ok := expr.(*StringNode)
 	if !ok {
 		t.errorf("expected a string as map key, got: %T", expr)
@@ -636,7 +636,7 @@ func (t *Tree) parseValueMap(first item, expr Node) Node {
 		items[key] = t.parseExpr(0)
 		next := t.next()
 		if next.typ == itemRightBracket {
-			return &ValueMapNode{first.pos, items}
+			return &MapLiteralNode{first.pos, items}
 		}
 		if next.typ != itemComma {
 			t.unexpected(next, "map literal")

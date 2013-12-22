@@ -1,10 +1,8 @@
 Now:
 - evaluation inside attribute values
   e.g. "help text", "ident", "true", "$data.ref", "'str'"
-- exec for if/for/switch
-- rename ValueList/ValueMap => ListLiteral/MapLiteral
+- exec for if/for/switch/call
 - evaluate data ref expression language (incl map/list access)
-- {call}
 - print directives (html escaping by default)
 - implement builtin functions / user provided functions
 - Globals
