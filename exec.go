@@ -158,7 +158,20 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 			s.walk(dot, node.Body)
 		}
 		s.context.pop()
-	//case *parse.SwitchNode:
+	case *parse.SwitchNode:
+		var switchValue = s.eval1(dot, node.Value)
+		for _, caseNode := range node.Cases {
+			for _, caseValueNode := range caseNode.Values {
+				if s.valueEq(switchValue, s.eval1(dot, caseValueNode)) {
+					s.walk(dot, caseNode.Body)
+					return
+				}
+			}
+			if len(caseNode.Values) == 0 { // default/last case
+				s.walk(dot, caseNode.Body)
+				return
+			}
+		}
 
 	case *parse.NullNode:
 		s.val = nullValue()
@@ -365,17 +378,21 @@ func (s *state) evalEq(dot reflect.Value, arg1, arg2 parse.Node) value {
 	if val1.valueType != val2.valueType {
 		s.errorf("can only compare same types")
 	}
+	return boolValue(s.valueEq(val1, val2))
+}
+
+func (s *state) valueEq(val1, val2 value) bool {
 	switch val1.valueType {
 	case intType:
-		return boolValue(val1.intValue == val2.intValue)
+		return val1.intValue == val2.intValue
 	case floatType:
-		return boolValue(val1.floatValue == val2.floatValue)
+		return val1.floatValue == val2.floatValue
 	case boolType:
-		return boolValue(val1.boolValue == val2.boolValue)
+		return val1.boolValue == val2.boolValue
 	case stringType:
-		return boolValue(val1.strValue == val2.strValue)
+		return val1.strValue == val2.strValue
 	default:
-		return boolValue(false)
+		return false
 	}
 }
 

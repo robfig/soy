@@ -177,6 +177,47 @@ var multidataTests = [][]execTest{
 		{data{"foo": data{"booze": true}}},       // $foo.booze must be list
 		{data{"foo": data{"booze": []data{{}}}}}, // $boo.name fails
 	}),
+
+	// TODO: does undefined "equal" 0 ?
+	// TODO: Is it an error if the switchValue "$boo" is undefined?
+
+	multidatatest("switch", `
+{switch $boo} {case 0}A
+  {case $foo.goo}
+    B
+  {case -1, 1, $moo}
+    C
+  {default}
+    D
+{/switch}`, []datatest{
+		{data{
+			"boo": 0,
+		}, "A"},
+		{data{
+			"boo": 1,
+			"foo": data{"goo": 1},
+		}, "B"},
+		{data{
+			"boo": -1,
+			"foo": data{"goo": 5},
+		}, "C"},
+		{data{
+			"boo": 1,
+			"foo": data{"goo": 5},
+		}, "C"},
+		{data{
+			"boo": 2,
+			"foo": data{"goo": 5},
+		}, "D"},
+		{data{
+			"boo": 2,
+			"foo": data{"goo": 5},
+			"moo": 2,
+		}, "C"},
+	}, []errortest{
+		{nil},
+		{data{}},
+	}),
 }
 
 func init() {
