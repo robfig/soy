@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"reflect"
 	"runtime"
 	"strconv"
@@ -102,13 +103,12 @@ func (t Template) Execute(wr io.Writer, data map[string]interface{}) (err error)
 		return errors.New("no template found")
 	}
 	defer errRecover(&err)
-	value := reflect.ValueOf(data)
 	state := &state{
 		tmpl:    t.node,
 		wr:      wr,
 		context: []map[string]interface{}{data},
 	}
-	state.walk(value, t.node)
+	state.walk(reflect.ValueOf(nil), t.node)
 	return
 }
 
@@ -137,11 +137,8 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 		}
 
 	case *parse.IfNode:
-		fmt.Println("if..")
 		for _, cond := range node.Conds {
-			fmt.Println("checking cond", cond)
 			if cond.Cond == nil || truthiness(s.eval1(dot, cond.Cond)) {
-				fmt.Println("walking if condition!")
 				s.walk(dot, cond.Body)
 				break
 			}
@@ -205,16 +202,16 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 		s.val = s.evalEq(dot, node.Arg1, node.Arg2)
 		s.val.boolValue = !s.val.boolValue
 	case *parse.LtNode:
-		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, intType, floatType, nullType)
+		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, intType, floatType)
 		s.val = boolValue(s.toFloat(arg1) < s.toFloat(arg2))
 	case *parse.LteNode:
-		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, intType, floatType, nullType)
+		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, intType, floatType)
 		s.val = boolValue(s.toFloat(arg1) <= s.toFloat(arg2))
 	case *parse.GtNode:
-		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, intType, floatType, nullType)
+		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, intType, floatType)
 		s.val = boolValue(s.toFloat(arg1) > s.toFloat(arg2))
 	case *parse.GteNode:
-		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, intType, floatType, nullType)
+		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, intType, floatType)
 		s.val = boolValue(s.toFloat(arg1) >= s.toFloat(arg2))
 
 	case *parse.NotNode:
@@ -256,7 +253,7 @@ func (s *state) toString(val value) string {
 	case stringType:
 		return val.strValue
 	case nullType:
-		return ""
+		return "null"
 	case listType:
 		return fmt.Sprint(val.listValue)
 	case mapType:
@@ -268,52 +265,64 @@ func (s *state) toString(val value) string {
 }
 
 func (s *state) evalDataRef(dot reflect.Value, node *parse.DataRefNode) value {
-	fmt.Printf("evalDataRef: %s on %v\n", node.Key, dot.Interface())
-	val := reflect.ValueOf(s.context.lookup(node.Key))
-	fmt.Println("val:", val)
-	if !val.IsValid() {
-		return nullValue()
-	}
+	val := newValue(reflect.ValueOf(s.context.lookup(node.Key)))
 
 	// handle the accesses
 	for _, accessNode := range node.Access {
-		fmt.Println("access:", accessNode)
-		switch val.Kind() {
-		case reflect.Slice:
-			indexNode, ok := accessNode.(*parse.DataRefIndexNode)
-			if !ok {
-				s.errorf("expecting an index node, got %T", accessNode)
-			}
-			if !val.IsNil() {
-				val = val.Index(indexNode.Index)
-			} else if indexNode.NullSafe {
-				return nullValue()
-			} else {
+		switch node := accessNode.(type) {
+		case *parse.DataRefIndexNode:
+			switch val.valueType {
+			case nullType:
+				if node.NullSafe {
+					return nullValue()
+				}
 				s.errorf("null slice")
+			case listType:
+				val = newValue(reflect.ValueOf(val.listValue[node.Index]))
+			default:
+				s.errorf("DataRefIndex: expected slice, got %v", val.valueType)
 			}
-			fmt.Println("val =>", val)
-			continue
-		case reflect.Map:
-			keyNode, ok := accessNode.(*parse.DataRefKeyNode)
-			if !ok {
-				s.errorf("expecting a key node, got %T", accessNode)
-			}
-			if !val.IsNil() {
-				val = val.MapIndex(reflect.ValueOf(keyNode.Key))
-			} else if keyNode.NullSafe {
-				return nullValue()
-			} else {
+		case *parse.DataRefKeyNode:
+			switch val.valueType {
+			case nullType:
+				if node.NullSafe {
+					return nullValue()
+				}
 				s.errorf("null map")
+			case mapType:
+				val = newValue(reflect.ValueOf(val.mapValue[node.Key]))
+			default:
+				s.errorf("DataRefKey: expected map, got %v", val)
 			}
-			fmt.Println("val =>", val)
-			continue
+		case *parse.DataRefExprNode:
+			if val.valueType == nullType {
+				if node.NullSafe {
+					return nullValue()
+				}
+				s.errorf("null ident")
+			}
+			s.walk(dot, node)
+			switch s.val.valueType {
+			case intType:
+				val = newValue(reflect.ValueOf(val.listValue[s.val.intValue]))
+			case stringType:
+				val = newValue(reflect.ValueOf(val.mapValue[s.val.strValue]))
+			default:
+				s.errorf("DataRefExpr: expected expr to yield int or string, got %v", s.val.valueType)
+			}
 		default:
-			s.errorf("expected a slice or map, got: %T", val.Interface())
+			s.errorf("expected a slice or map, got: %v", val)
 		}
 	}
 
-	// handle the terminal value
-	fmt.Println("terminal:", val)
+	return val
+}
+
+func newValue(val reflect.Value) value {
+	if !val.IsValid() {
+		// TODO: have undefined value different from NullValue
+		return nullValue()
+	}
 	if val.Kind() == reflect.Interface {
 		val = val.Elem() // drill through the interface
 	}
@@ -327,8 +336,26 @@ func (s *state) evalDataRef(dot reflect.Value, node *parse.DataRefNode) value {
 		return boolValue(val.Bool())
 	case reflect.String:
 		return strValue(val.String())
+	case reflect.Slice:
+		if val.Type().ConvertibleTo(reflect.TypeOf([]interface{}{})) {
+			return listValue(val.
+				Convert(reflect.TypeOf([]interface{}{})).
+				Interface().([]interface{}))
+		}
+		log.Printf("slice must be []interface{}, cannot convert from %s", val.Type())
+	case reflect.Map:
+		if val.Type().Key().Kind() != reflect.String {
+			log.Println("map values must have string keys, found:", val.Type().Key())
+			return none
+		}
+		if val.Type().ConvertibleTo(reflect.TypeOf(map[string]interface{}{})) {
+			return mapValue(val.
+				Convert(reflect.TypeOf(map[string]interface{}{})).
+				Interface().(map[string]interface{}))
+		}
+		log.Printf("map must be map[string]interface{}, cannot convert from %s", val.Type())
 	default:
-		s.errorf("unexpected type for variable: %v", val.Kind())
+		log.Println("unexpected type for variable:", val.Kind())
 	}
 	return none
 }

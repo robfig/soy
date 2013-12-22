@@ -194,12 +194,12 @@ var parseTests = []parseTest{
 {ifempty}
   Sorry, no booze.
 {/foreach}`, tList(
-		&ForNode{0, "$goo", &DataRefNode{0, "goose", nil}, tList(
+		&ForNode{0, "goo", &DataRefNode{0, "goose", nil}, tList(
 			&PrintNode{0, &DataRefNode{0, "goose", []Node{&DataRefKeyNode{0, false, "numKids"}}}},
 			newText(0, " goslings."),
 			newText(0, "\n"),
 		), nil},
-		&ForNode{0, "$boo", &DataRefNode{0, "foo", []Node{&DataRefKeyNode{0, false, "booze"}}},
+		&ForNode{0, "boo", &DataRefNode{0, "foo", []Node{&DataRefKeyNode{0, false, "booze"}}},
 			tList(
 				newText(0, "Scary drink "),
 				&PrintNode{0, &DataRefNode{0, "boo", []Node{&DataRefKeyNode{0, false, "name"}}}},
@@ -218,7 +218,7 @@ var parseTests = []parseTest{
     {$i}: {$items[$i - 1]}{\n}
   {/msg}
 {/for}`, tList(
-		&ForNode{0, "$i",
+		&ForNode{0, "i",
 			&FunctionNode{0, "range", []Node{
 				&IntNode{0, 1},
 				&AddNode{bin(

@@ -260,7 +260,7 @@ func (n *SwitchCaseNode) String() string {
 // - "Foreach" node is required to have a DataRefNode as the List
 type ForNode struct {
 	Pos
-	Var     string
+	Var     string // without the leading $
 	List    Node
 	Body    Node
 	IfEmpty Node
@@ -274,7 +274,7 @@ func (n *ForNode) String() string {
 	}
 
 	var expr = "{" + name + " "
-	expr += n.Var + " in " + n.List.String() + "}" + n.Body.String()
+	expr += "$" + n.Var + " in " + n.List.String() + "}" + n.Body.String()
 	if n.IfEmpty != nil {
 		expr += "{ifempty}" + n.IfEmpty.String()
 	}

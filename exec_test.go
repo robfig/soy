@@ -31,16 +31,30 @@ type datatest struct {
 	result string
 }
 
-func multidatatest(name, body string, tests []datatest) []execTest {
+type errortest struct {
+	data map[string]interface{}
+}
+
+func multidatatest(name, body string, successes []datatest, failures []errortest) []execTest {
 	var execTests []execTest
-	for i, t := range tests {
+	for i, t := range successes {
 		execTests = append(execTests, execTest{
-			fmt.Sprintf("%s (%d)", name, i),
+			fmt.Sprintf("%s (success %d) (%v)", name, i, t.data),
 			"test." + name,
 			"{namespace test}{template ." + name + "}" + body + "{/template}",
 			t.result,
 			t.data,
 			true,
+		})
+	}
+	for i, t := range failures {
+		execTests = append(execTests, execTest{
+			fmt.Sprintf("%s (fail %d) (%v)", name, i, t.data),
+			"test." + name,
+			"{namespace test}{template ." + name + "}" + body + "{/template}",
+			"",
+			t.data,
+			false,
 		})
 	}
 	return execTests
@@ -99,6 +113,8 @@ var execTests = []execTest{
 	// 	nil, false},
 }
 
+// TODO: Test nullsafe dataref expression
+
 // multidata tests execute a single, more complicated template multiple times
 // with different data.
 var multidataTests = [][]execTest{
@@ -111,31 +127,57 @@ var multidataTests = [][]execTest{
 {else}
   Y {$moo}
 {/if}`, []datatest{
-		{nil, "Y "},
-		{data{"zoo": "abc"}, "abcY "},
+		{data{"foo": data{"goo": 0}}, "Y null"},
+		{data{"zoo": "abc", "foo": data{"goo": 0}}, "abcY null"},
 		{data{"zoo": "", "boo": 1}, "X"},
 		{data{"zoo": 0, "boo": true}, "X"},
 		{data{"boo": "abc"}, "X"},
-		{data{"boo": "", "foo": data{"goo": 2}}, "Y "},
+		{data{"boo": "", "foo": data{"goo": 2}}, "Y null"},
 		{data{"boo": 0, "foo": data{"goo": 3}}, "0"},
-		{data{"zoo": "zoo", "moo": 3}, "zooY 3"},
+		{data{"boo": 0, "foo": data{"goo": 3.0}}, "0"},
+		{data{"zoo": "zoo", "foo": data{"goo": 0}, "moo": 3}, "zooY 3"},
+	}, []errortest{
+		{nil},
+		{data{"foo": nil}},             // $foo.goo fails
+		{data{"foo": "str"}},           // $foo.goo must be number
+		{data{"foo": true}},            // $foo.goo must be number
+		{data{"foo": data{}}},          // $foo.goo must be number
+		{data{"foo": []interface{}{}}}, // $foo.goo must be number
 	}),
 
 	multidatatest("foreach", `
 {foreach $goo in $goose}
-  {$goose.numKids} goslings.{\n}
+  {$goo.numKids} goslings.{\n}
 {/foreach}
 {foreach $boo in $foo.booze}
   Scary drink {$boo.name}!
-  {if not isLast($boo)}{\n}{/if}
+` /*  {if not isLast($boo)}{\n}{/if} */ +`
 {ifempty}
   Sorry, no booze.
 {/foreach}`, []datatest{
-{data{"},
+		{data{
+			"goose": []interface{}{},
+			"foo":   data{"booze": []interface{}{}},
+		}, "Sorry, no booze."},
+		{data{
+			"goose": []interface{}{},
+			"foo":   data{"booze": []interface{}{data{"name": "boo"}}},
+		}, "Scary drink boo!"},
+		{data{
+			"goose": []interface{}{data{"numKids": 1}, data{"numKids": 2}},
+			"foo":   data{"booze": []interface{}{}},
+		}, "1 goslings.\n2 goslings.\nSorry, no booze."},
+	}, []errortest{
+		{nil},                                    // non-null-safe eval of $foo.booze fails
+		{data{"foo": nil}},                       // ditto
+		{data{"foo": data{}}},                    // $foo.booze must be a list
+		{data{"foo": data{"booze": "str"}}},      // $foo.booze must be list
+		{data{"foo": data{"booze": 5}}},          // $foo.booze must be list
+		{data{"foo": data{"booze": data{}}}},     // $foo.booze must be list
+		{data{"foo": data{"booze": true}}},       // $foo.booze must be list
+		{data{"foo": data{"booze": []data{{}}}}}, // $boo.name fails
 	}),
 }
-
-// TODO: Test non-null-safe access does fail
 
 func init() {
 	for _, mdt := range multidataTests {

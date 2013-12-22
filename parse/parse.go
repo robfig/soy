@@ -347,7 +347,7 @@ func (t *Tree) parseFor(token item) Node {
 		ifempty = t.itemList(itemForeachEnd, itemForEnd)
 	}
 	t.expect(itemRightDelim, "/foreach")
-	return &ForNode{token.pos, vartoken.val, collection, body, ifempty}
+	return &ForNode{token.pos, vartoken.val[1:], collection, body, ifempty}
 }
 
 // "foreach" has just been read.
@@ -368,7 +368,7 @@ func (t *Tree) parseForeach(token item) Node {
 		ifempty = t.itemList(itemForeachEnd)
 	}
 	t.expect(itemRightDelim, "/foreach")
-	return &ForNode{token.pos, vartoken.val,
+	return &ForNode{token.pos, vartoken.val[1:],
 		&DataRefNode{collection.pos, collection.val, nil}, body, ifempty}
 }
 
