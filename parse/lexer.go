@@ -277,6 +277,19 @@ func lex(name, input string) *lexer {
 		name:  name,
 		input: input,
 		items: make(chan item),
+		state: lexText,
+	}
+	go l.run()
+	return l
+}
+
+// lexExpr lexes a single expression.
+func lexExpr(name, input string) *lexer {
+	l := &lexer{
+		name:  name,
+		input: input,
+		items: make(chan item),
+		state: lexInsideTag,
 	}
 	go l.run()
 	return l
@@ -284,7 +297,7 @@ func lex(name, input string) *lexer {
 
 // run runs the state machine for the lexer.
 func (l *lexer) run() {
-	for l.state = lexText; l.state != nil; {
+	for l.state != nil {
 		l.state = l.state(l)
 	}
 }

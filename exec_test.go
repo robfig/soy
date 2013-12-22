@@ -16,46 +16,47 @@ type execTest struct {
 	ok           bool
 }
 
+func exprtestwdata(name, expr, result string, data interface{}) execTest {
+	return execTest{name, "test." + name,
+		"{namespace test}{template ." + name + "}" + expr + "{/template}",
+		result, data, true}
+}
+func exprtest(name, expr, result string) execTest {
+	return exprtestwdata(name, expr, result, nil)
+}
+
+var ifExpr = `{if $zoo}{$zoo}{/if}
+{if $boo}
+  Blah
+{elseif $foo.goo > 2}
+  {$boo}
+{else}
+  Blah {$moo}
+{/if}`
+
 var execTests = []execTest{
 	// Namespace + static template
-	{"empty", "test.empty",
-		"{namespace test}\n{template .empty}{/template}",
-		"",
-		nil, true},
-	{"hello world", "test.sayHello",
-		"{namespace test}\n{template .sayHello}Hello world!{/template}",
-		"Hello world!",
-		nil, true},
+	exprtest("empty", "", ""),
+	exprtest("sayHello", "Hello world!", "Hello world!"),
 	{"hello world w/ soydoc", "test.sayHello",
 		"{namespace test}\n/** Says hello */\n{template .sayHello}Hello world!{/template}",
 		"Hello world!",
 		nil, true},
 
 	// Expression
-	{"arithmetic", "test.arith",
-		"{namespace test}{template .arith}{2*(1+1)/(2%4)}{/template}",
-		"2",
-		nil, true},
-	{"bools", "test.bools",
-		"{namespace test}{template .bools}{not false and (2 > 5.0 or (null ?: true))}{/template}",
-		"true",
-		nil, true},
-	{"comparisons", "test.compare",
-		`{namespace test}{template .compare}{0.5<=1 ? null?:'hello' : (1!=1)}{/template}`,
-		"hello",
-		nil, true},
-	{"string concat", "test.concat",
-		`{namespace test}{template .concat}{'hello' + 'world'}{/template}`,
-		"helloworld",
-		nil, true},
+	exprtest("arithmetic", "{2*(1+1)/(2%4)}", "2"),
+	exprtest("bools", "{not false and (2 > 5.0 or (null ?: true))}", "true"),
+	exprtest("comparisons", `{0.5<=1 ? null?:'hello' : (1!=1)}`, "hello"),
+	exprtest("stringconcat", `{'hello' + 'world'}`, "helloworld"),
+	exprtest("mixedconcat", `{5 + 'world'}`, "5world"),
+	exprtest("elvis", `{null?:'hello'}`, "hello"), // elvis does isNonnull check on first arg
+	// exprtest("elvis2", `{0?:'hello'}`, "0"),
 
-	// TODO: Elvis only checks if cond is defined, not truthy.
+	// Control flow
+	//exprtestdata("if", ifExpr, "Blah", nil),
 
 	// Line joining
-	{"linejoin hello", "test.sayHello",
-		"{namespace test}\n{template .sayHello}\n  Hello\n\n  world!\n{/template}",
-		"Hello world!",
-		nil, true},
+	exprtest("helloLineJoin", "\n  Hello\n\n  world!\n", "Hello world!"),
 
 	// Variables
 	// TODO: "undefined data keys are falsy"
@@ -69,19 +70,19 @@ Hello {$name}!
 		"Hello Rob!",
 		data{"name": "Rob"}, true},
 
-	// 	{"call w/ line join", "test.callLine",
-	// 		`{namespace test}
+	// {"call w/ line join", "test.callLine",
+	// 	`{namespace test}
 
 	// {template .callLine}
-	// Hello <a>{call .guy}</a>!
+	// Hello <a>{call .guy/}</a>!
 	// {/template}
 
 	// {template .guy}
 	//   Rob
 	// {/template}
 	// `,
-	// 		" Hello <a>Rob</a>! ",
-	// 		nil, true},
+	// 	" Hello <a>Rob</a>! ",
+	// 	nil, true},
 
 	// // Invalid
 	// {"missing namespace", ".sayHello",

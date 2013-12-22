@@ -250,21 +250,43 @@ var parseTests = []parseTest{
 			&DataRefKeyNode{0, true, "goo"}},
 		}})},
 
-	// 	{"call", `
-	// {call name=".booTemplate_" /}
-	// {call function="foo.goo.mooTemplate" data="all" /}
-	// {call name=".zooTemplate" data="$animals"}
-	//   {param key="yoo" value="round($too)" /}
-	//   {param key="woo"}poo{/param}
-	//   {param key="doo" kind="html"}doopoo{/param}
-	// {/call}
-	// {call .booTemplate_ /}
-	// {call .zooTemplate data="$animals"}
-	//   {param yoo: round($too) /}
-	//   {param woo}poo{/param}
-	//   {param zoo: 0 /}
-	//   {param doo kind="html"}doopoo{/param}
-	// {/call}`, tList()},
+	{"call", `
+{call name=".booTemplate_" /}
+{call function="foo.goo.mooTemplate" data="all" /}
+{call name=".zooTemplate" data="$animals"}
+  {param key="yoo" value="round($too)" /}
+  {param key="woo"}poo{/param}
+  {param key="doo" kind="html"}doopoo{/param}
+{/call}
+{call .booTemplate_ /}
+{call .zooTemplate data="$animals"}
+  {param yoo: round($too) /}
+  {param woo}poo{/param}
+  {param zoo: 0 /}
+  {param doo kind="html"}doopoo{/param}
+{/call}`, tList(
+		&CallNode{0, ".booTemplate_", false, nil, nil},
+		&CallNode{0, "foo.goo.mooTemplate", true, nil, nil},
+		&CallNode{0, ".zooTemplate", false, &DataRefNode{0, "animals", nil}, []*CallParamNode{
+			{0, "yoo", &FunctionNode{0, "round", []Node{&DataRefNode{0, "too", nil}}}},
+			{0, "woo", tList(newText(0, "poo"))},
+			{0, "doo", tList(newText(0, "doopoo"))}}},
+		&CallNode{0, ".booTemplate_", false, nil, nil},
+		&CallNode{0, ".zooTemplate", false, &DataRefNode{0, "animals", nil}, []*CallParamNode{
+			{0, "yoo", &FunctionNode{0, "round", []Node{&DataRefNode{0, "too", nil}}}},
+			{0, "woo", tList(newText(0, "poo"))},
+			{0, "zoo", &IntNode{0, 0}},
+			{0, "doo", tList(newText(0, "doopoo"))}}},
+	)},
+
+	// "  {let $alpha: $boo.foo /}\n" +
+	// "  {let $beta}Boo!{/let}\n" +
+	// "  {let $gamma}\n" +
+	// "    {for $i in range($alpha)}\n" +
+	// "      {$i}{$beta}\n" +
+	// "    {/for}\n" +
+	// "  {/let}\n" +
+	// "  {let $delta kind=\"html\"}Boo!{/let}\n";
 
 	// {"spaces", " \t\n", noError, `" \t\n"`},
 	// {"text", "some text", noError, `"some text"`},
@@ -392,6 +414,13 @@ func eqTree(t *testing.T, expected, actual Node) bool {
 	case *MsgNode:
 		return eqstr(t, "msg", expected.(*MsgNode).Desc, actual.(*MsgNode).Desc) &&
 			eqTree(t, expected.(*MsgNode).Body, actual.(*MsgNode).Body)
+	case *CallNode:
+		return eqstr(t, "call", expected.(*CallNode).Name, actual.(*CallNode).Name) &&
+			eqTree(t, expected.(*CallNode).Data, actual.(*CallNode).Data) &&
+			eqNodes(t, expected.(*CallNode).Params, actual.(*CallNode).Params)
+	case *CallParamNode:
+		return eqstr(t, "param", expected.(*CallParamNode).Key, actual.(*CallParamNode).Key) &&
+			eqTree(t, expected.(*CallParamNode).Value, actual.(*CallParamNode).Value)
 
 	case *IfNode:
 		return eqNodes(t, expected.(*IfNode).Conds, actual.(*IfNode).Conds)

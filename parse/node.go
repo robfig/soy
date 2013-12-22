@@ -153,6 +153,41 @@ func (n *MsgNode) String() string {
 	return fmt.Sprintf("{msg desc=%q}", n.Desc)
 }
 
+type CallNode struct {
+	Pos
+	Name    string
+	AllData bool
+	Data    Node
+	Params  []*CallParamNode
+}
+
+func (n *CallNode) String() string {
+	var expr = fmt.Sprintf("{call %s", n.Name)
+	if n.AllData {
+		expr += ` data="all"`
+	} else if n.Data != nil {
+		expr += fmt.Sprintf(` data="%s"`, n.Data.String())
+	}
+	if n.Params == nil {
+		return expr + "/}"
+	}
+	expr += "}"
+	for _, param := range n.Params {
+		expr += param.String()
+	}
+	return expr + "{/call}"
+}
+
+type CallParamNode struct {
+	Pos
+	Key   string
+	Value Node
+}
+
+func (n *CallParamNode) String() string {
+	return fmt.Sprintf("{param %s: %s/}", n.Key, n.Value.String())
+}
+
 // Control flow ----------
 
 type IfNode struct {
@@ -211,7 +246,6 @@ type SwitchCaseNode struct {
 
 func (n *SwitchCaseNode) String() string {
 	var expr = "{case "
-
 	for i, val := range n.Values {
 		if i > 0 {
 			expr += ","

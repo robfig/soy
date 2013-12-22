@@ -131,6 +131,8 @@ func (t *Tree) beginTag() Node {
 		return t.parseFor(token)
 	case itemSwitch:
 		return t.parseSwitch(token)
+	case itemCall:
+		return t.parseCall(token)
 	case itemTab, itemNewline, itemCarriageReturn, itemLeftBrace, itemRightBrace:
 		t.expect(itemRightDelim, "special char")
 		return newText(token.pos, specialChars[token.typ])
@@ -145,6 +147,131 @@ func (t *Tree) beginTag() Node {
 		t.errorf("not implemented: %#v", token)
 	}
 	return nil
+}
+
+// "call" has just been read.
+func (t *Tree) parseCall(token item) Node {
+	var templateName string
+	switch tok := t.next(); tok.typ {
+	case itemDotIdent:
+		templateName = tok.val
+	case itemIdent:
+		switch tok2 := t.next(); tok2.typ {
+		case itemDotIdent:
+			templateName = tok.val + tok2.val
+			for tokn := t.next(); tok.typ == itemDotIdent; tokn = t.next() {
+				templateName += tokn.val
+			}
+			t.backup()
+		default:
+			t.backup2(tok)
+		}
+	default:
+		t.backup()
+	}
+	attrs := t.parseAttrs("name", "function", "data")
+
+	if templateName == "" {
+		templateName = attrs["name"]
+	}
+	if templateName == "" {
+		templateName = attrs["function"]
+	}
+	if templateName == "" {
+		t.errorf("call: template name not found")
+	}
+
+	var allData = false
+	var dataNode Node = nil
+	if data, ok := attrs["data"]; ok {
+		fmt.Printf("%q", data)
+		if data == "all" {
+			allData = true
+		} else {
+			dataNode = t.parseQuotedExpr(data)
+		}
+	}
+
+	switch tok := t.next(); tok.typ {
+	case itemRightDelimEnd:
+		return &CallNode{token.pos, templateName, allData, dataNode, nil}
+	case itemRightDelim:
+		body := t.parseCallParams()
+		t.expect(itemLeftDelim, "call")
+		t.expect(itemCallEnd, "call")
+		t.expect(itemRightDelim, "call")
+		return &CallNode{token.pos, templateName, allData, dataNode, body}
+	default:
+		t.unexpected(tok, "error scanning {call}")
+	}
+	panic("unreachable")
+}
+
+// parseCallParams collects a list of call params, of which there are many
+// different forms:
+// {param a: 'expr'/}
+// {param a}expr{/param}
+// {param key="a" value="'expr'"/}
+// {param key="a"}expr{/param}
+func (t *Tree) parseCallParams() []*CallParamNode {
+	var params []*CallParamNode
+	for {
+		var (
+			key   string
+			value Node
+		)
+		initial := t.expect(itemLeftDelim, "param")
+		cmd := t.next()
+		if cmd.typ == itemCallEnd {
+			t.backup2(initial)
+			return params
+		}
+		if cmd.typ != itemParam {
+			t.errorf("expected param declaration")
+		}
+		firstIdent := t.expect(itemIdent, "param")
+		switch tok := t.next(); tok.typ {
+		case itemColon:
+			key = firstIdent.val
+			value = t.parseExpr(0)
+			t.expect(itemRightDelimEnd, "param")
+			params = append(params, &CallParamNode{initial.pos, key, value})
+			continue
+		case itemRightDelim:
+			key = firstIdent.val
+			value = t.itemList(itemParamEnd)
+			t.expect(itemRightDelim, "param")
+			params = append(params, &CallParamNode{initial.pos, key, value})
+			continue
+		case itemIdent:
+			key = firstIdent.val
+			t.backup()
+		case itemEquals:
+			t.backup2(firstIdent)
+
+		default:
+			t.errorf("expected :, }, or = in param, got %q", tok)
+		}
+
+		attrs := t.parseAttrs("key", "value", "kind")
+		var ok bool
+		if key == "" {
+			if key, ok = attrs["key"]; !ok {
+				t.errorf("param key not found")
+			}
+		}
+		var valueStr string
+		if valueStr, ok = attrs["value"]; !ok {
+			t.expect(itemRightDelim, "param")
+			value = t.itemList(itemParamEnd)
+			t.expect(itemRightDelim, "param")
+		} else {
+			value = t.parseQuotedExpr(valueStr)
+			t.expect(itemRightDelimEnd, "param")
+		}
+		params = append(params, &CallParamNode{initial.pos, key, value})
+	}
+	return params
 }
 
 // "switch" has just been read.
@@ -302,7 +429,8 @@ func (t *Tree) parseAttrs(allowedNames ...string) map[string]string {
 			if err != nil {
 				t.error(err)
 			}
-		case itemRightDelim:
+		case itemRightDelim, itemRightDelimEnd:
+			t.backup()
 			return result
 		default:
 			t.errorf("unexpected item parsing attributes: %v", tok)
@@ -314,6 +442,7 @@ func (t *Tree) parseAttrs(allowedNames ...string) map[string]string {
 func (t *Tree) parseMsg(token item) Node {
 	const ctx = "msg"
 	var attrs = t.parseAttrs("desc", "meaning")
+	t.expect(itemRightDelim, ctx)
 	var node = &MsgNode{token.pos, attrs["desc"], t.itemList(itemMsgEnd)}
 	t.expect(itemRightDelim, ctx)
 	return node
@@ -337,6 +466,15 @@ func (t *Tree) parseTemplate(token item) Node {
 }
 
 // Expressions ----------
+
+// parseQuotedExpr ignores the current lex/parse state and parses the given
+// string as a standalone expression.
+func (t *Tree) parseQuotedExpr(str string) Node {
+	return (&Tree{
+		lex:   lexExpr("", str),
+		funcs: t.funcs,
+	}).parseExpr(0)
+}
 
 var precedence = map[itemType]int{
 	itemNot:    6,
@@ -395,7 +533,7 @@ func (t *Tree) parseExprFirstTerm() Node {
 	case isValue(tok):
 		return t.newValueNode(tok)
 	default:
-		t.errorf("unexpected token %q", tok)
+		t.errorf("unexpected token %v", tok)
 	}
 	return nil
 }
