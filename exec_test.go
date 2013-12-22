@@ -2,6 +2,7 @@ package soy
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 )
 
@@ -12,11 +13,11 @@ type execTest struct {
 	templateName string
 	input        string
 	output       string
-	data         interface{}
+	data         map[string]interface{}
 	ok           bool
 }
 
-func exprtestwdata(name, expr, result string, data interface{}) execTest {
+func exprtestwdata(name, expr, result string, data map[string]interface{}) execTest {
 	return execTest{name, "test." + name,
 		"{namespace test}{template ." + name + "}" + expr + "{/template}",
 		result, data, true}
@@ -25,14 +26,25 @@ func exprtest(name, expr, result string) execTest {
 	return exprtestwdata(name, expr, result, nil)
 }
 
-var ifExpr = `{if $zoo}{$zoo}{/if}
-{if $boo}
-  Blah
-{elseif $foo.goo > 2}
-  {$boo}
-{else}
-  Blah {$moo}
-{/if}`
+type datatest struct {
+	data   map[string]interface{}
+	result string
+}
+
+func multidatatest(name, body string, tests []datatest) []execTest {
+	var execTests []execTest
+	for i, t := range tests {
+		execTests = append(execTests, execTest{
+			fmt.Sprintf("%s (%d)", name, i),
+			"test." + name,
+			"{namespace test}{template ." + name + "}" + body + "{/template}",
+			t.result,
+			t.data,
+			true,
+		})
+	}
+	return execTests
+}
 
 var execTests = []execTest{
 	// Namespace + static template
@@ -52,21 +64,17 @@ var execTests = []execTest{
 	exprtest("elvis", `{null?:'hello'}`, "hello"), // elvis does isNonnull check on first arg
 	// exprtest("elvis2", `{0?:'hello'}`, "0"),
 
-	// Control flow
-	//exprtestdata("if", ifExpr, "Blah", nil),
-
 	// Line joining
 	exprtest("helloLineJoin", "\n  Hello\n\n  world!\n", "Hello world!"),
 
 	// Variables
-	// TODO: "undefined data keys are falsy"
 	{"hello world w/ variable", "test.sayHello",
 		`{namespace test}
 
-/** @param name */
-{template .sayHello}
-Hello {$name}!
-{/template}`,
+	/** @param name */
+	{template .sayHello}
+	Hello {$name}!
+	{/template}`,
 		"Hello Rob!",
 		data{"name": "Rob"}, true},
 
@@ -89,6 +97,50 @@ Hello {$name}!
 	// 	"{template .sayHello}Hello world!{/template}",
 	// 	"",
 	// 	nil, false},
+}
+
+// multidata tests execute a single, more complicated template multiple times
+// with different data.
+var multidataTests = [][]execTest{
+	multidatatest("if", `
+{if $zoo}{$zoo}{/if}
+{if $boo}
+  X
+{elseif $foo.goo > 2}
+  {$boo}
+{else}
+  Y {$moo}
+{/if}`, []datatest{
+		{nil, "Y "},
+		{data{"zoo": "abc"}, "abcY "},
+		{data{"zoo": "", "boo": 1}, "X"},
+		{data{"zoo": 0, "boo": true}, "X"},
+		{data{"boo": "abc"}, "X"},
+		{data{"boo": "", "foo": data{"goo": 2}}, "Y "},
+		{data{"boo": 0, "foo": data{"goo": 3}}, "0"},
+		{data{"zoo": "zoo", "moo": 3}, "zooY 3"},
+	}),
+
+	multidatatest("foreach", `
+{foreach $goo in $goose}
+  {$goose.numKids} goslings.{\n}
+{/foreach}
+{foreach $boo in $foo.booze}
+  Scary drink {$boo.name}!
+  {if not isLast($boo)}{\n}{/if}
+{ifempty}
+  Sorry, no booze.
+{/foreach}`, []datatest{
+{data{"},
+	}),
+}
+
+// TODO: Test non-null-safe access does fail
+
+func init() {
+	for _, mdt := range multidataTests {
+		execTests = append(execTests, mdt...)
+	}
 }
 
 func TestExec(t *testing.T) {

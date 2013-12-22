@@ -257,7 +257,7 @@ func (n *SwitchCaseNode) String() string {
 
 // Note:
 // - "For" node is required to have a range() call as the List
-// - "Foreach" node is required to have a VariableNode as the List
+// - "Foreach" node is required to have a DataRefNode as the List
 type ForNode struct {
 	Pos
 	Var     string

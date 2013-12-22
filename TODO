@@ -1,6 +1,4 @@
 Now:
-- evaluation inside attribute values
-  e.g. "help text", "ident", "true", "$data.ref", "'str'"
 - exec for if/for/switch/call
 - evaluate data ref expression language (incl map/list access)
 - print directives (html escaping by default)

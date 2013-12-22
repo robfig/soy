@@ -12,68 +12,42 @@ import (
 	"github.com/robfig/soy/parse"
 )
 
-// value represents intermediate values in expression computations
-type value struct {
-	valueType
-	intValue   int64
-	floatValue float64
-	boolValue  bool
-	strValue   string
-	listValue  []interface{}
-	mapValue   map[string]interface{}
+type scope []map[string]interface{} // a stack of variable scopes
+
+// push creates a new scope
+func (s scope) push() {
+	s = append(s, make(map[string]interface{}))
 }
 
-func nullValue() value {
-	return value{valueType: nullType}
+// pop discards the last scope pushed.
+func (s scope) pop() {
+	s = s[:len(s)-1]
 }
 
-func intValue(val int64) value {
-	return value{valueType: intType, intValue: val}
+// set adds a new binding to the deepest scope
+func (s scope) set(k string, v interface{}) {
+	s[len(s)-1][k] = v
 }
 
-func floatValue(val float64) value {
-	return value{valueType: floatType, floatValue: val}
+// lookup checks the variable scopes, outer to inner, for the given key
+func (s scope) lookup(k string) interface{} {
+	for i := range s {
+		if v, ok := s[i][k]; ok {
+			return v
+		}
+	}
+	return nil
 }
-
-func boolValue(val bool) value {
-	return value{valueType: boolType, boolValue: val}
-}
-
-func strValue(val string) value {
-	return value{valueType: stringType, strValue: val}
-}
-
-func listValue(val []interface{}) value {
-	return value{valueType: listType, listValue: val}
-}
-
-func mapValue(val map[string]interface{}) value {
-	return value{valueType: mapType, mapValue: val}
-}
-
-type valueType int
-
-const (
-	invalid valueType = iota
-	nullType
-	intType
-	floatType
-	boolType
-	stringType
-	listType
-	mapType
-)
-
-var none = value{}
 
 // state represents the state of an execution. It's not part of the
 // template so that multiple executions of the same template
 // can execute in parallel.
 type state struct {
-	tmpl *parse.TemplateNode
-	wr   io.Writer
-	node parse.Node // current node, for errors
-	val  value      // temp value for expression being computed
+	tmpl    *parse.TemplateNode
+	wr      io.Writer
+	node    parse.Node // current node, for errors
+	val     value      // temp value for expression being computed
+	context scope      // variable scope
 }
 
 // variable holds the dynamic value of a variable such as $, $x etc.
@@ -101,7 +75,7 @@ func doublePercent(str string) string {
 // errorf formats the error and terminates processing.
 func (s *state) errorf(format string, args ...interface{}) {
 	name := doublePercent(s.tmpl.Name)
-	format = fmt.Sprintf("template: %s: %s", name, format)
+	format = fmt.Sprintf("template: %s:%s %s", name, s.node, format)
 	panic(fmt.Errorf(format, args...))
 }
 
@@ -123,15 +97,16 @@ func errRecover(errp *error) {
 
 // Execute applies a parsed template to the specified data object,
 // and writes the output to wr.
-func (t Template) Execute(wr io.Writer, data interface{}) (err error) {
+func (t Template) Execute(wr io.Writer, data map[string]interface{}) (err error) {
 	if t.node == nil {
 		return errors.New("no template found")
 	}
 	defer errRecover(&err)
 	value := reflect.ValueOf(data)
 	state := &state{
-		tmpl: t.node,
-		wr:   wr,
+		tmpl:    t.node,
+		wr:      wr,
+		context: []map[string]interface{}{data},
 	}
 	state.walk(value, t.node)
 	return
@@ -160,6 +135,33 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 		if _, err := s.wr.Write(node.Text); err != nil {
 			s.errorf("%s", err)
 		}
+
+	case *parse.IfNode:
+		fmt.Println("if..")
+		for _, cond := range node.Conds {
+			fmt.Println("checking cond", cond)
+			if cond.Cond == nil || truthiness(s.eval1(dot, cond.Cond)) {
+				fmt.Println("walking if condition!")
+				s.walk(dot, cond.Body)
+				break
+			}
+		}
+	case *parse.ForNode:
+		var list = s.eval1(dot, node.List)
+		if list.valueType != listType {
+			s.errorf("expected list type to iterate")
+		}
+		if len(list.listValue) == 0 && node.IfEmpty != nil {
+			s.walk(dot, node.IfEmpty)
+			break
+		}
+		s.context.push()
+		for _, item := range list.listValue {
+			s.context.set(node.Var, item)
+			s.walk(dot, node.Body)
+		}
+		s.context.pop()
+	//case *parse.SwitchNode:
 
 	case *parse.NullNode:
 		s.val = nullValue()
@@ -203,16 +205,16 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 		s.val = s.evalEq(dot, node.Arg1, node.Arg2)
 		s.val.boolValue = !s.val.boolValue
 	case *parse.LtNode:
-		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, intType, floatType)
+		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, intType, floatType, nullType)
 		s.val = boolValue(s.toFloat(arg1) < s.toFloat(arg2))
 	case *parse.LteNode:
-		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, intType, floatType)
+		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, intType, floatType, nullType)
 		s.val = boolValue(s.toFloat(arg1) <= s.toFloat(arg2))
 	case *parse.GtNode:
-		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, intType, floatType)
+		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, intType, floatType, nullType)
 		s.val = boolValue(s.toFloat(arg1) > s.toFloat(arg2))
 	case *parse.GteNode:
-		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, intType, floatType)
+		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2, intType, floatType, nullType)
 		s.val = boolValue(s.toFloat(arg1) >= s.toFloat(arg2))
 
 	case *parse.NotNode:
@@ -254,7 +256,7 @@ func (s *state) toString(val value) string {
 	case stringType:
 		return val.strValue
 	case nullType:
-		return "null"
+		return ""
 	case listType:
 		return fmt.Sprint(val.listValue)
 	case mapType:
@@ -266,10 +268,54 @@ func (s *state) toString(val value) string {
 }
 
 func (s *state) evalDataRef(dot reflect.Value, node *parse.DataRefNode) value {
-	// TODO: Evaluate data refs
-	val := dot.MapIndex(reflect.ValueOf(node.Key)).Elem()
+	fmt.Printf("evalDataRef: %s on %v\n", node.Key, dot.Interface())
+	val := reflect.ValueOf(s.context.lookup(node.Key))
+	fmt.Println("val:", val)
 	if !val.IsValid() {
-		s.errorf("variable %s is not valid", node.Key)
+		return nullValue()
+	}
+
+	// handle the accesses
+	for _, accessNode := range node.Access {
+		fmt.Println("access:", accessNode)
+		switch val.Kind() {
+		case reflect.Slice:
+			indexNode, ok := accessNode.(*parse.DataRefIndexNode)
+			if !ok {
+				s.errorf("expecting an index node, got %T", accessNode)
+			}
+			if !val.IsNil() {
+				val = val.Index(indexNode.Index)
+			} else if indexNode.NullSafe {
+				return nullValue()
+			} else {
+				s.errorf("null slice")
+			}
+			fmt.Println("val =>", val)
+			continue
+		case reflect.Map:
+			keyNode, ok := accessNode.(*parse.DataRefKeyNode)
+			if !ok {
+				s.errorf("expecting a key node, got %T", accessNode)
+			}
+			if !val.IsNil() {
+				val = val.MapIndex(reflect.ValueOf(keyNode.Key))
+			} else if keyNode.NullSafe {
+				return nullValue()
+			} else {
+				s.errorf("null map")
+			}
+			fmt.Println("val =>", val)
+			continue
+		default:
+			s.errorf("expected a slice or map, got: %T", val.Interface())
+		}
+	}
+
+	// handle the terminal value
+	fmt.Println("terminal:", val)
+	if val.Kind() == reflect.Interface {
+		val = val.Elem() // drill through the interface
 	}
 	switch val.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
@@ -329,6 +375,8 @@ func (s *state) toFloat(val value) float64 {
 		return val.floatValue
 	case intType:
 		return float64(val.intValue)
+	case nullType:
+		return float64(0)
 	}
 	s.errorf("expected int or float, got: %#v", val)
 	return 0
@@ -356,3 +404,59 @@ func (s *state) eval1(dot reflect.Value, n parse.Node, resultTypes ...valueType)
 	s.errorf("invalid value found")
 	return none
 }
+
+// expression values
+
+// value represents intermediate values in expression computations
+type value struct {
+	valueType
+	intValue   int64
+	floatValue float64
+	boolValue  bool
+	strValue   string
+	listValue  []interface{}
+	mapValue   map[string]interface{}
+}
+
+func nullValue() value {
+	return value{valueType: nullType}
+}
+
+func intValue(val int64) value {
+	return value{valueType: intType, intValue: val}
+}
+
+func floatValue(val float64) value {
+	return value{valueType: floatType, floatValue: val}
+}
+
+func boolValue(val bool) value {
+	return value{valueType: boolType, boolValue: val}
+}
+
+func strValue(val string) value {
+	return value{valueType: stringType, strValue: val}
+}
+
+func listValue(val []interface{}) value {
+	return value{valueType: listType, listValue: val}
+}
+
+func mapValue(val map[string]interface{}) value {
+	return value{valueType: mapType, mapValue: val}
+}
+
+type valueType int
+
+const (
+	invalid valueType = iota
+	nullType
+	intType
+	floatType
+	boolType
+	stringType
+	listType
+	mapType
+)
+
+var none = value{}
