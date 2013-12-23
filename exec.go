@@ -140,6 +140,8 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 		s.context.push()
 		for i := 0; i < list.Len(); i++ {
 			s.context.set(node.Var, list.Index(i))
+			s.context.set(node.Var+"__index", val(i))
+			s.context.set(node.Var+"__lastIndex", val(list.Len()-1))
 			s.walk(dot, node.Body)
 		}
 		s.context.pop()
@@ -157,6 +159,9 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 				return
 			}
 		}
+
+	case *parse.FunctionNode:
+		s.val = s.evalFunc(node)
 
 	case *parse.NullNode:
 		s.val = nullValue
@@ -248,6 +253,25 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 	default:
 		s.errorf("unknown node: %T", node)
 	}
+}
+
+func (s *state) evalFunc(node *parse.FunctionNode) reflect.Value {
+	switch node.Name {
+	case "index":
+		key := node.Args[0].(*parse.DataRefNode).Key
+		index := s.context.lookup(key + "__index").Int()
+		return val(index)
+	case "isFirst":
+		key := node.Args[0].(*parse.DataRefNode).Key
+		index := s.context.lookup(key + "__index").Int()
+		return val(index == 0)
+	case "isLast":
+		key := node.Args[0].(*parse.DataRefNode).Key
+		index := s.context.lookup(key + "__index").Int()
+		lastIndex := s.context.lookup(key + "__lastIndex").Int()
+		return val(index == lastIndex)
+	}
+	panic(fmt.Errorf("unrecognized function name: %s", node.Name))
 }
 
 func (s *state) evalDataRef(dot reflect.Value, node *parse.DataRefNode) reflect.Value {

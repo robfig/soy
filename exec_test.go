@@ -120,8 +120,9 @@ func TestForeach(t *testing.T) {
   {$goo.numKids} goslings.{\n}
 {/foreach}
 {foreach $boo in $foo.booze}
-  Scary drink {$boo.name}!
-` /*  {if not isLast($boo)}{\n}{/if} */ +`
+  {if isFirst($boo)}->{\n}{/if}
+  {index($boo)}: Scary drink {$boo.name}!
+  {if not isLast($boo)}{\n}{/if}
 {ifempty}
   Sorry, no booze.
 {/foreach}`, []datatest{
@@ -132,7 +133,11 @@ func TestForeach(t *testing.T) {
 		{data{
 			"goose": []interface{}{},
 			"foo":   data{"booze": []interface{}{data{"name": "boo"}}},
-		}, "Scary drink boo!"},
+		}, "->\n0: Scary drink boo!"},
+		{data{
+			"goose": []interface{}{},
+			"foo":   data{"booze": []interface{}{data{"name": "a"}, data{"name": "b"}}},
+		}, "->\n0: Scary drink a!\n1: Scary drink b!"},
 		{data{
 			"goose": []interface{}{data{"numKids": 1}, data{"numKids": 2}},
 			"foo":   data{"booze": []interface{}{}},
