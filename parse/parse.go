@@ -350,28 +350,6 @@ func (t *Tree) parseFor(token item) Node {
 	return &ForNode{token.pos, vartoken.val[1:], collection, body, ifempty}
 }
 
-// "foreach" has just been read.
-func (t *Tree) parseForeach(token item) Node {
-	var vartoken = t.expect(itemDollarIdent, "foreach")
-	var intoken = t.expect(itemIdent, "foreach")
-	if intoken.val != "in" {
-		t.errorf("expected 'in' in for")
-	}
-	var collection = t.expect(itemDollarIdent, "foreach")
-	t.expect(itemRightDelim, "foreach")
-
-	var body = t.itemList(itemIfempty, itemForeachEnd)
-	t.backup()
-	var ifempty Node
-	if t.next().typ == itemIfempty {
-		t.expect(itemRightDelim, "ifempty")
-		ifempty = t.itemList(itemForeachEnd)
-	}
-	t.expect(itemRightDelim, "/foreach")
-	return &ForNode{token.pos, vartoken.val[1:],
-		&DataRefNode{collection.pos, collection.val, nil}, body, ifempty}
-}
-
 // "if" has just been read.
 func (t *Tree) parseIf(token item) Node {
 	var conds []*IfCondNode

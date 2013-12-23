@@ -13,13 +13,15 @@ var val = func(v interface{}) reflect.Value { //reflect.ValueOf
 	if reflect.TypeOf(v) == reflect.TypeOf(reflect.Value{}) {
 		panic("passed value to val()")
 	}
+	if v == nil {
+		return nullValue
+	}
 	return reflect.ValueOf(v)
 }
 
-// TODO: Double check that nils don't end up equal to undefined
 var (
 	undefinedValue = reflect.Value{}
-	nullValue      = reflect.ValueOf(nil)
+	nullValue      = reflect.ValueOf((*reflect.Value)(nil))
 )
 
 // type tests
@@ -60,7 +62,10 @@ func accessIndex(ref, access reflect.Value, index int) reflect.Value {
 
 func accessKey(ref, access reflect.Value, key string) reflect.Value {
 	result := ref.MapIndex(val(key))
-	for result.Kind() == reflect.Interface {
+	if result.Kind() == reflect.Interface {
+		if result.IsNil() {
+			return nullValue
+		}
 		result = result.Elem()
 	}
 	return result

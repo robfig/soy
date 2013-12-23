@@ -6,7 +6,6 @@ import (
 	"io"
 	"reflect"
 	"runtime"
-	"strings"
 
 	"github.com/robfig/soy/parse"
 )
@@ -60,19 +59,9 @@ func (s *state) at(node parse.Node) {
 	s.node = node
 }
 
-// doublePercent returns the string with %'s replaced by %%, if necessary,
-// so it can be used safely inside a Printf format string.
-func doublePercent(str string) string {
-	if strings.Contains(str, "%") {
-		str = strings.Replace(str, "%", "%%", -1)
-	}
-	return str
-}
-
 // errorf formats the error and terminates processing.
 func (s *state) errorf(format string, args ...interface{}) {
-	name := doublePercent(s.tmpl.Name)
-	format = fmt.Sprintf("template: %s:%s %s", name, s.node, format)
+	format = fmt.Sprintf("template: %s:%s %s", s.tmpl.Name, s.node, format)
 	panic(fmt.Errorf(format, args...))
 }
 
@@ -87,7 +76,7 @@ func errRecover(errp *error) {
 		case error:
 			*errp = err
 		default:
-			panic(e)
+			*errp = fmt.Errorf("%v", e)
 		}
 	}
 }
@@ -179,6 +168,18 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 		s.val = val(node.Value)
 	case *parse.BoolNode:
 		s.val = val(node.True)
+	case *parse.ListLiteralNode:
+		var items = make([]interface{}, len(node.Items))
+		for i, item := range node.Items {
+			items[i] = s.eval(dot, item)
+		}
+		s.val = val(items)
+	case *parse.MapLiteralNode:
+		var items = make(map[string]interface{}, len(node.Items))
+		for k, v := range node.Items {
+			items[k] = s.eval(dot, v)
+		}
+		s.val = val(items)
 
 	case *parse.AddNode:
 		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2)
@@ -232,7 +233,7 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 		s.val = val(truthiness(arg1) || truthiness(arg2))
 	case *parse.ElvisNode:
 		var arg1 = s.eval(dot, node.Arg1)
-		if truthiness(arg1) {
+		if arg1 != nullValue && arg1 != undefinedValue {
 			s.val = arg1
 		} else {
 			s.val = s.eval(dot, node.Arg2)
