@@ -125,14 +125,14 @@ var multidataTests = [][]execTest{
 {elseif $foo.goo > 2}
   {$boo}
 {else}
-  Y {$moo}
+  Y {$moo?:''}
 {/if}`, []datatest{
-		{data{"foo": data{"goo": 0}}, "Y null"},
-		{data{"zoo": "abc", "foo": data{"goo": 0}}, "abcY null"},
+		{data{"foo": data{"goo": 0}}, "Y "},
+		{data{"zoo": "abc", "foo": data{"goo": 0}}, "abcY "},
 		{data{"zoo": "", "boo": 1}, "X"},
 		{data{"zoo": 0, "boo": true}, "X"},
 		{data{"boo": "abc"}, "X"},
-		{data{"boo": "", "foo": data{"goo": 2}}, "Y null"},
+		{data{"boo": "", "foo": data{"goo": 2}}, "Y "},
 		{data{"boo": 0, "foo": data{"goo": 3}}, "0"},
 		{data{"boo": 0, "foo": data{"goo": 3.0}}, "0"},
 		{data{"zoo": "zoo", "foo": data{"goo": 0}, "moo": 3}, "zooY 3"},
@@ -146,15 +146,15 @@ var multidataTests = [][]execTest{
 	}),
 
 	multidatatest("foreach", `
-{foreach $goo in $goose}
-  {$goo.numKids} goslings.{\n}
-{/foreach}
-{foreach $boo in $foo.booze}
-  Scary drink {$boo.name}!
-` /*  {if not isLast($boo)}{\n}{/if} */ +`
-{ifempty}
-  Sorry, no booze.
-{/foreach}`, []datatest{
+	{foreach $goo in $goose}
+	  {$goo.numKids} goslings.{\n}
+	{/foreach}
+	{foreach $boo in $foo.booze}
+	  Scary drink {$boo.name}!
+	` /*  {if not isLast($boo)}{\n}{/if} */ +`
+	{ifempty}
+	  Sorry, no booze.
+	{/foreach}`, []datatest{
 		{data{
 			"goose": []interface{}{},
 			"foo":   data{"booze": []interface{}{}},
@@ -182,14 +182,14 @@ var multidataTests = [][]execTest{
 	// TODO: Is it an error if the switchValue "$boo" is undefined?
 
 	multidatatest("switch", `
-{switch $boo} {case 0}A
-  {case $foo.goo}
-    B
-  {case -1, 1, $moo}
-    C
-  {default}
-    D
-{/switch}`, []datatest{
+	{switch $boo} {case 0}A
+	  {case $foo.goo}
+	    B
+	  {case -1, 1, $moo}
+	    C
+	  {default}
+	    D
+	{/switch}`, []datatest{
 		{data{
 			"boo": 0,
 		}, "A"},
@@ -214,10 +214,7 @@ var multidataTests = [][]execTest{
 			"foo": data{"goo": 5},
 			"moo": 2,
 		}, "C"},
-	}, []errortest{
-		{nil},
-		{data{}},
-	}),
+	}, []errortest{}),
 }
 
 func init() {
