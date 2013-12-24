@@ -46,6 +46,7 @@ var soyFuncs = map[string]soyFunc{
 	"randomInt":   {funcRandomInt, []int{1}},
 	"strContains": {funcStrContains, []int{2}},
 	"range":       {funcRange, []int{1, 2, 3}},
+	"hasData":     {funcHasData, []int{0}},
 }
 
 func funcIsNonnull(v ...reflect.Value) reflect.Value {
@@ -172,4 +173,8 @@ func funcRange(v ...reflect.Value) reflect.Value {
 		i++
 	}
 	return val(indices)
+}
+
+func funcHasData(v ...reflect.Value) reflect.Value {
+	return val(true)
 }

@@ -156,6 +156,9 @@ func (t *Tree) beginTag() Node {
 	case itemNil, itemSpace, itemTab, itemNewline, itemCarriageReturn, itemLeftBrace, itemRightBrace:
 		t.expect(itemRightDelim, "special char")
 		return newText(token.pos, specialChars[token.typ])
+	case itemPrint:
+		t.next()
+		fallthrough
 	case itemIdent, itemDollarIdent, itemNull, itemBool, itemFloat, itemInteger, itemString, itemNegate, itemNot, itemLeftBracket:
 		// print is implicit, so the tag may also begin with any value type, or the
 		// "not" operator.
@@ -463,9 +466,17 @@ func (t *Tree) parseMsg(token item) Node {
 
 func (t *Tree) parseNamespace(token item) Node {
 	const ctx = "namespace"
-	var id = t.expect(itemIdent, ctx)
-	t.expect(itemRightDelim, ctx)
-	return newNamespace(token.pos, id.val)
+	var name = t.expect(itemIdent, ctx).val
+	for {
+		switch part := t.next(); part.typ {
+		case itemDotIdent:
+			name += part.val
+		case itemRightDelim:
+			return newNamespace(token.pos, name)
+		default:
+			t.errorf("unexpected token parsing namespace: %v", part)
+		}
+	}
 }
 
 func (t *Tree) parseTemplate(token item) Node {
@@ -796,6 +807,10 @@ func (t *Tree) newValueNode(tok item) Node {
 		// this is a function call.  get all the arguments.
 		node := &FunctionNode{tok.pos, tok.val, nil}
 		t.expect(itemLeftParen, "expression: function call")
+		if t.peek().typ == itemRightParen {
+			t.next()
+			return node
+		}
 		for {
 			node.Args = append(node.Args, t.parseExpr(0))
 			switch tok := t.next(); tok.typ {

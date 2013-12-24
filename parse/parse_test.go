@@ -39,7 +39,7 @@ func bin(n1, n2 Node) binaryOpNode {
 
 var parseTests = []parseTest{
 	{"empty", "", tList()},
-	{"namespace", "{namespace example}", tList(newNamespace(0, "example"))},
+	{"namespace", "{namespace soy.example}", tList(newNamespace(0, "soy.example"))},
 	{"empty template", "{template .name}{/template}", tList(tTemplate(".name"))},
 	{"text template", "{template .name}\nHello world!\n{/template}",
 		tList(tTemplate(".name", newText(0, "Hello world!")))},
@@ -57,6 +57,7 @@ var parseTests = []parseTest{
 			&StringNode{0, "hello"},
 			&StringNode{0, "world"})},
 	})},
+	{"explicit print", `{print 'hello'}`, tList(&PrintNode{0, &StringNode{0, "hello"}})},
 
 	{"rawtext (linejoin)", "\n  a \n\tb\r\n  c  \n\n", tList(newText(0, "a b c"))},
 	{"rawtext+html", "\n  a <br>\n\tb\r\n\n  c\n\n<br> ", tList(newText(0, "a <br>b c<br> "))},
@@ -137,6 +138,10 @@ var parseTests = []parseTest{
 				&ElvisNode{bin(
 					&NullNode{0},
 					&BoolNode{0, true})})})},
+	})},
+
+	{"function", `{hasData()}`, tList(&PrintNode{0,
+		&FunctionNode{0, "hasData", nil},
 	})},
 
 	{"empty list", `{[]}`, tList(&PrintNode{0,

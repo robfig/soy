@@ -27,10 +27,16 @@ func (tofu Tofu) Parse(input string) error {
 		return errors.New("empty")
 	}
 
-	// require namespace as the first node.
-	namespace, ok := nodes[0].(*parse.NamespaceNode)
-	if !ok {
-		return errors.New("input must begin with a namespace declaration")
+	// require namespace before any templates
+	var namespace *parse.NamespaceNode
+	for _, node := range nodes {
+		var ok bool
+		if namespace, ok = node.(*parse.NamespaceNode); ok {
+			break
+		}
+		if _, ok = node.(*parse.TemplateNode); ok {
+			return errors.New("namespace must come before any templates")
+		}
 	}
 
 	// get all the template nodes

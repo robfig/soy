@@ -87,6 +87,20 @@ var lexTests = []lexTest{
 		tRight,
 		tEOF,
 	}},
+	{"if expr", `{if hasData() and $name}{/if}`, []item{
+		tLeft,
+		{itemIf, 0, "if"},
+		{itemIdent, 0, "hasData"},
+		{itemLeftParen, 0, "("},
+		{itemRightParen, 0, ")"},
+		{itemAnd, 0, "and"},
+		{itemDollarIdent, 0, "$name"},
+		tRight,
+		tLeft,
+		{itemIfEnd, 0, "/if"},
+		tRight,
+		tEOF,
+	}},
 
 	{"special characters", `{sp}{nil}{\r}{\n}{\t}{lb}{rb}`, []item{
 		tLeft, {itemSpace, 0, "sp"}, // {sp}
