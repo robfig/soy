@@ -55,8 +55,9 @@ const (
 	itemInteger // e.g. 42
 	itemFloat   // e.g. 1.0
 	itemString  // e.g. 'hello world'
-	itemComma   // , (used in function invocations)
-	itemColon   // : (used in maps)
+	itemComma   // , (used in function invocations, lists, maps, print directives)
+	itemColon   // : (used in maps, print directives, operators)
+	itemPipe    // | (used in print directives)
 
 	// Data ref access tokens
 	itemIdent            // identifier (e.g. function name)
@@ -86,8 +87,7 @@ const (
 	itemOr     // or
 	itemAnd    // and
 	itemTernIf // ?
-	//	itemTernElse // :
-	itemElvis // ?:
+	itemElvis  // ?:
 
 	itemLeftParen  // (
 	itemRightParen // )
@@ -96,10 +96,6 @@ const (
 	itemSoyDocStart // /* or //
 	itemSoyDocParam // @param name or @param? name
 	itemSoyDocEnd   // */ or \n
-
-	// Print directives - |<directive>[:arg1[,arg2..]]
-	itemDirective
-	itemDirectiveArg
 
 	// Commands
 	itemCommand     // used only to delimit the commands
@@ -391,7 +387,7 @@ func (l *lexer) errorf(format string, args ...interface{}) stateFn {
 func backupAndMaybeEmitText(l *lexer) {
 	l.backup()
 	if l.pos > l.start {
-		if allSpace(l.input[l.start:l.pos]) {
+		if allSpaceWithNewline(l.input[l.start:l.pos]) {
 			l.ignore()
 		} else {
 			l.emit(itemText)
@@ -447,7 +443,7 @@ func lexRightDelim(l *lexer) stateFn {
 	return lexText
 }
 
-// lexBeginTag handles these ambiguities:
+// lexBeginTag handles an ambiguity:
 //  - "/" is arithmetic or begins the "/if" command?
 func lexBeginTag(l *lexer) stateFn {
 	switch l.peek() {
@@ -457,65 +453,8 @@ func lexBeginTag(l *lexer) stateFn {
 	return lexInsideTag
 }
 
-// lexInsideTag scans the elements inside a template tag.
-//
-// The first item within a tag is the command name (the print command is
-// implied if no command is specified), and the rest of the text within the
-// tag (if any) is referred to as the command text.
-//
-// Soy tag format:
-//
-//     - Can be delimited by single braces "{...}" or double braces "{{...}}".
-//     - Soy tags delimited by double braces are allowed to contain single
-//       braces within.
-//     - Some Soy tags are allowed to end in "/}" or "/}}" to denote immediate
-//       ending of a block.
-//     - It is an error to use "/}" or "/}}" when it's not applicable to the
-//       command.
-//     - If there is a command name, it must come immediately after the
-//       opening delimiter.
-//     - The command name must be followed by either the closing delimiter
-//       (if the command does not take any command text) or a whitespace (if
-//       the command takes command text).
-//     - It is an error to provide command text when it's not applicable,
-//       and vice versa.
-//
-// Commands without closing tag (can't end in "/}" or "/}}"):
-//
-//     - {delpackage ...}
-//     - {namespace ...}
-//     - {print ...}
-//     - {...} (implicit print)
-//     - {\r}
-//     - {nil}
-//     - {lb}
-//     - {\n}
-//     - {rb}
-//     - {sp}
-//     - {\t}
-//     - {elseif ...}
-//     - {else ...}
-//     - {case ...}
-//     - {default}
-//     - {ifempty}
-//     - {css ...}
-//
-// Commands with optional closing tag:
-//
-//     - {call ... /} or {call ...}...{/call}
-//     - {delcall ... /} or {delcall ...}...{/delcall}
-//     - {param ... /} or {param ...}...{/param}
-//
-// Commands with required closing tag:
-//
-//     - {deltemplate ...}...{/deltemplate}
-//     - {for ...}...{/for}
-//     - {foreach ...}...{/foreach}
-//     - {if ...}...{/if}
-//     - {literal}...{/literal}
-//     - {msg ...}...{/msg}
-//     - {switch ...}...{/switch}
-//     - {template ...}...{/template}
+// lexInsideTag is called repeatedly to scan elements inside a template tag.
+// itemLeftDelim has just been emitted.
 func lexInsideTag(l *lexer) stateFn {
 	switch r := l.next(); {
 	case isSpace(r):
@@ -534,7 +473,7 @@ func lexInsideTag(l *lexer) stateFn {
 	case r == '?': // used by data refs and arithmetic
 		switch l.next() {
 		case '.':
-			l.pos -= 2 // ghetto.
+			l.pos -= 2
 			return lexIdent
 		case '[':
 			l.emit(itemQuestionKey)
@@ -570,7 +509,7 @@ func lexInsideTag(l *lexer) stateFn {
 	case r == eof || isEndOfLine(r):
 		return l.errorf("unclosed tag")
 	case r == '|':
-		return lexDirective
+		l.emit(itemPipe)
 	case isLetterOrUnderscore(r):
 		l.backup()
 		return lexIdent
@@ -616,13 +555,6 @@ func lexSoyDoc(l *lexer) stateFn {
 		}
 		star = ch == '*'
 	}
-}
-
-// lexDirective scans a print directive: |Alphanumeric[:arg1[,arg2..]]
-// | has already been read.
-func lexDirective(l *lexer) stateFn {
-	// TODO
-	return lexInsideTag
 }
 
 // stringLexer returns a stateFn that lexes strings surrounded by the given quote character.
@@ -882,12 +814,17 @@ func isDigit(r rune) bool {
 	return '0' <= r && r <= '9'
 }
 
-// allSpace returns true if the entire string consists of whitespace
-func allSpace(str string) bool {
+// allSpaceWithNewline returns true if the entire string consists of whitespace,
+// with at least one newline.
+func allSpaceWithNewline(str string) bool {
+	var seenNewline = false
 	for _, ch := range str {
 		if !unicode.IsSpace(ch) {
 			return false
 		}
+		if isEndOfLine(ch) {
+			seenNewline = true
+		}
 	}
-	return true
+	return seenNewline
 }

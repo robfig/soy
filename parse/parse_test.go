@@ -62,9 +62,11 @@ var parseTests = []parseTest{
 	{"rawtext (linejoin)", "\n  a \n\tb\r\n  c  \n\n", tList(newText(0, "a b c"))},
 	{"rawtext+html", "\n  a <br>\n\tb\r\n\n  c\n\n<br> ", tList(newText(0, "a <br>b c<br> "))},
 	{"rawtext+comment", "a <br> // comment \n\tb\t// comment2\r\n  c\n\n", tList(newText(0, "a <br>b c"))},
-	{"rawtext+tag", "a {$foo}\n\t  b\r\n\n  {$bar} c", tList(
+	{"rawtext+tag", "a {$foo}\t {$baz}\n\t  b\r\n\n  {$bar} c", tList(
 		newText(0, "a "),
 		&PrintNode{0, &DataRefNode{0, "foo", nil}},
+		newText(0, "\t "),
+		&PrintNode{0, &DataRefNode{0, "baz", nil}},
 		newText(0, "b"),
 		&PrintNode{0, &DataRefNode{0, "bar", nil}},
 		newText(0, " c"),
@@ -85,6 +87,7 @@ var parseTests = []parseTest{
 
 	{"css", `{css my-class} {css $component, myclass}`, tList(
 		&CssNode{0, nil, "my-class"},
+		newText(0, " "),
 		&CssNode{0, &DataRefNode{0, "component", nil}, "myclass"},
 	)},
 

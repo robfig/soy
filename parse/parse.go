@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 // Tree is the parsed representation of a single soy file.
@@ -318,10 +319,27 @@ func (t *Tree) parseSwitch(token item) Node {
 	const ctx = "switch"
 	var switchValue = t.parseExpr(0)
 	t.expect(itemRightDelim, ctx)
+
+	switch tok := t.next(); tok.typ {
+	case itemText:
+		if !allSpace(tok.val) {
+			t.errorf("unexpected text between switch cases: %v", tok.val)
+		}
+	case itemLeftDelim:
+		// good
+	default:
+		t.errorf("expected { to begin case, got %v", tok.val)
+	}
+
 	t.expect(itemLeftDelim, "switch")
 	var cases []*SwitchCaseNode
 	for {
 		switch tok := t.next(); tok.typ {
+		case itemText: // ignore spaces between tags. text is an error though.
+			if allSpace(tok.val) {
+				continue
+			}
+			t.errorf("unexpected text between switch cases: %v", tok.val)
 		case itemCase, itemDefault:
 			cases = append(cases, t.parseCase(tok))
 		case itemSwitchEnd:
@@ -904,29 +922,6 @@ func (t *Tree) recover(errp *error) {
 	return
 }
 
-// nextNonSpace returns the next non-space token.
-func (t *Tree) nextNonSpace() (token item) {
-	for {
-		token = t.next()
-		if token.typ != itemSpace {
-			break
-		}
-	}
-	return token
-}
-
-// peekNonSpace returns but does not consume the next non-space token.
-func (t *Tree) peekNonSpace() (token item) {
-	for {
-		token = t.next()
-		if token.typ != itemSpace {
-			break
-		}
-	}
-	t.backup()
-	return token
-}
-
 // expect consumes the next token and guarantees it has the required type.
 func (t *Tree) expect(expected itemType, context string) item {
 	token := t.next()
@@ -960,4 +955,13 @@ func isOneOf(tocheck itemType, against []itemType) bool {
 		}
 	}
 	return false
+}
+
+func allSpace(str string) bool {
+	for _, ch := range str {
+		if !unicode.IsSpace(ch) {
+			return false
+		}
+	}
+	return true
 }

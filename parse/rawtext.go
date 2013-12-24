@@ -1,6 +1,9 @@
 package parse
 
-import "unicode/utf8"
+import (
+	"strings"
+	"unicode/utf8"
+)
 
 type rawtextlexer struct {
 	str      string
@@ -33,12 +36,12 @@ func (l *rawtextlexer) emitRune(result []byte) []byte {
 // - trim leading/trailing whitespace if it includes a newline
 // - trim leading and trailing whitespace on each internal line
 // - join lines with no space if '<' or '>' are on either side, else with 1 space.
-// - everywhere, collapse multiple spaces to single space
 func rawtext(s string) []byte {
 	var lex = rawtextlexer{s, 0, 0, 0}
 	var (
-		trimming       = false
+		spaces         = 0
 		seenNewline    = false
+		seenComment    = false
 		lastChar       rune
 		charBeforeTrim rune
 		result         = make([]byte, 0, len(s))
@@ -47,19 +50,22 @@ func rawtext(s string) []byte {
 TOP:
 	for {
 		if lex.eof() {
-			// add a space if we've been trimming, unless either:
-			// - trimSuffix == true and we've seen a newline
-			// - trimPrefix == true and we're still at prefix and we've seen a newline
-			if !seenNewline && trimming {
-				result = append(result, ' ')
+			// if we haven't seen a newline, add all the space we've been trimming.
+			if !seenNewline && spaces > 0 {
+				if !seenComment {
+					result = append(result, s[lex.pos-spaces:lex.pos]...)
+				} else {
+					result = append(result, strings.Repeat(" ", spaces)...)
+				}
 			}
 			return result
 		}
 		var r = lex.next()
 
 		// '//' comment removal
-		if (trimming || lastChar == 0) && r == '/' {
+		if (spaces > 0 || lastChar == 0) && r == '/' {
 			if lex.next() == '/' {
+				seenComment = true
 				for {
 					r = lex.next()
 					if lex.eof() {
@@ -76,6 +82,7 @@ TOP:
 		// '/*' comment removal
 		if r == '/' {
 			if lex.next() == '*' {
+				seenComment = true
 				var asterisk = false
 				for {
 					r = lex.next()
@@ -94,33 +101,48 @@ TOP:
 			lex.backup()
 		}
 
-		// collapse space / join lines
-		if trimming {
+		// join lines
+		if spaces > 0 {
 			// more space, keep going
 			if isSpace(r) {
+				spaces++
 				continue
 			}
 			if isEndOfLine(r) {
+				spaces++
 				seenNewline = true
 				continue
 			}
 
-			// done with the trim. add a space if either:
-			// - we haven't seen an newline
-			// - the character before and after are not tight joiners
-			var isPrefix = charBeforeTrim == 0
-			if !(isPrefix && seenNewline) &&
-				(!seenNewline || (!isTightJoiner(charBeforeTrim) && !isTightJoiner(r))) {
+			// done with scanning a set of space.  actions:
+			// - add the run of space to the result if we haven't seen a newline.
+			// - add one space if the character before and after the newline are not tight joiners.
+			// - else, ignore the space.
+			switch {
+			case !seenNewline:
+				// if there was no comment, we can copy in the bytes directly.
+				if !seenComment {
+					result = append(result, s[lex.lastpos-spaces:lex.lastpos]...)
+				} else {
+					// if there was a comment in between, then we have to fake it.
+					// note: this may incorrectly transform \t into ' ' for the string '\t/**/a'
+					// but, the case seems rare enough that it's worth having a second buffer to solve it.
+					result = append(result, strings.Repeat(" ", spaces)...)
+				}
+			case seenNewline && !isTightJoiner(charBeforeTrim) && !isTightJoiner(r):
 				result = append(result, ' ')
+			default:
+				// ignore the space
 			}
-			trimming = false
+			spaces = 0
 			seenNewline = false
+			seenComment = false
 		}
 
 		// begin to trim
 		seenNewline = isEndOfLine(r)
 		if isSpace(r) || seenNewline {
-			trimming = true
+			spaces = 1
 			charBeforeTrim = lastChar
 			continue
 		}
@@ -134,7 +156,7 @@ TOP:
 
 func isTightJoiner(r rune) bool {
 	switch r {
-	case '<', '>':
+	case 0, '<', '>':
 		return true
 	}
 	return false

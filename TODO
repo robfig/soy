@@ -1,5 +1,4 @@
 Now:
-- exec for call
 - print directives (html escaping by default)
 - Globals
 - implement user provided functions
