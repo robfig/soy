@@ -1,4 +1,8 @@
 language: go
-go: 1.2
+go: 
+  - 1.0
+  - 1.1
+  - 1.2
+  - tip
 script:
   - go test -cover github.com/robfig/soy/...
