@@ -264,6 +264,17 @@ func TestDataRefs(t *testing.T) {
 	})
 }
 
+// TODO: Can you add special chars within tags too?
+func TestSpecialChars(t *testing.T) {
+	runExecTests(t, []execTest{
+		exprtest("special chars", `{sp}{nil}{\r}{\n}{\t}{lb}{rb}`, " \r\n\t{}"),
+		exprtest("without nil there is space", "abc\ndef", "abc def"),
+		exprtest("nil avoids space", "abc{nil}\ndef", "abcdef"),
+		exprtest("without sp there is no space", "abc\n<a>", "abc<a>"),
+		exprtest("sp adds space", "abc{sp}\n<a>", "abc <a>"),
+	})
+}
+
 // helpers
 
 func (t execTest) fails() execTest {

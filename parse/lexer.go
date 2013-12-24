@@ -37,9 +37,9 @@ type itemType int
 
 // All items.
 const (
-	itemNil   itemType = iota // not used
-	itemEOF                   // EOF
-	itemError                 // error occurred; value is text of error
+	itemInvalid itemType = iota // not used
+	itemEOF                     // EOF
+	itemError                   // error occurred; value is text of error
 
 	// Command delimiters
 	itemLeftDelim     // tag left delimiter: {
@@ -126,7 +126,7 @@ const (
 	// Character commands.
 	itemSpecialChar
 	itemCarriageReturn // {\r}
-	itemEmptyString    // {nil}
+	itemNil            // {nil}
 	itemLeftBrace      // {lb}
 	itemNewline        // {\n}
 	itemRightBrace     // {rb}
@@ -191,7 +191,7 @@ var builtinIdents = map[string]itemType{
 	"/template":    itemTemplateEnd,
 
 	"sp":  itemSpace,
-	"nil": itemEmptyString,
+	"nil": itemNil,
 	`\t`:  itemTab,
 	`\n`:  itemNewline,
 	`\r`:  itemCarriageReturn,

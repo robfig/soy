@@ -1,6 +1,6 @@
 Now:
 - exec for if/for/switch/call
-- implement builtin functions / user provided functions
+- implement user provided functions
 - print directives (html escaping by default)
 - use a struct rather than a map / docs for expected data structures
 - Globals

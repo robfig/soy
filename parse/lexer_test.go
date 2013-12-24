@@ -90,7 +90,7 @@ var lexTests = []lexTest{
 
 	{"special characters", `{sp}{nil}{\r}{\n}{\t}{lb}{rb}`, []item{
 		tLeft, {itemSpace, 0, "sp"}, // {sp}
-		tRight, tLeft, {itemEmptyString, 0, "nil"}, // {nil}
+		tRight, tLeft, {itemNil, 0, "nil"}, // {nil}
 		tRight, tLeft, {itemCarriageReturn, 0, "\\r"}, // {\r}
 		tRight, tLeft, {itemNewline, 0, "\\n"}, // {\n}
 		tRight, tLeft, {itemTab, 0, "\\t"}, // {\t}

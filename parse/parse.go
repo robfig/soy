@@ -107,6 +107,8 @@ func (t *Tree) parseSoydoc() Node {
 }
 
 var specialChars = map[itemType]string{
+	itemNil:            "",
+	itemSpace:          " ",
 	itemTab:            "\t",
 	itemNewline:        "\n",
 	itemCarriageReturn: "\r",
@@ -133,7 +135,7 @@ func (t *Tree) beginTag() Node {
 		return t.parseSwitch(token)
 	case itemCall:
 		return t.parseCall(token)
-	case itemTab, itemNewline, itemCarriageReturn, itemLeftBrace, itemRightBrace:
+	case itemNil, itemSpace, itemTab, itemNewline, itemCarriageReturn, itemLeftBrace, itemRightBrace:
 		t.expect(itemRightDelim, "special char")
 		return newText(token.pos, specialChars[token.typ])
 	case itemIdent, itemDollarIdent, itemNull, itemBool, itemFloat, itemInteger, itemString, itemNot, itemLeftBracket:

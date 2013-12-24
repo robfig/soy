@@ -67,6 +67,15 @@ var parseTests = []parseTest{
 		&PrintNode{0, &DataRefNode{0, "bar", nil}},
 		newText(0, " c"),
 	)},
+	{"specialchars", `{sp}{nil}{\r}{\n}{\t}{lb}{rb}`, tList(
+		newText(0, " "),
+		newText(0, ""),
+		newText(0, "\r"),
+		newText(0, "\n"),
+		newText(0, "\t"),
+		newText(0, "{"),
+		newText(0, "}"),
+	)},
 
 	{"expression1", "{not false and (isFirst($foo) or (-$x - 5) > 3.1)}", tList(&PrintNode{0,
 		&AndNode{bin(
