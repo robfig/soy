@@ -50,7 +50,8 @@ var parseTests = []parseTest{
 			newText(0, "!"),
 		))},
 	{"soydoc", "/** Text\n*/", tList(newSoyDoc(0, "/** Text\n*/"))},
-	{"negate", "{not $var}", tList(&PrintNode{0, &NotNode{0, &DataRefNode{0, "var", nil}}})},
+	{"not", "{not $var}", tList(&PrintNode{0, &NotNode{0, &DataRefNode{0, "var", nil}}})},
+	{"negate", "{-$var}", tList(&PrintNode{0, &NegateNode{0, &DataRefNode{0, "var", nil}}})},
 	{"concat", `{'hello' + 'world'}`, tList(&PrintNode{0,
 		&AddNode{bin(
 			&StringNode{0, "hello"},

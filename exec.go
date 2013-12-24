@@ -102,24 +102,24 @@ func (t Template) Execute(wr io.Writer, data map[string]interface{}) (err error)
 	return
 }
 
-// Walk functions step through the major pieces of the template structure,
-// generating output as they go.
+// walk recursively goes through each node and executes the indicated logic and
+// writes the output
 func (s *state) walk(dot reflect.Value, node parse.Node) {
 	s.val = undefinedValue
 	s.at(node)
 	switch node := node.(type) {
 	case *parse.TemplateNode:
 		s.walk(dot, node.Body)
+	case *parse.ListNode:
+		for _, node := range node.Nodes {
+			s.walk(dot, node)
+		}
+
+		// Output nodes
 	case *parse.PrintNode:
 		s.walk(dot, node.Arg)
 		if _, err := s.wr.Write([]byte(toString(s.val))); err != nil {
 			s.errorf("%s", err)
-		}
-	case *parse.DataRefNode:
-		s.val = s.evalDataRef(dot, node)
-	case *parse.ListNode:
-		for _, node := range node.Nodes {
-			s.walk(dot, node)
 		}
 	case *parse.RawTextNode:
 		if _, err := s.wr.Write(node.Text); err != nil {
@@ -128,6 +128,7 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 	case *parse.MsgNode:
 		s.walk(dot, node.Body)
 
+		// Control flow
 	case *parse.IfNode:
 		for _, cond := range node.Conds {
 			if cond.Cond == nil || truthiness(s.eval(dot, cond.Cond)) {
@@ -167,9 +168,7 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 			}
 		}
 
-	case *parse.FunctionNode:
-		s.val = s.evalFunc(node)
-
+		// Values
 	case *parse.NullNode:
 		s.val = nullValue
 	case *parse.StringNode:
@@ -192,7 +191,19 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 			items[k] = s.eval(dot, v)
 		}
 		s.val = val(items)
+	case *parse.FunctionNode:
+		s.val = s.evalFunc(node)
+	case *parse.DataRefNode:
+		s.val = s.evalDataRef(dot, node)
 
+		// Arithmetic operators
+	case *parse.NegateNode:
+		var arg = s.eval(dot, node.Arg)
+		if isInt(arg) {
+			s.val = val(-arg.Int())
+		} else {
+			s.val = val(-toFloat(arg))
+		}
 	case *parse.AddNode:
 		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2)
 		switch {
@@ -226,6 +237,7 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2)
 		s.val = val(arg1.Int() % arg2.Int())
 
+		// Arithmetic comparisons
 	case *parse.EqNode:
 		s.val = val(equals(s.eval2(dot, node.Arg1, node.Arg2)))
 	case *parse.NotEqNode:
@@ -243,6 +255,7 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2)
 		s.val = val(toFloat(arg1) >= toFloat(arg2))
 
+		// Boolean operators
 	case *parse.NotNode:
 		s.val = val(!truthiness(s.eval(dot, node.Arg)))
 	case *parse.AndNode:
@@ -265,6 +278,7 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 		} else {
 			s.val = s.eval(dot, node.Arg3)
 		}
+
 	default:
 		s.errorf("unknown node: %T", node)
 	}

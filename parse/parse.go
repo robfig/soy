@@ -138,7 +138,7 @@ func (t *Tree) beginTag() Node {
 	case itemNil, itemSpace, itemTab, itemNewline, itemCarriageReturn, itemLeftBrace, itemRightBrace:
 		t.expect(itemRightDelim, "special char")
 		return newText(token.pos, specialChars[token.typ])
-	case itemIdent, itemDollarIdent, itemNull, itemBool, itemFloat, itemInteger, itemString, itemNot, itemLeftBracket:
+	case itemIdent, itemDollarIdent, itemNull, itemBool, itemFloat, itemInteger, itemString, itemNegate, itemNot, itemLeftBracket:
 		// print is implicit, so the tag may also begin with any value type, or the
 		// "not" operator.
 		t.backup()

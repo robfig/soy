@@ -82,6 +82,7 @@ func TestExpressions(t *testing.T) {
 		exprtest("elvis2", `{$foo?:'hello'}`, "hello"),  // elvis does isNonnull check on first arg
 		exprtest("elvis3", `{0?:'hello'}`, "0"),         // 0 is non-null
 		exprtest("elvis4", `{false?:'hello'}`, "false"), // false is non-null
+		exprtest("negate", `{-(1+1)}`, "-2"),
 	})
 }
 
