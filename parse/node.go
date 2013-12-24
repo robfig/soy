@@ -198,7 +198,7 @@ type CallNode struct {
 	Name    string
 	AllData bool
 	Data    Node
-	Params  []*CallParamNode
+	Params  []Node
 }
 
 func (n *CallNode) String() string {
@@ -218,14 +218,24 @@ func (n *CallNode) String() string {
 	return expr + "{/call}"
 }
 
-type CallParamNode struct {
+type CallParamValueNode struct {
 	Pos
 	Key   string
 	Value Node
 }
 
-func (n *CallParamNode) String() string {
+func (n *CallParamValueNode) String() string {
 	return fmt.Sprintf("{param %s: %s/}", n.Key, n.Value.String())
+}
+
+type CallParamContentNode struct {
+	Pos
+	Key     string
+	Content Node
+}
+
+func (n *CallParamContentNode) String() string {
+	return fmt.Sprintf("{param %s}%s{/param}", n.Key, n.Content.String())
 }
 
 // Control flow ----------

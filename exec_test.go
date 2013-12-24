@@ -211,6 +211,39 @@ func TestSwitch(t *testing.T) {
 	)
 }
 
+func TestCall(t *testing.T) {
+	runExecTests(t, []execTest{
+		{"call", "test.call", `{namespace test}
+
+{template .call}
+{call .boo_ /}{sp}
+{call .boo_ data="all"/}{sp}
+{call .zoo data="$animals"}
+  ` /*{param yoo: round($too) /}*/ + `
+  {param woo}poo{/param}
+  {param zoo: 0 /}
+  ` /* {param doo kind="html"}doopoo{/param} */ + `
+{/call}
+{/template}
+
+{template .boo_}
+  {if $animals}
+    Yay!
+  {else}
+    Boo!
+  {/if}
+{/template}
+
+{template .zoo}
+ {$zoo} {$animal} {$woo}!
+{/template}`,
+			"Boo! Yay! 0 roos poo!",
+			data{"animals": data{"animal": "roos"}},
+			true,
+		},
+	})
+}
+
 func TestDataRefs(t *testing.T) {
 	runExecTests(t, []execTest{
 		// single key

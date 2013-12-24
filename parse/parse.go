@@ -251,8 +251,8 @@ func (t *Tree) parseCall(token item) Node {
 // {param a}expr{/param}
 // {param key="a" value="'expr'"/}
 // {param key="a"}expr{/param}
-func (t *Tree) parseCallParams() []*CallParamNode {
-	var params []*CallParamNode
+func (t *Tree) parseCallParams() []Node {
+	var params []Node
 	for {
 		var (
 			key   string
@@ -273,13 +273,13 @@ func (t *Tree) parseCallParams() []*CallParamNode {
 			key = firstIdent.val
 			value = t.parseExpr(0)
 			t.expect(itemRightDelimEnd, "param")
-			params = append(params, &CallParamNode{initial.pos, key, value})
+			params = append(params, &CallParamValueNode{initial.pos, key, value})
 			continue
 		case itemRightDelim:
 			key = firstIdent.val
 			value = t.itemList(itemParamEnd)
 			t.expect(itemRightDelim, "param")
-			params = append(params, &CallParamNode{initial.pos, key, value})
+			params = append(params, &CallParamContentNode{initial.pos, key, value})
 			continue
 		case itemIdent:
 			key = firstIdent.val
@@ -303,11 +303,12 @@ func (t *Tree) parseCallParams() []*CallParamNode {
 			t.expect(itemRightDelim, "param")
 			value = t.itemList(itemParamEnd)
 			t.expect(itemRightDelim, "param")
+			params = append(params, &CallParamContentNode{initial.pos, key, value})
 		} else {
 			value = t.parseQuotedExpr(valueStr)
 			t.expect(itemRightDelimEnd, "param")
+			params = append(params, &CallParamValueNode{initial.pos, key, value})
 		}
-		params = append(params, &CallParamNode{initial.pos, key, value})
 	}
 	return params
 }

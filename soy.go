@@ -2,6 +2,7 @@ package soy
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/robfig/soy/parse"
 )
@@ -53,9 +54,15 @@ func (tofu Tofu) Template(name string) (tmpl Template, ok bool) {
 	if !ok {
 		return
 	}
-	return Template{node}, true
+	return Template{node, namespace(name), tofu}, true
+}
+
+func namespace(fqTemplateName string) string {
+	return fqTemplateName[:strings.LastIndex(fqTemplateName, ".")]
 }
 
 type Template struct {
-	node *parse.TemplateNode
+	node      *parse.TemplateNode
+	namespace string
+	tofu      Tofu
 }

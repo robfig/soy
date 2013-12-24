@@ -300,16 +300,16 @@ var parseTests = []parseTest{
 {/call}`, tList(
 		&CallNode{0, ".booTemplate_", false, nil, nil},
 		&CallNode{0, "foo.goo.mooTemplate", true, nil, nil},
-		&CallNode{0, ".zooTemplate", false, &DataRefNode{0, "animals", nil}, []*CallParamNode{
-			{0, "yoo", &FunctionNode{0, "round", []Node{&DataRefNode{0, "too", nil}}}},
-			{0, "woo", tList(newText(0, "poo"))},
-			{0, "doo", tList(newText(0, "doopoo"))}}},
+		&CallNode{0, ".zooTemplate", false, &DataRefNode{0, "animals", nil}, []Node{
+			&CallParamValueNode{0, "yoo", &FunctionNode{0, "round", []Node{&DataRefNode{0, "too", nil}}}},
+			&CallParamContentNode{0, "woo", tList(newText(0, "poo"))},
+			&CallParamContentNode{0, "doo", tList(newText(0, "doopoo"))}}},
 		&CallNode{0, ".booTemplate_", false, nil, nil},
-		&CallNode{0, ".zooTemplate", false, &DataRefNode{0, "animals", nil}, []*CallParamNode{
-			{0, "yoo", &FunctionNode{0, "round", []Node{&DataRefNode{0, "too", nil}}}},
-			{0, "woo", tList(newText(0, "poo"))},
-			{0, "zoo", &IntNode{0, 0}},
-			{0, "doo", tList(newText(0, "doopoo"))}}},
+		&CallNode{0, ".zooTemplate", false, &DataRefNode{0, "animals", nil}, []Node{
+			&CallParamValueNode{0, "yoo", &FunctionNode{0, "round", []Node{&DataRefNode{0, "too", nil}}}},
+			&CallParamContentNode{0, "woo", tList(newText(0, "poo"))},
+			&CallParamValueNode{0, "zoo", &IntNode{0, 0}},
+			&CallParamContentNode{0, "doo", tList(newText(0, "doopoo"))}}},
 	)},
 
 	// "  {let $alpha: $boo.foo /}\n" +
@@ -458,9 +458,12 @@ func eqTree(t *testing.T, expected, actual Node) bool {
 		return eqstr(t, "call", expected.(*CallNode).Name, actual.(*CallNode).Name) &&
 			eqTree(t, expected.(*CallNode).Data, actual.(*CallNode).Data) &&
 			eqNodes(t, expected.(*CallNode).Params, actual.(*CallNode).Params)
-	case *CallParamNode:
-		return eqstr(t, "param", expected.(*CallParamNode).Key, actual.(*CallParamNode).Key) &&
-			eqTree(t, expected.(*CallParamNode).Value, actual.(*CallParamNode).Value)
+	case *CallParamValueNode:
+		return eqstr(t, "param", expected.(*CallParamValueNode).Key, actual.(*CallParamValueNode).Key) &&
+			eqTree(t, expected.(*CallParamValueNode).Value, actual.(*CallParamValueNode).Value)
+	case *CallParamContentNode:
+		return eqstr(t, "param", expected.(*CallParamContentNode).Key, actual.(*CallParamContentNode).Key) &&
+			eqTree(t, expected.(*CallParamContentNode).Content, actual.(*CallParamContentNode).Content)
 
 	case *IfNode:
 		return eqNodes(t, expected.(*IfNode).Conds, actual.(*IfNode).Conds)

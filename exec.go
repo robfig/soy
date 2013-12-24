@@ -17,13 +17,17 @@ var Logger *log.Logger
 type scope []map[string]interface{} // a stack of variable scopes
 
 // push creates a new scope
-func (s scope) push() {
-	s = append(s, make(map[string]interface{}))
+func (s *scope) push() {
+	*s = append(*s, make(map[string]interface{}))
 }
 
 // pop discards the last scope pushed.
-func (s scope) pop() {
-	s = s[:len(s)-1]
+func (s *scope) pop() {
+	*s = (*s)[:len(*s)-1]
+}
+
+func (s *scope) augment(m map[string]interface{}) {
+	*s = append(*s, m)
 }
 
 // set adds a new binding to the deepest scope
@@ -31,10 +35,10 @@ func (s scope) set(k string, v reflect.Value) {
 	s[len(s)-1][k] = v.Interface()
 }
 
-// lookup checks the variable scopes, outer to inner, for the given key
+// lookup checks the variable scopes, deepest out, for the given key
 func (s scope) lookup(k string) reflect.Value {
 	for i := range s {
-		if v, ok := s[i][k]; ok {
+		if v, ok := s[len(s)-i-1][k]; ok {
 			vv := val(v)
 			for vv.Kind() == reflect.Interface {
 				vv = vv.Elem()
@@ -49,11 +53,13 @@ func (s scope) lookup(k string) reflect.Value {
 // template so that multiple executions of the same template
 // can execute in parallel.
 type state struct {
-	tmpl    *parse.TemplateNode
-	wr      io.Writer
-	node    parse.Node    // current node, for errors
-	val     reflect.Value // temp value for expression being computed
-	context scope         // variable scope
+	namespace string
+	tmpl      *parse.TemplateNode
+	wr        io.Writer
+	node      parse.Node    // current node, for errors
+	bundle    Tofu          // the entire bundle of templates
+	val       reflect.Value // temp value for expression being computed
+	context   scope         // variable scope
 }
 
 // variable holds the dynamic value of a variable such as $, $x etc.
@@ -82,10 +88,10 @@ func (s *state) errRecover(errp *error) {
 		case runtime.Error:
 			panic(e)
 		case error:
-			*errp = fmt.Errorf("%T: %v", s.node, err)
+			*errp = fmt.Errorf("%#v: %v", s.node, err)
 			//			*errp = err
 		default:
-			*errp = fmt.Errorf("%T: %v", s.node, e)
+			*errp = fmt.Errorf("%#v: %v", s.node, e)
 		}
 	}
 }
@@ -97,9 +103,11 @@ func (t Template) Execute(wr io.Writer, data map[string]interface{}) (err error)
 		return errors.New("no template found")
 	}
 	state := &state{
-		tmpl:    t.node,
-		wr:      wr,
-		context: []map[string]interface{}{data},
+		tmpl:      t.node,
+		bundle:    t.tofu,
+		namespace: t.namespace,
+		wr:        wr,
+		context:   []map[string]interface{}{data},
 	}
 	defer state.errRecover(&err)
 	state.walk(reflect.ValueOf(nil), t.node)
@@ -142,12 +150,7 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 	case *parse.DebuggerNode:
 		// nothing to do
 	case *parse.LogNode:
-		var buf bytes.Buffer
-		origWriter := s.wr
-		s.wr = &buf
-		s.walk(dot, node.Body)
-		Logger.Print(buf.String())
-		s.wr = origWriter
+		Logger.Print(string(s.renderBlock(dot, node.Body)))
 
 		// Control flow
 	case *parse.IfNode:
@@ -188,6 +191,8 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 				return
 			}
 		}
+	case *parse.CallNode:
+		s.evalCall(dot, node)
 
 		// Values
 	case *parse.NullNode:
@@ -303,6 +308,65 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 	default:
 		s.errorf("unknown node: %T", node)
 	}
+}
+
+func (s *state) evalCall(dot reflect.Value, node *parse.CallNode) {
+	// get template node we're calling
+	var fqTemplateName = node.Name
+	if node.Name[0] == '.' {
+		fqTemplateName = s.namespace + node.Name
+	}
+	calledTmpl, ok := s.bundle.templates[fqTemplateName]
+	if !ok {
+		s.errorf("failed to find template: %s", fqTemplateName)
+	}
+
+	// sort out the data to pass
+	var callData scope
+	if node.AllData {
+		callData = s.context
+		callData.push()
+	} else if node.Data != nil {
+		result := s.eval(dot, node.Data)
+		if result.Kind() != reflect.Map {
+			s.errorf("In 'call' command %s, the data reference does not resolve to a map.", node)
+		}
+		callData = scope{
+			result.Convert(reflect.TypeOf(map[string]interface{}{})).
+				Interface().(map[string]interface{})}
+	} else {
+		callData = scope{make(map[string]interface{})}
+	}
+
+	// resolve the params
+	for _, param := range node.Params {
+		switch param := param.(type) {
+		case *parse.CallParamValueNode:
+			callData.set(param.Key, s.eval(dot, param.Value))
+		case *parse.CallParamContentNode:
+			callData.set(param.Key, val(string(s.renderBlock(dot, param.Content))))
+		default:
+			panic(fmt.Errorf("unexpected call param type: %T", param))
+		}
+	}
+
+	state := &state{
+		tmpl:      calledTmpl,
+		bundle:    s.bundle,
+		namespace: namespace(fqTemplateName),
+		wr:        s.wr,
+		context:   callData,
+	}
+	state.walk(dot, calledTmpl.Body)
+}
+
+func (s *state) renderBlock(dot reflect.Value, node parse.Node) []byte {
+	var buf bytes.Buffer
+	origWriter := s.wr
+	s.wr = &buf
+	s.walk(dot, node)
+	s.wr = origWriter
+	return buf.Bytes()
 }
 
 func (s *state) evalFunc(node *parse.FunctionNode) reflect.Value {
