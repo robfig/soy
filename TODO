@@ -5,11 +5,7 @@ Now:
 - use a struct rather than a map / docs for expected data structures
 - Globals
 - {msg}
-- {log}
 - {let}
-- {literal}
-- {debugger}
-- {css}
 - {alias}
 - attributes for all the commands
 - Source location / error messages
@@ -28,3 +24,7 @@ Now:
 Issues:
 - How are escape sequences handled within strings? e.g. 'string\nvalue' or desc="hello\nworld"
 - replace reflect.Value usage with own types.  or figure out solution for drilling through interface/ptr)
+
+
+Ideas:
+- Reduce lexed tokens by removing delim items around commands

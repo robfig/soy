@@ -1,14 +1,18 @@
 package soy
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"reflect"
 	"runtime"
 
 	"github.com/robfig/soy/parse"
 )
+
+var Logger *log.Logger
 
 type scope []map[string]interface{} // a stack of variable scopes
 
@@ -127,6 +131,23 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 		}
 	case *parse.MsgNode:
 		s.walk(dot, node.Body)
+	case *parse.CssNode:
+		var prefix = ""
+		if node.Expr != nil {
+			prefix = toString(s.eval(dot, node.Expr)) + "-"
+		}
+		if _, err := s.wr.Write([]byte(prefix + node.Suffix)); err != nil {
+			s.errorf("%s", err)
+		}
+	case *parse.DebuggerNode:
+		// nothing to do
+	case *parse.LogNode:
+		var buf bytes.Buffer
+		origWriter := s.wr
+		s.wr = &buf
+		s.walk(dot, node.Body)
+		Logger.Print(buf.String())
+		s.wr = origWriter
 
 		// Control flow
 	case *parse.IfNode:

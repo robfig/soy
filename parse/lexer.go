@@ -123,15 +123,17 @@ const (
 	itemPrint       // {print ...}
 	itemSwitch      // {switch ...}
 	itemTemplate    // {template ...}
+	itemLog         // {log}
+	itemDebugger    // {debugger}
 	// Character commands.
 	itemSpecialChar
-	itemCarriageReturn // {\r}
-	itemNil            // {nil}
-	itemLeftBrace      // {lb}
-	itemNewline        // {\n}
-	itemRightBrace     // {rb}
 	itemSpace          // {sp}
+	itemNil            // {nil}
 	itemTab            // {\t}
+	itemCarriageReturn // {\r}
+	itemNewline        // {\n}
+	itemLeftBrace      // {lb}
+	itemRightBrace     // {rb}
 	// Close commands.
 	itemCommandEnd     // used only to delimit the commend ends.
 	itemCallEnd        // {/call}
@@ -145,6 +147,7 @@ const (
 	itemParamEnd       // {/param}
 	itemSwitchEnd      // {/switch}
 	itemTemplateEnd    // {/template}
+	itemLogEnd         // {/log}
 
 	// These commands are defined in TemplateParser.jj but not in the docs.
 	// Apparently they are not available in the open source version of Soy.
@@ -177,6 +180,8 @@ var builtinIdents = map[string]itemType{
 	"param":     itemParam,
 	"print":     itemPrint,
 	"switch":    itemSwitch,
+	"log":       itemLog,
+	"debugger":  itemDebugger,
 
 	"/call":        itemCallEnd,
 	"/delcall":     itemDelcallEnd,
@@ -189,6 +194,7 @@ var builtinIdents = map[string]itemType{
 	"/param":       itemParamEnd,
 	"/switch":      itemSwitchEnd,
 	"/template":    itemTemplateEnd,
+	"/log":         itemLogEnd,
 
 	"sp":  itemSpace,
 	"nil": itemNil,
@@ -678,6 +684,13 @@ func lexIdent(l *lexer) stateFn {
 	// if it's a builtin, return that item type
 	if itemType, ok := builtinIdents[word]; ok {
 		l.emit(itemType)
+		// {literal} and {css} have unusual lexing rules
+		switch itemType {
+		case itemLiteral:
+			return lexLiteral
+		case itemCss:
+			return lexCss
+		}
 		return lexInsideTag
 	}
 	// if not a builtin, it shouldn't start with / or \
@@ -691,25 +704,64 @@ func lexIdent(l *lexer) stateFn {
 	return lexInsideTag
 }
 
+// lexCss scans the body of the {css} command into an itemText.
+// This is required because css classes are unquoted and may have hyphens (and
+// thus are not recognized as idents).
+// itemCss has already been emitted
+func lexCss(l *lexer) stateFn {
+	l.next()
+	l.ignore()
+	for l.next() != '}' {
+	}
+	l.backup()
+	l.emit(itemText)
+	l.next()
+	if l.doubleDelim && l.next() != '}' {
+		return l.errorf("expected double closing braces in tag")
+	}
+	l.emit(itemRightDelim)
+	return lexText
+}
+
 // lexLiteral scans until a closing literal delimiter, "{\literal}".
 // It emits the literal text and the closing tag.
 //
 // A literal section contains raw text and may include braces.
+// itemLiteral has already been emitted.
 func lexLiteral(l *lexer) stateFn {
+	// emit the closing of the initial {literal} tag
+	var ch = l.next()
+	for isSpace(ch) {
+		ch = l.next()
+	}
+	if ch != '}' {
+		return l.errorf("expected closing tag after {literal..")
+	}
+	if l.doubleDelim && l.next() != '}' {
+		return l.errorf("expected double closing braces in tag")
+	}
+	l.emit(itemRightDelim)
+
+	// accept everything as itemText until we see the {/literal}
 	var end bool
-	var pos Pos
+	var delimLen int
 	for {
-		if strings.HasPrefix(l.input[l.pos:], "{/literal}") {
-			end, pos = true, 10
-		} else if strings.HasPrefix(l.input[l.pos:], "{{/literal}}") {
-			end, pos = true, 12
+		if !l.doubleDelim && strings.HasPrefix(l.input[l.pos:], "{/literal}") {
+			end, delimLen = true, 1
+		} else if l.doubleDelim && strings.HasPrefix(l.input[l.pos:], "{{/literal}}") {
+			end, delimLen = true, 2
 		}
 		if end {
 			if l.pos > l.start {
 				l.emit(itemText)
 			}
-			l.pos += pos
+			l.pos += Pos(delimLen)
+			l.emit(itemLeftDelim)
+			l.pos += Pos(len("/literal"))
 			l.emit(itemLiteralEnd)
+			l.pos += Pos(delimLen)
+			l.emit(itemRightDelim)
+			return lexText
 		}
 		if l.next() == eof {
 			return l.errorf("unclosed literal")
@@ -802,16 +854,6 @@ func scanNumber(l *lexer) (typ itemType, ok bool) {
 	ok = true
 	return
 }
-
-// // lexSpace scans a run of space characters.
-// // One space has already been seen.
-// func lexSpace(l *lexer) stateFn {
-// 	for isSpace(l.peek()) {
-// 		l.next()
-// 	}
-// 	l.emit(itemSpace)
-// 	return lexInsideTag
-// }
 
 // Helpers --------------------------------------------------------------------
 

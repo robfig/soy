@@ -78,6 +78,24 @@ var parseTests = []parseTest{
 		newText(0, "}"),
 	)},
 
+	{"literal", "{literal} {/call}\n {sp} // comment {/literal}", tList(
+		newText(0, " {/call}\n {sp} // comment "),
+	)},
+
+	{"css", `{css my-class} {css $component, myclass}`, tList(
+		&CssNode{0, nil, "my-class"},
+		&CssNode{0, &DataRefNode{0, "component", nil}, "myclass"},
+	)},
+
+	{"log", "{log}Hello {$name}{/log}", tList(
+		&LogNode{0, tList(
+			newText(0, "Hello "),
+			&PrintNode{0, &DataRefNode{0, "name", nil}},
+		)},
+	)},
+
+	{"debugger", "{debugger}", tList(&DebuggerNode{0})},
+
 	{"expression1", "{not false and (isFirst($foo) or (-$x - 5) > 3.1)}", tList(&PrintNode{0,
 		&AndNode{bin(
 			&NotNode{0, &BoolNode{0, false}},
@@ -362,6 +380,13 @@ func eqTree(t *testing.T, expected, actual Node) bool {
 		return eqTree(t, expected.(*TemplateNode).Body, actual.(*TemplateNode).Body)
 	case *RawTextNode:
 		return eqstr(t, "text", string(expected.(*RawTextNode).Text), string(actual.(*RawTextNode).Text))
+	case *CssNode:
+		return eqTree(t, expected.(*CssNode).Expr, actual.(*CssNode).Expr) &&
+			eqstr(t, "css", expected.(*CssNode).Suffix, actual.(*CssNode).Suffix)
+	case *DebuggerNode:
+		return true
+	case *LogNode:
+		return eqTree(t, expected.(*LogNode).Body, actual.(*LogNode).Body)
 
 	case *NullNode:
 		return true

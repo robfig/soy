@@ -328,6 +328,50 @@ var lexTests = []lexTest{
 		tEOF,
 	}},
 
+	{"literal", `{literal}{$var}{nil} // comment{/literal}`, []item{
+		tLeft,
+		{itemLiteral, 0, "literal"},
+		tRight,
+		{itemText, 0, "{$var}{nil} // comment"},
+		tLeft,
+		{itemLiteralEnd, 0, "/literal"},
+		tRight,
+		tEOF,
+	}},
+
+	{"css", `{css my-class} {css $component, myclass}`, []item{
+		tLeft,
+		{itemCss, 0, "css"},
+		{itemText, 0, "my-class"},
+		tRight,
+		tLeft,
+		{itemCss, 0, "css"},
+		{itemText, 0, "$component, myclass"},
+		tRight,
+		tEOF,
+	}},
+
+	{"log", `{log} some expr {$expr}{/log}`, []item{
+		tLeft,
+		{itemLog, 0, "log"},
+		tRight,
+		{itemText, 0, " some expr "},
+		tLeft,
+		{itemDollarIdent, 0, "$expr"},
+		tRight,
+		tLeft,
+		{itemLogEnd, 0, "/log"},
+		tRight,
+		tEOF,
+	}},
+
+	{"debugger", `{debugger}`, []item{
+		tLeft,
+		{itemDebugger, 0, "debugger"},
+		tRight,
+		tEOF,
+	}},
+
 	{"namespace and template", `{namespace example}
 
 {template .templateName}

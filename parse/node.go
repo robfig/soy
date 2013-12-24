@@ -131,7 +131,47 @@ func newPrint(pos Pos, arg Node) *PrintNode {
 }
 
 func (n *PrintNode) String() string {
-	return n.Arg.String()
+	return "{" + n.Arg.String() + "}"
+}
+
+type LiteralNode struct {
+	Pos
+	Body string
+}
+
+func (n *LiteralNode) String() string {
+	return "{literal}" + n.Body + "{/literal}"
+}
+
+type CssNode struct {
+	Pos
+	Expr   Node
+	Suffix string
+}
+
+func (n *CssNode) String() string {
+	var expr = "{css "
+	if n.Expr != nil {
+		expr += n.Expr.String() + ", "
+	}
+	return expr + n.Suffix + "}"
+}
+
+type LogNode struct {
+	Pos
+	Body Node
+}
+
+func (n *LogNode) String() string {
+	return "{log}" + n.Body.String() + "{/log}"
+}
+
+type DebuggerNode struct {
+	Pos
+}
+
+func (n *DebuggerNode) String() string {
+	return "{debugger}"
 }
 
 type IdentNode struct {

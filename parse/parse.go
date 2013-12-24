@@ -135,6 +135,24 @@ func (t *Tree) beginTag() Node {
 		return t.parseSwitch(token)
 	case itemCall:
 		return t.parseCall(token)
+	case itemLiteral:
+		t.expect(itemRightDelim, "literal")
+		literalText := t.expect(itemText, "literal")
+		n := &RawTextNode{literalText.pos, []byte(literalText.val)}
+		t.expect(itemLeftDelim, "literal")
+		t.expect(itemLiteralEnd, "literal")
+		t.expect(itemRightDelim, "literal")
+		return n
+	case itemCss:
+		return t.parseCss(token)
+	case itemLog:
+		t.expect(itemRightDelim, "log")
+		logBody := t.itemList(itemLogEnd)
+		t.expect(itemRightDelim, "log")
+		return &LogNode{token.pos, logBody}
+	case itemDebugger:
+		t.expect(itemRightDelim, "debugger")
+		return &DebuggerNode{token.pos}
 	case itemNil, itemSpace, itemTab, itemNewline, itemCarriageReturn, itemLeftBrace, itemRightBrace:
 		t.expect(itemRightDelim, "special char")
 		return newText(token.pos, specialChars[token.typ])
@@ -149,6 +167,22 @@ func (t *Tree) beginTag() Node {
 		t.errorf("not implemented: %#v", token)
 	}
 	return nil
+}
+
+// "css" has just been read.
+func (t *Tree) parseCss(token item) Node {
+	var cmdText = t.expect(itemText, "css")
+	t.expect(itemRightDelim, "css")
+	var lastComma = strings.LastIndex(cmdText.val, ",")
+	if lastComma == -1 {
+		return &CssNode{token.pos, nil, strings.TrimSpace(cmdText.val)}
+	}
+	var exprText = strings.TrimSpace(cmdText.val[:lastComma])
+	return &CssNode{
+		token.pos,
+		t.parseQuotedExpr(exprText),
+		strings.TrimSpace(cmdText.val[lastComma+1:]),
+	}
 }
 
 // "call" has just been read.
@@ -186,7 +220,6 @@ func (t *Tree) parseCall(token item) Node {
 	var allData = false
 	var dataNode Node = nil
 	if data, ok := attrs["data"]; ok {
-		fmt.Printf("%q", data)
 		if data == "all" {
 			allData = true
 		} else {

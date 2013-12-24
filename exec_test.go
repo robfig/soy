@@ -3,6 +3,7 @@ package soy
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"strings"
 	"testing"
 )
@@ -273,6 +274,43 @@ func TestSpecialChars(t *testing.T) {
 		exprtest("nil avoids space", "abc{nil}\ndef", "abcdef"),
 		exprtest("without sp there is no space", "abc\n<a>", "abc<a>"),
 		exprtest("sp adds space", "abc{sp}\n<a>", "abc <a>"),
+	})
+}
+
+func TestLiteral(t *testing.T) {
+	runExecTests(t, []execTest{
+		exprtest("literal",
+			`{literal} {/call}\n {sp} // comment {/literal}`,
+			` {/call}\n {sp} // comment `),
+	})
+}
+
+func TestCss(t *testing.T) {
+	runExecTests(t, []execTest{
+		exprtestwdata("css",
+			`<div class="{css my-css-class}"></div> <a class="{css $component, a-class}">link</a>`,
+			`<div class="my-css-class"></div> <a class="page-a-class">link</a>`,
+			data{"component": "page"}),
+	})
+}
+
+func TestLog(t *testing.T) {
+	originalLogger := Logger
+	defer func() { Logger = originalLogger }()
+
+	var buf bytes.Buffer
+	Logger = log.New(&buf, "", 0)
+	runExecTests(t, []execTest{
+		exprtestwdata("log", `{log} Hello {$name} // comment{/log}`, ``, data{"name": "Rob"}),
+	})
+	if strings.TrimSpace(buf.String()) != "Hello Rob" {
+		t.Errorf("logger didn't match: %q", buf.String())
+	}
+}
+
+func TestDebugger(t *testing.T) {
+	runExecTests(t, []execTest{
+		exprtest("debugger", `{debugger}`, ``),
 	})
 }
 
