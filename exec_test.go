@@ -154,6 +154,23 @@ func TestForeach(t *testing.T) {
 	}))
 }
 
+func TestFor(t *testing.T) {
+	runExecTests(t, multidatatest("for", `
+{for $i in range(1, length($items) + 1)}
+  {msg desc="Numbered item."}
+    {$i}: {$items[$i - 1]}{\n}
+  {/msg}
+{/for}`, []datatest{
+		{data{"items": []interface{}{}}, ""},
+		{data{"items": []interface{}{"car"}}, "1: car\n"},
+		{data{"items": []interface{}{"car", "boat"}}, "1: car\n2: boat\n"},
+	}, []errortest{
+		{data{}},             // undefined is not a valid slice
+		{data{"items": nil}}, // null is not a valid slice
+		{data{"items": "a"}}, // string is not a valid slice
+	}))
+}
+
 func TestSwitch(t *testing.T) {
 	runExecTests(t, multidatatest("switch", `
 {switch $boo} {case 0}A

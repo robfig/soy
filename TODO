@@ -27,3 +27,4 @@ Now:
 
 Issues:
 - How are escape sequences handled within strings? e.g. 'string\nvalue' or desc="hello\nworld"
+- replace reflect.Value usage with own types.  or figure out solution for drilling through interface/ptr)

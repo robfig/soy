@@ -31,7 +31,11 @@ func (s scope) set(k string, v reflect.Value) {
 func (s scope) lookup(k string) reflect.Value {
 	for i := range s {
 		if v, ok := s[i][k]; ok {
-			return val(v)
+			vv := val(v)
+			for vv.Kind() == reflect.Interface {
+				vv = vv.Elem()
+			}
+			return vv
 		}
 	}
 	return undefinedValue
@@ -67,16 +71,17 @@ func (s *state) errorf(format string, args ...interface{}) {
 
 // errRecover is the handler that turns panics into returns from the top
 // level of Parse.
-func errRecover(errp *error) {
+func (s *state) errRecover(errp *error) {
 	e := recover()
 	if e != nil {
 		switch err := e.(type) {
 		case runtime.Error:
 			panic(e)
 		case error:
-			*errp = err
+			*errp = fmt.Errorf("%T: %v", s.node, err)
+			//			*errp = err
 		default:
-			*errp = fmt.Errorf("%v", e)
+			*errp = fmt.Errorf("%T: %v", s.node, e)
 		}
 	}
 }
@@ -87,12 +92,12 @@ func (t Template) Execute(wr io.Writer, data map[string]interface{}) (err error)
 	if t.node == nil {
 		return errors.New("no template found")
 	}
-	defer errRecover(&err)
 	state := &state{
 		tmpl:    t.node,
 		wr:      wr,
 		context: []map[string]interface{}{data},
 	}
+	defer state.errRecover(&err)
 	state.walk(reflect.ValueOf(nil), t.node)
 	return
 }
@@ -120,6 +125,8 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 		if _, err := s.wr.Write(node.Text); err != nil {
 			s.errorf("%s", err)
 		}
+	case *parse.MsgNode:
+		s.walk(dot, node.Body)
 
 	case *parse.IfNode:
 		for _, cond := range node.Conds {
@@ -131,7 +138,7 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 	case *parse.ForNode:
 		var list = s.eval(dot, node.List)
 		if list.Kind() != reflect.Slice {
-			s.errorf("expected list type to iterate, got %v", list.Elem().Kind())
+			s.errorf("expected list type to iterate, got %v", list.Kind())
 		}
 		if list.Len() == 0 && node.IfEmpty != nil {
 			s.walk(dot, node.IfEmpty)
@@ -196,6 +203,14 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 		default:
 			s.val = val(toFloat(arg1) + toFloat(arg2))
 		}
+	case *parse.SubNode:
+		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2)
+		switch {
+		case isInt(arg1) && isInt(arg2):
+			s.val = val(arg1.Int() - arg2.Int())
+		default:
+			s.val = val(toFloat(arg1) - toFloat(arg2))
+		}
 	case *parse.DivNode:
 		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2)
 		s.val = val(toFloat(arg1) / toFloat(arg2))
@@ -256,20 +271,26 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 }
 
 func (s *state) evalFunc(node *parse.FunctionNode) reflect.Value {
-	switch node.Name {
-	case "index":
-		key := node.Args[0].(*parse.DataRefNode).Key
-		index := s.context.lookup(key + "__index").Int()
-		return val(index)
-	case "isFirst":
-		key := node.Args[0].(*parse.DataRefNode).Key
-		index := s.context.lookup(key + "__index").Int()
-		return val(index == 0)
-	case "isLast":
-		key := node.Args[0].(*parse.DataRefNode).Key
-		index := s.context.lookup(key + "__index").Int()
-		lastIndex := s.context.lookup(key + "__lastIndex").Int()
-		return val(index == lastIndex)
+	if fn, ok := loopFuncs[node.Name]; ok {
+		return fn(s, node.Args[0].(*parse.DataRefNode).Key)
+	}
+	if fn, ok := soyFuncs[node.Name]; ok {
+		var valid = false
+		for _, length := range fn.ValidArgLengths {
+			if len(node.Args) == length {
+				valid = true
+			}
+		}
+		if !valid {
+			panic(fmt.Errorf("call to %v with %v args, expected %v",
+				node.Name, len(node.Args), fn.ValidArgLengths))
+		}
+
+		var args []reflect.Value
+		for _, arg := range node.Args {
+			args = append(args, s.eval(reflect.Value{}, arg))
+		}
+		return fn.Func(args...)
 	}
 	panic(fmt.Errorf("unrecognized function name: %s", node.Name))
 }
@@ -338,5 +359,5 @@ func (s *state) eval2(dot reflect.Value, n1, n2 parse.Node) (reflect.Value, refl
 
 func (s *state) eval(dot reflect.Value, n parse.Node) reflect.Value {
 	s.walk(dot, n)
-	return s.val
+	return drill(s.val)
 }

@@ -9,7 +9,7 @@ import (
 )
 
 // val makes code that uses ValueOf heavily easier to read.
-var val = func(v interface{}) reflect.Value { //reflect.ValueOf
+var val = func(v interface{}) reflect.Value {
 	if reflect.TypeOf(v) == reflect.TypeOf(reflect.Value{}) {
 		panic("passed value to val()")
 	}
@@ -26,7 +26,21 @@ var (
 
 // type tests
 
+func drill(val reflect.Value) reflect.Value {
+	if val == nullValue || val == undefinedValue {
+		return val
+	}
+	for val.Kind() == reflect.Interface {
+		val = val.Elem()
+	}
+	for val.Kind() == reflect.Ptr {
+		val = val.Elem()
+	}
+	return val
+}
+
 func isInt(val reflect.Value) bool {
+	val = drill(val)
 	switch val.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
@@ -36,6 +50,7 @@ func isInt(val reflect.Value) bool {
 }
 
 func isFloat(val reflect.Value) bool {
+	val = drill(val)
 	switch val.Kind() {
 	case reflect.Float32, reflect.Float64:
 		return true
@@ -99,6 +114,7 @@ func equals(val1, val2 reflect.Value) bool {
 // toFloat returns the float representation of the given value.
 // panics if val is not an int or float
 func toFloat(val reflect.Value) float64 {
+	val = drill(val)
 	for val.Kind() == reflect.Interface {
 		val = val.Elem()
 	}
@@ -111,6 +127,7 @@ func toFloat(val reflect.Value) float64 {
 // truthiness returns the value of this value if coerced into a
 // boolean. (true if this object is truthy, false if this object is falsy)
 func truthiness(val reflect.Value) bool {
+	val = drill(val)
 	switch {
 	case val == nullValue:
 		return false
@@ -137,11 +154,10 @@ func truthiness(val reflect.Value) bool {
 
 // toString coerces the given value into a string.
 func toString(val reflect.Value) string {
-	if !val.IsValid() { // ensure this doesn't fire for nullValue
+	if !val.IsValid() {
 		panic("Attempted to coerce undefined value into a string.")
 	}
 
-	// TODO: is this the right null check?
 	for val.Kind() == reflect.Interface || val.Kind() == reflect.Ptr {
 		if val.IsNil() {
 			return "null"
