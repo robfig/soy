@@ -757,7 +757,7 @@ func isValue(t item) bool {
 	case itemNull, itemBool, itemInteger, itemFloat, itemDollarIdent, itemString:
 		return true
 	case itemIdent:
-		return true // function application returns a value
+		return true // function / global returns a value
 	case itemLeftBracket:
 		return true // list or map literal
 	}
@@ -848,28 +848,44 @@ func (t *Tree) newValueNode(tok item) Node {
 	case itemDollarIdent:
 		return t.parseDataRef(tok)
 	case itemIdent:
-		// this is a function call.  get all the arguments.
-		node := &FunctionNode{tok.pos, tok.val, nil}
-		t.expect(itemLeftParen, "expression: function call")
-		if t.peek().typ == itemRightParen {
-			t.next()
-			return node
+		next := t.next()
+		if next.typ != itemLeftParen {
+			return t.newGlobalNode(tok, next)
 		}
-		for {
-			node.Args = append(node.Args, t.parseExpr(0))
-			switch tok := t.next(); tok.typ {
-			case itemComma:
-				// continue to get the next arg
-			case itemRightParen:
-				return node // all done
-			case eof:
-				t.errorf("unexpected eof reading function params")
-			default:
-				t.errorf("unexpected %v reading function params", tok)
-			}
-		}
+		return t.newFunctionNode(tok)
 	}
 	panic("unreachable")
+}
+
+func (t *Tree) newGlobalNode(tok, next item) Node {
+	var name = tok.val
+	for next.typ == itemDotIdent {
+		name += next.val
+		next = t.next()
+	}
+	t.backup()
+	return &GlobalNode{tok.pos, name}
+}
+
+func (t *Tree) newFunctionNode(tok item) Node {
+	node := &FunctionNode{tok.pos, tok.val, nil}
+	if t.peek().typ == itemRightParen {
+		t.next()
+		return node
+	}
+	for {
+		node.Args = append(node.Args, t.parseExpr(0))
+		switch tok := t.next(); tok.typ {
+		case itemComma:
+			// continue to get the next arg
+		case itemRightParen:
+			return node // all done
+		case eof:
+			t.errorf("unexpected eof reading function params")
+		default:
+			t.errorf("unexpected %v reading function params", tok)
+		}
+	}
 }
 
 // Helpers ----------

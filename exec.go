@@ -203,6 +203,12 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 		s.val = val(node.Value)
 	case *parse.BoolNode:
 		s.val = val(node.True)
+	case *parse.GlobalNode:
+		var value, ok = s.bundle.globals[node.Name]
+		if !ok {
+			s.errorf("failed to find global: %q", node.Name)
+		}
+		s.val = val(value)
 	case *parse.ListLiteralNode:
 		var items = make([]interface{}, len(node.Items))
 		for i, item := range node.Items {

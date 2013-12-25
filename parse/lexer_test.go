@@ -423,6 +423,17 @@ var lexTests = []lexTest{
 		tEOF,
 	}},
 
+	{"global", `{GLOBAL_STR}{app.GLOBAL}`, []item{
+		tLeft,
+		{itemIdent, 0, "GLOBAL_STR"},
+		tRight,
+		tLeft,
+		{itemIdent, 0, "app"},
+		{itemDotIdent, 0, ".GLOBAL"},
+		tRight,
+		tEOF,
+	}},
+
 	{"namespace and template", `{namespace example}
 
 {template .templateName}

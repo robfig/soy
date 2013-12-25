@@ -8,13 +8,13 @@ import (
 )
 
 // Tofu is the aggregate of all your soy.
-// The zero value is ready to use.
 type Tofu struct {
 	templates map[string]*parse.TemplateNode
+	globals   map[string]interface{}
 }
 
 func New() Tofu {
-	return Tofu{make(map[string]*parse.TemplateNode)}
+	return Tofu{make(map[string]*parse.TemplateNode), make(map[string]interface{})}
 }
 
 func (tofu Tofu) Parse(input string) error {

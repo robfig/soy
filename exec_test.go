@@ -390,7 +390,18 @@ func TestPrintDirectives(t *testing.T) {
 	})
 }
 
+func TestGlobals(t *testing.T) {
+	globals["app.global_str"] = "abc"
+	globals["GLOBAL_INT"] = 5
+	globals["global.nil"] = nil
+	runExecTests(t, []execTest{
+		exprtest("global", `{app.global_str} {GLOBAL_INT + 2} {global.nil?:'hi'}`, `abc 7 hi`),
+	})
+}
+
 // helpers
+
+var globals = make(map[string]interface{})
 
 func (t execTest) fails() execTest {
 	t.ok = false
@@ -446,6 +457,7 @@ func runExecTests(t *testing.T, tests []execTest) {
 	b := new(bytes.Buffer)
 	for _, test := range tests {
 		var tofu = New()
+		tofu.globals = globals
 		var err = tofu.Parse(test.input)
 		if err != nil {
 			t.Errorf("%s: parse error: %s", test.name, err)

@@ -105,6 +105,10 @@ var parseTests = []parseTest{
 	)},
 
 	{"debugger", "{debugger}", tList(&DebuggerNode{0})},
+	{"global", "{GLOBAL_STR}{app.GLOBAL}", tList(
+		&PrintNode{0, &GlobalNode{0, "GLOBAL_STR"}, nil},
+		&PrintNode{0, &GlobalNode{0, "app.GLOBAL"}, nil},
+	)},
 
 	{"expression1", "{not false and (isFirst($foo) or (-$x - 5) > 3.1)}", tList(&PrintNode{0, &AndNode{bin(
 		&NotNode{0, &BoolNode{0, false}},
@@ -396,6 +400,8 @@ func eqTree(t *testing.T, expected, actual Node) bool {
 		return eqfloat(t, "float", expected.(*FloatNode).Value, actual.(*FloatNode).Value)
 	case *StringNode:
 		return eqstr(t, "stringnode", expected.(*StringNode).Value, actual.(*StringNode).Value)
+	case *GlobalNode:
+		return eqstr(t, "global", expected.(*GlobalNode).Name, actual.(*GlobalNode).Name)
 	case *ListLiteralNode:
 		return eqNodes(t, expected.(*ListLiteralNode).Items, actual.(*ListLiteralNode).Items)
 	case *MapLiteralNode:

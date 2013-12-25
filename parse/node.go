@@ -399,6 +399,15 @@ func (s *StringNode) String() string {
 	return quoteString(s.Value)
 }
 
+type GlobalNode struct {
+	Pos
+	Name string
+}
+
+func (n *GlobalNode) String() string {
+	return n.Name
+}
+
 type FunctionNode struct {
 	Pos
 	Name string

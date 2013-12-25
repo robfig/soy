@@ -1,10 +1,8 @@
 Now:
-- print directives (html escaping by default)
 - Globals
 - implement user provided functions
 - soydoc requirements
 - use a struct rather than a map / docs for expected data structures
-- check if {'abc{lb}xyz'} works
 - {msg}
 - {let}
 - {alias}
@@ -23,9 +21,8 @@ Now:
 - JS code generation
 
 Issues:
-- How are escape sequences handled within strings? e.g. 'string\nvalue' or desc="hello\nworld"
+- How are escape sequences handled within strings? e.g. 'string\nvalue' or desc="hello\nworld". check if {'abc{lb}xyz'} works
 - replace reflect.Value usage with own types.  or figure out solution for drilling through interface/ptr)
-- Line-interior spaces must be maintained
 
 Ideas:
 - Reduce lexed tokens by removing delim items around commands
