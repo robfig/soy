@@ -46,29 +46,35 @@ var parseTests = []parseTest{
 	{"variable template", "{template .name}\nHello {$name}!\n{/template}",
 		tList(tTemplate(".name",
 			newText(0, "Hello "),
-			newPrint(0, &DataRefNode{0, "name", nil}), // implicit print
+			&PrintNode{0, &DataRefNode{0, "name", nil}, nil}, // implicit print
 			newText(0, "!"),
 		))},
 	{"soydoc", "/** Text\n*/", tList(newSoyDoc(0, "/** Text\n*/"))},
-	{"not", "{not $var}", tList(&PrintNode{0, &NotNode{0, &DataRefNode{0, "var", nil}}})},
-	{"negate", "{-$var}", tList(&PrintNode{0, &NegateNode{0, &DataRefNode{0, "var", nil}}})},
-	{"concat", `{'hello' + 'world'}`, tList(&PrintNode{0,
-		&AddNode{bin(
-			&StringNode{0, "hello"},
-			&StringNode{0, "world"})},
-	})},
-	{"explicit print", `{print 'hello'}`, tList(&PrintNode{0, &StringNode{0, "hello"}})},
+	{"not", "{not $var}", tList(&PrintNode{0, &NotNode{0, &DataRefNode{0, "var", nil}}, nil})},
+	{"negate", "{-$var}", tList(&PrintNode{0, &NegateNode{0, &DataRefNode{0, "var", nil}}, nil})},
+	{"concat", `{'hello' + 'world'}`, tList(&PrintNode{0, &AddNode{bin(
+		&StringNode{0, "hello"},
+		&StringNode{0, "world"})}, nil})},
+	{"explicit print", `{print 'hello'}`, tList(&PrintNode{0, &StringNode{0, "hello"}, nil})},
+	{"print directive", `{print 'hello'|id}`, tList(&PrintNode{0, &StringNode{0, "hello"},
+		[]*PrintDirectiveNode{{0, "id", nil}}})},
+	{"print directives", `{'hello'|noAutoescape|truncate:5,false}`, tList(&PrintNode{0, &StringNode{0, "hello"},
+		[]*PrintDirectiveNode{
+			{0, "noAutoescape", nil},
+			{0, "truncate", []Node{
+				&IntNode{0, 5},
+				&BoolNode{0, false}}}}})},
 
 	{"rawtext (linejoin)", "\n  a \n\tb\r\n  c  \n\n", tList(newText(0, "a b c"))},
 	{"rawtext+html", "\n  a <br>\n\tb\r\n\n  c\n\n<br> ", tList(newText(0, "a <br>b c<br> "))},
 	{"rawtext+comment", "a <br> // comment \n\tb\t// comment2\r\n  c\n\n", tList(newText(0, "a <br>b c"))},
 	{"rawtext+tag", "a {$foo}\t {$baz}\n\t  b\r\n\n  {$bar} c", tList(
 		newText(0, "a "),
-		&PrintNode{0, &DataRefNode{0, "foo", nil}},
+		&PrintNode{0, &DataRefNode{0, "foo", nil}, nil},
 		newText(0, "\t "),
-		&PrintNode{0, &DataRefNode{0, "baz", nil}},
+		&PrintNode{0, &DataRefNode{0, "baz", nil}, nil},
 		newText(0, "b"),
-		&PrintNode{0, &DataRefNode{0, "bar", nil}},
+		&PrintNode{0, &DataRefNode{0, "bar", nil}, nil},
 		newText(0, " c"),
 	)},
 	{"specialchars", `{sp}{nil}{\r}{\n}{\t}{lb}{rb}`, tList(
@@ -94,85 +100,69 @@ var parseTests = []parseTest{
 	{"log", "{log}Hello {$name}{/log}", tList(
 		&LogNode{0, tList(
 			newText(0, "Hello "),
-			&PrintNode{0, &DataRefNode{0, "name", nil}},
+			&PrintNode{0, &DataRefNode{0, "name", nil}, nil},
 		)},
 	)},
 
 	{"debugger", "{debugger}", tList(&DebuggerNode{0})},
 
-	{"expression1", "{not false and (isFirst($foo) or (-$x - 5) > 3.1)}", tList(&PrintNode{0,
-		&AndNode{bin(
-			&NotNode{0, &BoolNode{0, false}},
-			&OrNode{bin(
-				&FunctionNode{0, "isFirst", []Node{&DataRefNode{0, "foo", nil}}},
-				&GtNode{bin(
-					&SubNode{bin(
-						&NegateNode{0, &DataRefNode{0, "x", nil}},
-						&IntNode{0, 5})},
-					&FloatNode{0, 3.1})})})},
-	})},
-
-	{"expression2", `{null or ('foo' == 'f'+true ? -3 <= 5 : not $foo ?: bar(5))}`, tList(&PrintNode{0,
+	{"expression1", "{not false and (isFirst($foo) or (-$x - 5) > 3.1)}", tList(&PrintNode{0, &AndNode{bin(
+		&NotNode{0, &BoolNode{0, false}},
 		&OrNode{bin(
-			&NullNode{0},
-			&TernNode{0,
-				&EqNode{bin(
-					&StringNode{0, "foo"},
-					&AddNode{bin(
-						&StringNode{0, "f"},
-						&BoolNode{0, true})})},
-				&LteNode{bin(
-					&IntNode{0, -3},
+			&FunctionNode{0, "isFirst", []Node{&DataRefNode{0, "foo", nil}}},
+			&GtNode{bin(
+				&SubNode{bin(
+					&NegateNode{0, &DataRefNode{0, "x", nil}},
 					&IntNode{0, 5})},
-				&ElvisNode{bin(
-					&NotNode{0, &DataRefNode{0, "foo", nil}},
-					&FunctionNode{0, "bar", []Node{&IntNode{0, 5}}})}})},
-	})},
+				&FloatNode{0, 3.1})})})}, nil})},
 
-	{"expression3", `{'a'+'b' != 'ab' and (2 >= -5.0 or (null ?: true))}`, tList(&PrintNode{0,
-		&AndNode{bin(
-			&NotEqNode{bin(
+	{"expression2", `{null or ('foo' == 'f'+true ? -3 <= 5 : not $foo ?: bar(5))}`, tList(&PrintNode{0, &OrNode{bin(
+		&NullNode{0},
+		&TernNode{0,
+			&EqNode{bin(
+				&StringNode{0, "foo"},
 				&AddNode{bin(
-					&StringNode{0, "a"},
-					&StringNode{0, "b"})},
-				&StringNode{0, "ab"})},
-			&OrNode{bin(
-				&GteNode{bin(&IntNode{0, 2}, &FloatNode{0, -5.0})},
-				&ElvisNode{bin(
-					&NullNode{0},
-					&BoolNode{0, true})})})},
-	})},
+					&StringNode{0, "f"},
+					&BoolNode{0, true})})},
+			&LteNode{bin(
+				&IntNode{0, -3},
+				&IntNode{0, 5})},
+			&ElvisNode{bin(
+				&NotNode{0, &DataRefNode{0, "foo", nil}},
+				&FunctionNode{0, "bar", []Node{&IntNode{0, 5}}})}})}, nil})},
 
-	{"function", `{hasData()}`, tList(&PrintNode{0,
-		&FunctionNode{0, "hasData", nil},
-	})},
+	{"expression3", `{'a'+'b' != 'ab' and (2 >= -5.0 or (null ?: true))}`, tList(&PrintNode{0, &AndNode{bin(
+		&NotEqNode{bin(
+			&AddNode{bin(
+				&StringNode{0, "a"},
+				&StringNode{0, "b"})},
+			&StringNode{0, "ab"})},
+		&OrNode{bin(
+			&GteNode{bin(&IntNode{0, 2}, &FloatNode{0, -5.0})},
+			&ElvisNode{bin(
+				&NullNode{0},
+				&BoolNode{0, true})})})}, nil})},
 
-	{"empty list", `{[]}`, tList(&PrintNode{0,
-		&ListLiteralNode{0, nil},
-	})},
+	{"function", `{hasData()}`, tList(&PrintNode{0, &FunctionNode{0, "hasData", nil}, nil})},
 
-	{"list", `{[1, 'two', [3, false]]}`, tList(&PrintNode{0,
+	{"empty list", `{[]}`, tList(&PrintNode{0, &ListLiteralNode{0, nil}, nil})},
+
+	{"list", `{[1, 'two', [3, false]]}`, tList(&PrintNode{0, &ListLiteralNode{0, []Node{
+		&IntNode{0, 1},
+		&StringNode{0, "two"},
 		&ListLiteralNode{0, []Node{
-			&IntNode{0, 1},
-			&StringNode{0, "two"},
-			&ListLiteralNode{0, []Node{
-				&IntNode{0, 3},
-				&BoolNode{0, false},
-			}},
+			&IntNode{0, 3},
+			&BoolNode{0, false},
 		}},
-	})},
+	}}, nil})},
 
-	{"empty map", `{[:]}`, tList(&PrintNode{0,
-		&MapLiteralNode{0, make(map[string]Node)},
-	})},
+	{"empty map", `{[:]}`, tList(&PrintNode{0, &MapLiteralNode{0, make(map[string]Node)}, nil})},
 
-	{"map", `{['aaa': 42, 'bbb': 'hello', 'ccc':[1]]}`, tList(&PrintNode{0,
-		&MapLiteralNode{0, map[string]Node{
-			"aaa": &IntNode{0, 42},
-			"bbb": &StringNode{0, "hello"},
-			"ccc": &ListLiteralNode{0, []Node{&IntNode{0, 1}}},
-		}},
-	})},
+	{"map", `{['aaa': 42, 'bbb': 'hello', 'ccc':[1]]}`, tList(&PrintNode{0, &MapLiteralNode{0, map[string]Node{
+		"aaa": &IntNode{0, 42},
+		"bbb": &StringNode{0, "hello"},
+		"ccc": &ListLiteralNode{0, []Node{&IntNode{0, 1}}},
+	}}, nil})},
 
 	{"if", `
 {if $zoo}{$zoo}{/if}
@@ -184,7 +174,7 @@ var parseTests = []parseTest{
   Blah {$moo}
 {/if}`, tList(
 		&IfNode{0, []*IfCondNode{
-			&IfCondNode{0, &DataRefNode{0, "zoo", nil}, tList(&PrintNode{0, &DataRefNode{0, "zoo", nil}})},
+			&IfCondNode{0, &DataRefNode{0, "zoo", nil}, tList(&PrintNode{0, &DataRefNode{0, "zoo", nil}, nil})},
 		}},
 		&IfNode{0, []*IfCondNode{
 			&IfCondNode{0, &DataRefNode{0, "boo", nil}, tList(newText(0, "Blah"))},
@@ -192,10 +182,10 @@ var parseTests = []parseTest{
 				&GtNode{bin(
 					&DataRefNode{0, "foo", []Node{&DataRefKeyNode{0, false, "goo"}}},
 					&IntNode{0, 2})},
-				tList(&PrintNode{0, &DataRefNode{0, "boo", nil}})},
+				tList(&PrintNode{0, &DataRefNode{0, "boo", nil}, nil})},
 			&IfCondNode{0,
 				nil,
-				tList(newText(0, "Blah "), &PrintNode{0, &DataRefNode{0, "moo", nil}})},
+				tList(newText(0, "Blah "), &PrintNode{0, &DataRefNode{0, "moo", nil}, nil})},
 		}},
 	)},
 
@@ -231,14 +221,14 @@ var parseTests = []parseTest{
   Sorry, no booze.
 {/foreach}`, tList(
 		&ForNode{0, "goo", &DataRefNode{0, "goose", nil}, tList(
-			&PrintNode{0, &DataRefNode{0, "goose", []Node{&DataRefKeyNode{0, false, "numKids"}}}},
+			&PrintNode{0, &DataRefNode{0, "goose", []Node{&DataRefKeyNode{0, false, "numKids"}}}, nil},
 			newText(0, " goslings."),
 			newText(0, "\n"),
 		), nil},
 		&ForNode{0, "boo", &DataRefNode{0, "foo", []Node{&DataRefKeyNode{0, false, "booze"}}},
 			tList(
 				newText(0, "Scary drink "),
-				&PrintNode{0, &DataRefNode{0, "boo", []Node{&DataRefKeyNode{0, false, "name"}}}},
+				&PrintNode{0, &DataRefNode{0, "boo", []Node{&DataRefKeyNode{0, false, "name"}}}, nil},
 				newText(0, "!"),
 				&IfNode{0,
 					[]*IfCondNode{&IfCondNode{0,
@@ -262,29 +252,29 @@ var parseTests = []parseTest{
 					&IntNode{0, 1})}}},
 			tList(
 				&MsgNode{0, "Numbered item.", tList(
-					&PrintNode{0, &DataRefNode{0, "i", nil}},
+					&PrintNode{0, &DataRefNode{0, "i", nil}, nil},
 					newText(0, ": "),
 					&PrintNode{0, &DataRefNode{0, "items", []Node{
 						&DataRefExprNode{0, false,
 							&SubNode{bin(
 								&DataRefNode{0, "i", nil},
-								&IntNode{0, 1})}}}}},
+								&IntNode{0, 1})}}}}, nil},
+
 					newText(0, "\n"), // {\n}
 				)}),
 			nil},
 	)},
 
-	{"data ref", "{$boo.0['foo'+'bar'][5]?.goo}", tList(&PrintNode{0,
-		&DataRefNode{0, "boo", []Node{
-			&DataRefIndexNode{0, false, 0},
-			&DataRefExprNode{0,
-				false,
-				&AddNode{bin(
-					&StringNode{0, "foo"},
-					&StringNode{0, "bar"})}},
-			&DataRefExprNode{0, false, &IntNode{0, 5}},
-			&DataRefKeyNode{0, true, "goo"}},
-		}})},
+	{"data ref", "{$boo.0['foo'+'bar'][5]?.goo}", tList(&PrintNode{0, &DataRefNode{0, "boo", []Node{
+		&DataRefIndexNode{0, false, 0},
+		&DataRefExprNode{0,
+			false,
+			&AddNode{bin(
+				&StringNode{0, "foo"},
+				&StringNode{0, "bar"})}},
+		&DataRefExprNode{0, false, &IntNode{0, 5}},
+		&DataRefKeyNode{0, true, "goo"}},
+	}, nil})},
 
 	{"call", `
 {call name=".booTemplate_" /}

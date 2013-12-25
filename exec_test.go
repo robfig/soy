@@ -347,6 +347,49 @@ func TestDebugger(t *testing.T) {
 	})
 }
 
+func TestPrintDirectives(t *testing.T) {
+	runExecTests(t, []execTest{
+		exprtest("sanitized html", "{'<a>'}", "&lt;a&gt;"),
+		exprtest("noAutoescape", "{'<a>'|noAutoescape}", "<a>"),
+		exprtestwdata("sanitized var", "{$var}", "&lt;a&gt;", data{"var": "<a>"}),
+		exprtestwdata("noAutoescape var", "{$var |noAutoescape}", "<a>", data{"var": "<a>"}),
+
+		// |id == |noAutoescape (it's deprecated)
+		exprtest("id", "{'<a>'|id}", "<a>"),
+
+		// TODO: no way to disable html escaping yet.
+		// exprtest("escapeHtml", "{'<a>'|escapeHtml}", "&lt;a&gt;"),
+
+		exprtest("escapeUri1", "{''|escapeUri}", ""),
+		exprtest("escapeUri2", "{'a%b > c'|escapeUri}", "a%25b+%3E+c"),
+		// TODO: test it escapes kind=HTML content
+		// TODO: test it does not escape kind=URI content
+
+		exprtestwdata("ejs1", "{$var|escapeJsString}", ``, data{"var": ""}),
+		exprtestwdata("ejs2", "{$var|escapeJsString}", `foo`, data{"var": "foo"}),
+		exprtestwdata("ejs3", "{$var|escapeJsString}", `foo\\bar`, data{"var": "foo\\bar"}),
+		// TODO: test it even escapes "kind=HTML" content
+		// TODO: test it does not escape "kind=JS_STR" content
+		exprtestwdata("ejs4", "{$var|escapeJsString}", `\\`, data{"var": "\\"}),
+		exprtestwdata("ejs5", "{$var|escapeJsString}", `\'\'`, data{"var": "''"}),
+		exprtestwdata("ejs5", "{$var|escapeJsString}", `\"foo\"`, data{"var": `"foo"`}),
+		exprtestwdata("ejs5", "{$var|escapeJsString}", `42`, data{"var": 42}),
+
+		exprtest("truncate", "{'Lorem Ipsum' |truncate:8}", "Lorem..."),
+		exprtest("truncate w arg", "{'Lorem Ipsum' |truncate:8,false}", "Lorem Ip"),
+		exprtest("truncate w expr", "{'Lorem Ipsum' |truncate:5+3,not true}", "Lorem Ip"),
+
+		exprtest("insertWordBreaks", "{'1234567890'|insertWordBreaks:3}", "123<wbr>456<wbr>789<wbr>0"),
+		exprtest("insertWordBreaks2", "{'123456789'|insertWordBreaks:3}", "123<wbr>456<wbr>789"),
+		exprtest("insertWordBreaks3", "{'123456789'|insertWordBreaks:30}", "123456789"),
+		exprtest("insertWordBreaks4", "{'12 345 6789'|insertWordBreaks:3}", "12 345 678<wbr>9"),
+		exprtest("insertWordBreaks5", "{''|insertWordBreaks:3}", ""),
+
+		exprtestwdata("nl2br", "{$var|changeNewlineToBr}", "<br>1<br>2<br>3<br><br>4<br><br>",
+			data{"var": "\r1\n2\r3\r\n\n4\n\n"}),
+	})
+}
+
 // helpers
 
 func (t execTest) fails() execTest {

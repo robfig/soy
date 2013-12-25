@@ -8,6 +8,7 @@ import (
 	"log"
 	"reflect"
 	"runtime"
+	"text/template"
 
 	"github.com/robfig/soy/parse"
 )
@@ -129,10 +130,7 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 
 		// Output nodes
 	case *parse.PrintNode:
-		s.walk(dot, node.Arg)
-		if _, err := s.wr.Write([]byte(toString(s.val))); err != nil {
-			s.errorf("%s", err)
-		}
+		s.evalPrint(dot, node)
 	case *parse.RawTextNode:
 		if _, err := s.wr.Write(node.Text); err != nil {
 			s.errorf("%s", err)
@@ -307,6 +305,35 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 
 	default:
 		s.errorf("unknown node: %T", node)
+	}
+}
+
+func (s *state) evalPrint(dot reflect.Value, node *parse.PrintNode) {
+	s.walk(dot, node.Arg)
+	var escapeHtml = true
+	var result = s.val
+	for _, directiveNode := range node.Directives {
+		var directive, ok = printDirectiveByName[directiveNode.Name]
+		if !ok {
+			s.errorf("print directive %q does not exist", directiveNode.Name)
+		}
+		// TODO: validate # args
+		var args []reflect.Value
+		for _, arg := range directiveNode.Args {
+			args = append(args, s.eval(dot, arg))
+		}
+		result = directive.Apply(result, args)
+		if directive.CancelAutoescape {
+			escapeHtml = false
+		}
+	}
+
+	if escapeHtml {
+		template.HTMLEscape(s.wr, []byte(toString(result)))
+	} else {
+		if _, err := s.wr.Write([]byte(toString(result))); err != nil {
+			s.errorf("%s", err)
+		}
 	}
 }
 

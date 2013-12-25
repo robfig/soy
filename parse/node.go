@@ -123,15 +123,34 @@ func (b *SoyDocNode) String() string {
 
 type PrintNode struct {
 	Pos
-	Arg Node
-}
-
-func newPrint(pos Pos, arg Node) *PrintNode {
-	return &PrintNode{Pos: pos, Arg: arg}
+	Arg        Node
+	Directives []*PrintDirectiveNode
 }
 
 func (n *PrintNode) String() string {
-	return "{" + n.Arg.String() + "}"
+	var expr = "{" + n.Arg.String()
+	for _, d := range n.Directives {
+		expr += d.String()
+	}
+	return expr + "}"
+}
+
+type PrintDirectiveNode struct {
+	Pos
+	Name string
+	Args []Node
+}
+
+func (n *PrintDirectiveNode) String() string {
+	var expr = "|" + n.Name
+	var first = false
+	for _, arg := range n.Args {
+		if first {
+			expr += ","
+		}
+		expr += arg.String()
+	}
+	return expr
 }
 
 type LiteralNode struct {

@@ -157,20 +157,45 @@ func (t *Tree) beginTag() Node {
 	case itemNil, itemSpace, itemTab, itemNewline, itemCarriageReturn, itemLeftBrace, itemRightBrace:
 		t.expect(itemRightDelim, "special char")
 		return newText(token.pos, specialChars[token.typ])
-	case itemPrint:
-		t.next()
-		fallthrough
 	case itemIdent, itemDollarIdent, itemNull, itemBool, itemFloat, itemInteger, itemString, itemNegate, itemNot, itemLeftBracket:
-		// print is implicit, so the tag may also begin with any value type, or the
-		// "not" operator.
+		// print is implicit, so the tag may also begin with any value type or unary op.
 		t.backup()
-		n := &PrintNode{token.pos, t.parseExpr(0)}
-		t.expect(itemRightDelim, "print")
-		return n
+		fallthrough
+	case itemPrint:
+		return t.parsePrint(token)
 	default:
 		t.errorf("not implemented: %#v", token)
 	}
 	return nil
+}
+
+// print has just been read (or inferred)
+func (t *Tree) parsePrint(token item) Node {
+	var expr = t.parseExpr(0)
+	var directives []*PrintDirectiveNode
+	for {
+		switch tok := t.next(); tok.typ {
+		case itemRightDelim:
+			return &PrintNode{token.pos, expr, directives}
+		case itemPipe:
+			// read the directive name and see if there are arguments
+			var id = t.expect(itemIdent, "print directive")
+			var args []Node
+			for {
+				// each argument is preceeded by a colon (first arg) or comma (subsequent)
+				switch next := t.next(); next.typ {
+				case itemColon, itemComma:
+					args = append(args, t.parseExpr(0))
+					continue
+				}
+				t.backup()
+				directives = append(directives, &PrintDirectiveNode{tok.pos, id.val, args})
+				break
+			}
+		default:
+			t.errorf("print: expected directive or close delimiter, got %v", tok.val)
+		}
+	}
 }
 
 // "css" has just been read.

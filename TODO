@@ -4,6 +4,7 @@ Now:
 - implement user provided functions
 - soydoc requirements
 - use a struct rather than a map / docs for expected data structures
+- check if {'abc{lb}xyz'} works
 - {msg}
 - {let}
 - {alias}
