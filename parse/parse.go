@@ -221,10 +221,11 @@ func (t *Tree) parseCall(token item) Node {
 	case itemDotIdent:
 		templateName = tok.val
 	case itemIdent:
+		// this ident could either be {call fully.qualified.name} or attributes.
 		switch tok2 := t.next(); tok2.typ {
 		case itemDotIdent:
 			templateName = tok.val + tok2.val
-			for tokn := t.next(); tok.typ == itemDotIdent; tokn = t.next() {
+			for tokn := t.next(); tokn.typ == itemDotIdent; tokn = t.next() {
 				templateName += tokn.val
 			}
 			t.backup()
@@ -345,21 +346,10 @@ func (t *Tree) parseSwitch(token item) Node {
 	var switchValue = t.parseExpr(0)
 	t.expect(itemRightDelim, ctx)
 
-	switch tok := t.next(); tok.typ {
-	case itemText:
-		if !allSpace(tok.val) {
-			t.errorf("unexpected text between switch cases: %v", tok.val)
-		}
-	case itemLeftDelim:
-		// good
-	default:
-		t.errorf("expected { to begin case, got %v", tok.val)
-	}
-
-	t.expect(itemLeftDelim, "switch")
 	var cases []*SwitchCaseNode
 	for {
 		switch tok := t.next(); tok.typ {
+		case itemLeftDelim:
 		case itemText: // ignore spaces between tags. text is an error though.
 			if allSpace(tok.val) {
 				continue
@@ -526,14 +516,41 @@ func (t *Tree) parseNamespace(token item) Node {
 func (t *Tree) parseTemplate(token item) Node {
 	const ctx = "template"
 	var id = t.expect(itemDotIdent, ctx)
+	var attrs = t.parseAttrs("autoescape", "private")
+	var autoescape = AutoescapeOn
+	switch str, ok := attrs["autoescape"]; {
+	case !ok:
+	case str == "true":
+	case str == "false":
+		autoescape = AutoescapeOff
+	case str == "contextual":
+		autoescape = AutoescapeContextual
+	default:
+		t.errorf(`expected "true", "false", or "contextual" for autoescape, got %v`, str)
+	}
+	var private = t.boolAttr(attrs, "private", false)
 	t.expect(itemRightDelim, ctx)
-	tmpl := newTemplate(token.pos, id.val)
-	tmpl.Body = t.itemList(itemTemplateEnd)
+	tmpl := &TemplateNode{token.pos, id.val, t.itemList(itemTemplateEnd), autoescape, private}
 	t.expect(itemRightDelim, "template tag")
 	return tmpl
 }
 
 // Expressions ----------
+
+// boolAttr returns a boolean value from the given attribute map.
+func (t *Tree) boolAttr(attrs map[string]string, key string, defaultValue bool) bool {
+	switch str, ok := attrs[key]; {
+	case !ok:
+		return defaultValue
+	case str == "true":
+		return true
+	case str == "false":
+		return false
+	default:
+		t.errorf("expected bool value, got %q", str)
+	}
+	panic("")
+}
 
 // parseQuotedExpr ignores the current lex/parse state and parses the given
 // string as a standalone expression.

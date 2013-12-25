@@ -23,6 +23,7 @@ func TestRawText(t *testing.T) {
 		{"a \t /\nb", "a \t / b"},
 		{"// a comment", ""},
 		{"\n  // a comment\n ", ""},
+		{"\n  // a comment\n // a comment \n", ""},
 		{"\n foo // a comment\n ", "foo"},
 		{"\n  // a comment\n foo", "foo"},
 		{"\n foo\n// a comment\n \t bar", "foo bar"},

@@ -402,7 +402,7 @@ func lexText(l *lexer) stateFn {
 		case '{':
 			backupAndMaybeEmitText(l)
 			return lexLeftDelim
-		case '/':
+		case '/': // BUG: This will not allow {switch $foo} /* comment */ {case ..}
 			if l.peek() == '*' {
 				backupAndMaybeEmitText(l)
 				return lexSoyDoc

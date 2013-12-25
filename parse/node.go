@@ -71,16 +71,21 @@ func (c *NamespaceNode) String() string {
 	return "{namespace " + c.Name + "}"
 }
 
+type AutoescapeType int
+
+const (
+	AutoescapeOn AutoescapeType = iota
+	AutoescapeOff
+	AutoescapeContextual
+)
+
 // TemplateNode holds a template body.
 type TemplateNode struct {
 	Pos
-	Name string
-	Body *ListNode
-	// TODO: attributes
-}
-
-func newTemplate(pos Pos, name string) *TemplateNode {
-	return &TemplateNode{Pos: pos, Name: name}
+	Name       string
+	Body       *ListNode
+	Autoescape AutoescapeType
+	Private    bool
 }
 
 func (n *TemplateNode) String() string {

@@ -27,7 +27,7 @@ func tList(nodes ...Node) Node {
 }
 
 func tTemplate(name string, nodes ...Node) Node {
-	n := newTemplate(0, name)
+	n := &TemplateNode{0, name, nil, AutoescapeOn, false}
 	n.Body = newList(0)
 	n.Body.Nodes = nodes
 	return n
@@ -288,7 +288,7 @@ var parseTests = []parseTest{
   {param key="woo"}poo{/param}
   {param key="doo" kind="html"}doopoo{/param}
 {/call}
-{call .booTemplate_ /}
+{call a.long.template.booTemplate_ /}
 {call .zooTemplate data="$animals"}
   {param yoo: round($too) /}
   {param woo}poo{/param}
@@ -301,7 +301,7 @@ var parseTests = []parseTest{
 			&CallParamValueNode{0, "yoo", &FunctionNode{0, "round", []Node{&DataRefNode{0, "too", nil}}}},
 			&CallParamContentNode{0, "woo", tList(newText(0, "poo"))},
 			&CallParamContentNode{0, "doo", tList(newText(0, "doopoo"))}}},
-		&CallNode{0, ".booTemplate_", false, nil, nil},
+		&CallNode{0, "a.long.template.booTemplate_", false, nil, nil},
 		&CallNode{0, ".zooTemplate", false, &DataRefNode{0, "animals", nil}, []Node{
 			&CallParamValueNode{0, "yoo", &FunctionNode{0, "round", []Node{&DataRefNode{0, "too", nil}}}},
 			&CallParamContentNode{0, "woo", tList(newText(0, "poo"))},
