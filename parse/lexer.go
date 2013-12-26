@@ -93,9 +93,10 @@ const (
 	itemRightParen // )
 
 	// Soy doc
-	itemSoyDocStart // /* or //
-	itemSoyDocParam // @param name or @param? name
-	itemSoyDocEnd   // */ or \n
+	itemSoyDocStart         // /* or //
+	itemSoyDocParam         // @param name name
+	itemSoyDocOptionalParam // @param? name
+	itemSoyDocEnd           // */ or \n
 
 	// Commands
 	itemCommand     // used only to delimit the commands
@@ -384,31 +385,51 @@ func (l *lexer) errorf(format string, args ...interface{}) stateFn {
 
 // State functions ------------------------------------------------------------
 
-func backupAndMaybeEmitText(l *lexer) {
-	l.backup()
-	if l.pos > l.start {
+func maybeEmitText(l *lexer, backup int) {
+	if l.pos-Pos(backup) > l.start {
+		l.pos -= Pos(backup)
 		if allSpaceWithNewline(l.input[l.start:l.pos]) {
 			l.ignore()
 		} else {
 			l.emit(itemText)
 		}
+		l.pos += Pos(backup)
 	}
 }
 
 // lexText scans until an opening command delimiter, "{".
+// it ignores line comments (//) and block comments (/* */).
 func lexText(l *lexer) stateFn {
+	var lastChar rune
 	for {
-		switch l.next() {
-		case '{':
-			backupAndMaybeEmitText(l)
-			return lexLeftDelim
-		case '/': // BUG: This will not allow {switch $foo} /* comment */ {case ..}
-			if l.peek() == '*' {
-				backupAndMaybeEmitText(l)
-				return lexSoyDoc
+		var r = l.next()
+
+		// comment / soydoc handling
+		if r == '/' && (isSpace(lastChar) || isEndOfLine(lastChar) || lastChar == 0) {
+			switch l.next() {
+			case '/':
+				maybeEmitText(l, 2)
+				return lexLineComment(l)
+			case '*':
+				maybeEmitText(l, 2)
+				if l.next() == '*' {
+					return lexSoyDoc(l)
+				}
+				l.backup()
+				return lexBlockComment(l)
 			}
+			l.backup()
+		}
+
+		// eof or entering a tag?
+		switch r {
+		case '{':
+			l.backup()
+			maybeEmitText(l, 0)
+			return lexLeftDelim
 		case eof:
-			backupAndMaybeEmitText(l)
+			l.backup()
+			maybeEmitText(l, 0)
 			l.emit(itemEOF)
 			return nil
 		}
@@ -539,21 +560,121 @@ func lexNegative(l *lexer) stateFn {
 	return lexInsideTag
 }
 
-// TODO: extract soydoc params here?
+// lexSoyDoc emits:
+// - the start and end tokens (/**, */)
+// - the individual lines of the soydoc comment, trimmed.
+// - the parameter tokens and identifiers
+// '/**' has just been read.
 func lexSoyDoc(l *lexer) stateFn {
 	l.emit(itemSoyDocStart)
 	var star = false
+	var startOfLine = true // ignoring whitespace and asterisks.
 	for {
 		var ch = l.next()
 		if ch == eof {
-			l.errorf("unexpected eof when scanning soydoc")
+			return l.errorf("unexpected eof when scanning soydoc")
 		}
 		if star && ch == '/' {
-			l.emit(itemText)
+			maybeEmitText(l, 2)
 			l.emit(itemSoyDocEnd)
 			return lexText
 		}
+		if startOfLine {
+			// ignore any space or asterisks at the beginning of lines
+			if isEndOfLine(ch) || isSpace(ch) {
+				continue
+			}
+			if ch == '*' {
+				star = true
+				continue
+			}
+			l.pos--
+			l.ignore()
+
+			// start with @param?
+			if strings.HasPrefix(l.input[l.pos:], "@param") {
+				lexSoyDocParam(l)
+			}
+			startOfLine = false
+		}
+
+		if isEndOfLine(ch) {
+			maybeEmitText(l, 1)
+			startOfLine = true
+		}
 		star = ch == '*'
+	}
+}
+
+func lexSoyDocParam(l *lexer) {
+	l.pos += Pos(len("@param"))
+	switch ch := l.next(); {
+	case ch == '?' && l.next() == ' ':
+		l.backup()
+		l.emit(itemSoyDocOptionalParam)
+	case ch == ' ':
+		l.backup()
+		l.emit(itemSoyDocParam)
+	default:
+		return // what a fakeout
+	}
+
+	// skip all spaces
+	for {
+		var r = l.next()
+		if r == eof || !isSpace(r) {
+			break
+		}
+	}
+	l.backup()
+	l.ignore()
+
+	// extract the param
+	for {
+		var r = l.next()
+		if isSpace(r) || isEndOfLine(r) || r == eof {
+			l.pos--
+			l.emit(itemIdent)
+			l.pos++
+			l.ignore()
+			break
+		}
+	}
+}
+
+// "//" has just been read
+func lexLineComment(l *lexer) stateFn {
+	for {
+		switch r := l.next(); {
+		case r == eof:
+			l.ignore()
+			l.emit(itemEOF)
+			return nil
+		case isEndOfLine(r):
+			l.backup()
+			l.ignore()
+			return lexText
+		}
+	}
+}
+
+// "/*" has just been read
+func lexBlockComment(l *lexer) stateFn {
+	var star = false
+	for {
+		switch l.next() {
+		case eof:
+			return l.errorf("unclosed block comment")
+		case '*':
+			star = true
+			continue
+		case '/':
+			if star {
+				l.ignore()
+				return lexText
+			}
+		}
+		star = false
 	}
 }
 

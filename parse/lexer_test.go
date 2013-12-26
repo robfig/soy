@@ -1,10 +1,6 @@
 package parse
 
-import (
-	"fmt"
-
-	"testing"
-)
+import "testing"
 
 type lexTest struct {
 	name  string
@@ -52,12 +48,7 @@ var lexTests = []lexTest{
 		tRight,
 		tEOF,
 	}},
-	{"soydoc", `/** this is a comment */`, []item{
-		{itemSoyDocStart, 0, ""},
-		{itemText, 0, `/** this is a comment */`},
-		{itemSoyDocEnd, 0, ""},
-		tEOF,
-	}},
+
 	{"if", `{if $var}{$var} is true{/if}`, []item{
 		tLeft,
 		{itemIf, 0, "if"},
@@ -434,6 +425,46 @@ var lexTests = []lexTest{
 		tEOF,
 	}},
 
+	{"line comment", `// this is a {comment} `, []item{
+		tEOF,
+	}},
+	{"line comment2", "// this is a {comment} \n  // more comments \n", []item{
+		tEOF,
+	}},
+	{"block comment", "/* this is a {comment} \n * multi line \n */", []item{
+		tEOF,
+	}},
+	{"soydoc", `/** this is a soydoc comment */`, []item{
+		{itemSoyDocStart, 0, "/**"},
+		{itemText, 0, `this is a soydoc comment `},
+		{itemSoyDocEnd, 0, "*/"},
+		tEOF,
+	}},
+	{"soydoc", `/** @param name */`, []item{
+		{itemSoyDocStart, 0, "/**"},
+		{itemSoyDocParam, 0, "@param"},
+		{itemIdent, 0, `name`},
+		{itemSoyDocEnd, 0, "*/"},
+		tEOF,
+	}},
+	{"soydoc", `
+/**
+ * This is a soydoc comment
+ * @param boo scary
+ * @param? goo slimy (optional)
+ */`, []item{
+		{itemSoyDocStart, 0, "/**"},
+		{itemText, 0, "This is a soydoc comment"},
+		{itemSoyDocParam, 0, "@param"},
+		{itemIdent, 0, "boo"},
+		{itemText, 0, "scary"},
+		{itemSoyDocOptionalParam, 0, "@param?"},
+		{itemIdent, 0, "goo"},
+		{itemText, 0, "slimy (optional)"},
+		{itemSoyDocEnd, 0, "*/"},
+		tEOF,
+	}},
+
 	{"namespace and template", `{namespace example}
 
 {template .templateName}
@@ -454,20 +485,6 @@ Hello world.
 		tRight,
 		tEOF,
 	}},
-}
-
-var itemName = map[itemType]string{
-	itemError:     "error",
-	itemTemplate:  "template",
-	itemNamespace: "namespace",
-}
-
-func (i itemType) String() string {
-	s := itemName[i]
-	if s == "" {
-		return fmt.Sprintf("item%d", int(i))
-	}
-	return s
 }
 
 // collect gathers the emitted items into a slice.

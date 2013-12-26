@@ -83,7 +83,10 @@ func (t *Tree) itemList(until ...itemType) *ListNode {
 
 		// Not exiting, so backup two tokens ago.
 		t.backup2(token)
-		list.append(t.textOrTag())
+		var node = t.textOrTag()
+		if node != nil {
+			list.append(node)
+		}
 	}
 	return list
 }
@@ -91,7 +94,20 @@ func (t *Tree) itemList(until ...itemType) *ListNode {
 func (t *Tree) textOrTag() Node {
 	switch token := t.next(); token.typ {
 	case itemText:
-		return &RawTextNode{token.pos, rawtext(token.val)}
+		var text = token.val
+		for {
+			var next = t.next()
+			if next.typ != itemText {
+				break
+			}
+			text += next.val
+		}
+		t.backup()
+		var textvalue = rawtext(text)
+		if len(textvalue) == 0 {
+			return nil
+		}
+		return &RawTextNode{token.pos, textvalue}
 	case itemLeftDelim:
 		return t.beginTag()
 	case itemSoyDocStart:

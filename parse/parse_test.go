@@ -49,7 +49,7 @@ var parseTests = []parseTest{
 			&PrintNode{0, &DataRefNode{0, "name", nil}, nil}, // implicit print
 			newText(0, "!"),
 		))},
-	{"soydoc", "/** Text\n*/", tList(newSoyDoc(0, "/** Text\n*/"))},
+	{"soydoc", "/** Text\n*/", tList(newSoyDoc(0, "Text"))},
 	{"not", "{not $var}", tList(&PrintNode{0, &NotNode{0, &DataRefNode{0, "var", nil}}, nil})},
 	{"negate", "{-$var}", tList(&PrintNode{0, &NegateNode{0, &DataRefNode{0, "var", nil}}, nil})},
 	{"concat", `{'hello' + 'world'}`, tList(&PrintNode{0, &AddNode{bin(
