@@ -78,7 +78,11 @@ var parseTests = []parseTest{
 
 	{"rawtext (linejoin)", "\n  a \n\tb\r\n  c  \n\n", tList(newText(0, "a b c"))},
 	{"rawtext+html", "\n  a <br>\n\tb\r\n\n  c\n\n<br> ", tList(newText(0, "a <br>b c<br> "))},
-	{"rawtext+comment", "a <br> // comment \n\tb\t// comment2\r\n  c\n\n", tList(newText(0, "a <br>b c"))},
+	{"rawtext+comment", "a <br> // comment \n\tb\t// comment2\r\n  c\n\n", tList(
+		newText(0, "a <br>"),
+		newText(0, "b"),
+		newText(0, "c"),
+	)},
 	{"rawtext+tag", "a {$foo}\t {$baz}\n\t  b\r\n\n  {$bar} c", tList(
 		newText(0, "a "),
 		&PrintNode{0, &DataRefNode{0, "foo", nil}, nil},
@@ -88,6 +92,18 @@ var parseTests = []parseTest{
 		&PrintNode{0, &DataRefNode{0, "bar", nil}, nil},
 		newText(0, " c"),
 	)},
+	{"rawtext+tag+html+comment", `
+  {$italicHtml}<br>  // a {comment}
+  {$italicHtml |noAutoescape}<br>  /* {a }comment */
+  abc`, tList(
+		&PrintNode{0, &DataRefNode{0, "italicHtml", nil}, nil},
+		newText(0, "<br>"),
+		&PrintNode{0, &DataRefNode{0, "italicHtml", nil}, []*PrintDirectiveNode{
+			{0, "noAutoescape", nil}}},
+		newText(0, "<br>"),
+		newText(0, "abc"),
+	)},
+
 	{"specialchars", `{sp}{nil}{\r}{\n}{\t}{lb}{rb}`, tList(
 		newText(0, " "),
 		newText(0, ""),

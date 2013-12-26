@@ -426,12 +426,16 @@ var lexTests = []lexTest{
 	}},
 
 	{"line comment", `// this is a {comment} `, []item{
+		{itemComment, 0, "// this is a {comment} "},
 		tEOF,
 	}},
-	{"line comment2", "// this is a {comment} \n  // more comments \n", []item{
+	{"line comment3", "a // this is a {comment} \n", []item{
+		{itemText, 0, "a "},
+		{itemComment, 0, "// this is a {comment} \n"},
 		tEOF,
 	}},
 	{"block comment", "/* this is a {comment} \n * multi line \n */", []item{
+		{itemComment, 0, "/* this is a {comment} \n * multi line \n */"},
 		tEOF,
 	}},
 	{"soydoc", `/** this is a soydoc comment */`, []item{

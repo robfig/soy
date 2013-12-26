@@ -119,7 +119,6 @@ func directiveNoAutoescape(value reflect.Value, args []reflect.Value) reflect.Va
 }
 
 func directiveEscapeHtml(value reflect.Value, args []reflect.Value) reflect.Value {
-	fmt.Println("Escape HTML in", toString(value), "out", template.HTMLEscapeString(toString(value)))
 	return val(template.HTMLEscapeString(toString(value)))
 }
 

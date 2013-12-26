@@ -94,18 +94,25 @@ func (t *Tree) itemList(until ...itemType) *ListNode {
 }
 
 func (t *Tree) textOrTag() Node {
-	switch token := t.next(); token.typ {
+	var token = t.next()
+	var seenComment = token.typ == itemComment
+	for token.typ == itemComment {
+		token = t.next() // skip any comments
+	}
+
+	switch token.typ {
 	case itemText:
 		var text = token.val
+		var next item
 		for {
-			var next = t.next()
+			next = t.next()
 			if next.typ != itemText {
 				break
 			}
 			text += next.val
 		}
 		t.backup()
-		var textvalue = rawtext(text)
+		var textvalue = rawtext(text, seenComment, next.typ == itemComment)
 		if len(textvalue) == 0 {
 			return nil
 		}

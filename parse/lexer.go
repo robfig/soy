@@ -93,10 +93,11 @@ const (
 	itemRightParen // )
 
 	// Soy doc
-	itemSoyDocStart         // /* or //
+	itemSoyDocStart         // /**
 	itemSoyDocParam         // @param name name
 	itemSoyDocOptionalParam // @param? name
-	itemSoyDocEnd           // */ or \n
+	itemSoyDocEnd           // */
+	itemComment             // line comments (//) or block comments (/*)
 
 	// Commands
 	itemCommand     // used only to delimit the commands
@@ -644,9 +645,8 @@ func lexSoyDocParam(l *lexer) {
 // "//" has just been read
 func lexLineComment(l *lexer) stateFn {
 	for {
-		if r := l.next(); r == eof || isEndOfLine(r) {
-			l.backup()
-			l.ignore()
+		if r := l.next(); isEndOfLine(r) || r == eof {
+			l.emit(itemComment)
 			return lexText
 		}
 	}
@@ -664,7 +664,7 @@ func lexBlockComment(l *lexer) stateFn {
 			continue
 		case '/':
 			if star {
-				l.ignore()
+				l.emit(itemComment)
 				return lexText
 			}
 		}
