@@ -97,6 +97,9 @@ var parseTests = []parseTest{
 		newText(0, "{"),
 		newText(0, "}"),
 	)},
+	{"specialchars inside string", `{'abc\ndef'}`, tList(
+		&PrintNode{0, &StringNode{0, "abc\ndef"}, nil},
+	)},
 
 	{"literal", "{literal} {/call}\n {sp} // comment {/literal}", tList(
 		newText(0, " {/call}\n {sp} // comment "),

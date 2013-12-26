@@ -62,10 +62,10 @@ func unquoteString(s string) (string, error) {
 
 		if escaping {
 			if r == 'u' {
-				if i+5 <= len(s) {
-					return "", errors.New("error scanning unicode escape, expect \\u[0-9]{4}")
+				if i+4 > len(s) {
+					return "", errors.New("error scanning unicode escape, expect \\uNNNN")
 				}
-				num, err := strconv.ParseInt(s[i+1:i+5], 16, 0)
+				num, err := strconv.ParseInt(s[i:i+4], 16, 0)
 				if err != nil {
 					return "", err
 				}
@@ -80,8 +80,10 @@ func unquoteString(s string) (string, error) {
 			}
 		}
 
-		result = append(result, r)
 		escaping = r == '\\'
+		if !escaping {
+			result = append(result, r)
+		}
 	}
 	return string(result), nil
 }
