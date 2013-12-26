@@ -334,7 +334,7 @@ func TestLog(t *testing.T) {
 	var buf bytes.Buffer
 	Logger = log.New(&buf, "", 0)
 	runExecTests(t, []execTest{
-		exprtestwdata("log", `{log} Hello {$name} // comment{/log}`, ``, data{"name": "Rob"}),
+		exprtestwdata("log", "{log} Hello {$name} // comment\n{/log}", ``, data{"name": "Rob"}),
 	})
 	if strings.TrimSpace(buf.String()) != "Hello Rob" {
 		t.Errorf("logger didn't match: %q", buf.String())

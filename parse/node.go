@@ -92,8 +92,20 @@ func (n *TemplateNode) String() string {
 	return fmt.Sprintf("{template %s}%s{/template}", n.Name, n.Body)
 }
 
+type SoyDocNode struct {
+	Pos
+	Params []*SoyDocParamNode
+}
+
+func (n *SoyDocNode) String() string {
+	var expr = "/**\n"
+	for _, param := range n.Params {
+		expr += " * " + param.String()
+	}
+	return expr + " */\n"
+}
+
 // SoyDocParam represents a parameter to a soy template.
-// They appear within a SoyDocNode.
 // e.g.
 //  /**
 //   * Says hello to the person
@@ -101,29 +113,16 @@ func (n *TemplateNode) String() string {
 //   */
 type SoyDocParamNode struct {
 	Pos
-	Name string // e.g. "name"
-	Desc string // e.g. "The name of a the person"
+	Name     string // e.g. "name"
+	Optional bool
 }
 
-// SoyDocNode holds a soydoc comment plus param names
-type SoyDocNode struct {
-	Pos
-	Comment string // TextNode?
-	Params  []SoyDocParamNode
-}
-
-// func (c *SoyDocNode) append(param SoyDocParamNode) {
-// 	c.Params = append(c.Params, param)
-// }
-
-func newSoyDoc(pos Pos, body string) *SoyDocNode {
-	var n = &SoyDocNode{Pos: pos, Comment: body}
-	// TODO: params
-	return n
-}
-
-func (b *SoyDocNode) String() string {
-	return b.Comment
+func (n *SoyDocParamNode) String() string {
+	var expr = "@param"
+	if n.Optional {
+		expr += "?"
+	}
+	return expr + " " + n.Name + "\n"
 }
 
 type PrintNode struct {

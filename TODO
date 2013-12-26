@@ -1,7 +1,7 @@
 Now:
+- soydoc requirements
 - content "kind": text, html, uri, js (code), js (str chars), html attributes
 - implement user provided functions
-- soydoc requirements
 - use a struct rather than a map / docs for expected data structures
 - {msg}
 - {let}

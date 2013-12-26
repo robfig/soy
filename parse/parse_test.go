@@ -49,7 +49,6 @@ var parseTests = []parseTest{
 			&PrintNode{0, &DataRefNode{0, "name", nil}, nil}, // implicit print
 			newText(0, "!"),
 		))},
-	{"soydoc", "/** Text\n*/", tList(newSoyDoc(0, "Text"))},
 	{"not", "{not $var}", tList(&PrintNode{0, &NotNode{0, &DataRefNode{0, "var", nil}}, nil})},
 	{"negate", "{-$var}", tList(&PrintNode{0, &NegateNode{0, &DataRefNode{0, "var", nil}}, nil})},
 	{"concat", `{'hello' + 'world'}`, tList(&PrintNode{0, &AddNode{bin(
@@ -64,6 +63,18 @@ var parseTests = []parseTest{
 			{0, "truncate", []Node{
 				&IntNode{0, 5},
 				&BoolNode{0, false}}}}})},
+
+	{"soydoc", `/**
+ * Text
+ * @param boo scary description
+ * @param? goo slimy
+ */`, tList(&SoyDocNode{0, []*SoyDocParamNode{
+		{0, "boo", false},
+		{0, "goo", true},
+	}})},
+	{"soydoc - one line", "/** @param name */", tList(&SoyDocNode{0, []*SoyDocParamNode{
+		{0, "name", false},
+	}})},
 
 	{"rawtext (linejoin)", "\n  a \n\tb\r\n  c  \n\n", tList(newText(0, "a b c"))},
 	{"rawtext+html", "\n  a <br>\n\tb\r\n\n  c\n\n<br> ", tList(newText(0, "a <br>b c<br> "))},
@@ -447,7 +458,10 @@ func eqTree(t *testing.T, expected, actual Node) bool {
 			eqNodes(t, expected.(*FunctionNode).Args, actual.(*FunctionNode).Args)
 
 	case *SoyDocNode:
-		return expected.(*SoyDocNode).Comment == actual.(*SoyDocNode).Comment
+		return eqNodes(t, expected.(*SoyDocNode).Params, actual.(*SoyDocNode).Params)
+	case *SoyDocParamNode:
+		return eqstr(t, "soydocparam", expected.(*SoyDocParamNode).Name, actual.(*SoyDocParamNode).Name) &&
+			eqbool(t, "soydocparam", expected.(*SoyDocParamNode).Optional, actual.(*SoyDocParamNode).Optional)
 	case *PrintNode:
 		return eqTree(t, expected.(*PrintNode).Arg, actual.(*PrintNode).Arg)
 	case *MsgNode:

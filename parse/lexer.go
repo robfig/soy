@@ -263,15 +263,12 @@ type lexer struct {
 	width       int       // width of last rune read from input.
 	items       chan item // channel of scanned items.
 	doubleDelim bool      // flag for tags starting with double braces.
-	lastPos     Pos       // position of most recent item returned by nextItem
 	lastEmit    itemType  // type of most recent item emitted
 }
 
 // nextItem returns the next item from the input.
 func (l *lexer) nextItem() item {
-	item := <-l.items
-	l.lastPos = item.pos
-	return item
+	return <-l.items
 }
 
 // lex creates a new scanner for the input string.
@@ -303,6 +300,7 @@ func (l *lexer) run() {
 	for l.state != nil {
 		l.state = l.state(l)
 	}
+	close(l.items)
 }
 
 // next returns the next rune in the input.
@@ -400,9 +398,10 @@ func maybeEmitText(l *lexer, backup int) {
 // lexText scans until an opening command delimiter, "{".
 // it ignores line comments (//) and block comments (/* */).
 func lexText(l *lexer) stateFn {
-	var lastChar rune
+	var r, lastChar rune
 	for {
-		var r = l.next()
+		lastChar = r
+		r = l.next()
 
 		// comment / soydoc handling
 		if r == '/' && (isSpace(lastChar) || isEndOfLine(lastChar) || lastChar == 0) {
@@ -645,12 +644,7 @@ func lexSoyDocParam(l *lexer) {
 // "//" has just been read
 func lexLineComment(l *lexer) stateFn {
 	for {
-		switch r := l.next(); {
-		case r == eof:
-			l.ignore()
-			l.emit(itemEOF)
-			return nil
-		case isEndOfLine(r):
+		if r := l.next(); r == eof || isEndOfLine(r) {
 			l.backup()
 			l.ignore()
 			return lexText

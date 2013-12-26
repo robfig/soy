@@ -64,13 +64,15 @@ func (t *Tree) parse() {
 //	textOrTag*
 // Terminates when it comes across the given end tag.
 func (t *Tree) itemList(until ...itemType) *ListNode {
-	var (
-		list = newList(0) // todo
-	)
+	var list *ListNode
 	for {
+		var token = t.next()
+		if list == nil {
+			list = newList(token.pos)
+		}
+
 		// Two ways to end a list:
 		// 1. We found the until token (e.g. EOF)
-		var token = t.next()
 		if isOneOf(token.typ, until) {
 			return list
 		}
@@ -465,10 +467,24 @@ func (t *Tree) parseIf(token item) Node {
 
 func (t *Tree) parseSoyDoc(token item) Node {
 	const ctx = "soydoc"
-	// TODO: params
-	var text = t.expect(itemText, ctx)
-	t.expect(itemSoyDocEnd, ctx)
-	return newSoyDoc(token.pos, text.val)
+	var params []*SoyDocParamNode
+	for {
+		var optional = false
+		switch next := t.next(); next.typ {
+		case itemText:
+			// ignore
+		case itemSoyDocOptionalParam:
+			optional = true
+			fallthrough
+		case itemSoyDocParam:
+			var ident = t.expect(itemIdent, "soydoc param")
+			params = append(params, &SoyDocParamNode{next.pos, ident.val, optional})
+		case itemSoyDocEnd:
+			return &SoyDocNode{token.pos, params}
+		default:
+			t.errorf("unexpected item while parsing soydoc: %q", next.val)
+		}
+	}
 }
 
 func inStringSlice(item string, group []string) bool {
