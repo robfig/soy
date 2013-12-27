@@ -165,6 +165,7 @@ func runFeatureTests(t *testing.T, tests []featureTest) {
 	var tofu = New()
 	mustParseFile(tofu, "testdata/simple.soy")
 	mustParseFile(tofu, "testdata/features.soy")
+	mustParseGlobals(tofu, "testdata/FeaturesUsage_globals.txt")
 
 	b := new(bytes.Buffer)
 	for _, test := range tests {
@@ -191,6 +192,17 @@ func mustParseFile(tofu Tofu, filename string) {
 		panic(err)
 	}
 	err = tofu.Parse(string(content))
+	if err != nil {
+		panic(err)
+	}
+}
+
+func mustParseGlobals(tofu Tofu, filename string) {
+	f, err := os.Open(filename)
+	if err != nil {
+		panic(err)
+	}
+	err = tofu.ParseGlobals(f)
 	if err != nil {
 		panic(err)
 	}

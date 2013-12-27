@@ -1,7 +1,10 @@
 package soy
 
 import (
+	"bufio"
 	"errors"
+	"fmt"
+	"io"
 	"strings"
 
 	"github.com/robfig/soy/parse"
@@ -15,6 +18,46 @@ type Tofu struct {
 
 func New() Tofu {
 	return Tofu{make(map[string]*parse.TemplateNode), make(map[string]interface{})}
+}
+
+// Globals configures Tofu with the given input file, in the form:
+// <global_name> = <primitive_data>
+// - Empty lines and lines beginning with '//' are ignored.
+// - <primitive_data> must be a valid template expression literal for a primitive
+//   type (null, boolean, integer, float, or string)
+func (tofu Tofu) ParseGlobals(input io.Reader) error {
+	var scanner = bufio.NewScanner(input)
+	for scanner.Scan() {
+		var line = scanner.Text()
+		if len(line) == 0 || strings.HasPrefix(line, "//") {
+			continue
+		}
+		var eq = strings.Index(line, "=")
+		if eq == -1 {
+			return fmt.Errorf("no equals on line: %q", line)
+		}
+		var (
+			name = strings.TrimSpace(line[:eq])
+			expr = strings.TrimSpace(line[eq+1:])
+		)
+		if _, ok := tofu.globals[name]; ok {
+			return fmt.Errorf("global %s is already defined", name)
+		}
+		var node, err = parse.ParseExpr(expr)
+		if err != nil {
+			return err
+		}
+		exprValue, err := EvalExpr(node)
+		if err != nil {
+			return err
+		}
+		fmt.Println(exprValue)
+		tofu.globals[name] = exprValue.Interface()
+	}
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (tofu Tofu) Parse(input string) error {

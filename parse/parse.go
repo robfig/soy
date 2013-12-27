@@ -591,6 +591,13 @@ func (t *Tree) parseTemplate(token item) Node {
 
 // Expressions ----------
 
+func ParseExpr(str string) (node Node, err error) {
+	var t = &Tree{lex: lexExpr("", str)}
+	defer t.recover(&err)
+	node = t.parseExpr(0)
+	return
+}
+
 // boolAttr returns a boolean value from the given attribute map.
 func (t *Tree) boolAttr(attrs map[string]string, key string, defaultValue bool) bool {
 	switch str, ok := attrs[key]; {

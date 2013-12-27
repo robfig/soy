@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"reflect"
 	"runtime"
@@ -95,6 +96,15 @@ func (s *state) errRecover(errp *error) {
 			*errp = fmt.Errorf("%#v: %v", s.node, e)
 		}
 	}
+}
+
+func EvalExpr(node parse.Node) (val reflect.Value, err error) {
+	state := &state{
+		wr: ioutil.Discard,
+	}
+	defer state.errRecover(&err)
+	state.walk(reflect.ValueOf(nil), node)
+	return state.val, nil
 }
 
 // Execute applies a parsed template to the specified data object,
