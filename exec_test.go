@@ -449,6 +449,71 @@ func TestAutoescapeModes(t *testing.T) {
 	})
 }
 
+// TestHelloWorld executes the Hello World tutorial on the Soy Templates site.
+func TestHelloWorld(t *testing.T) {
+	var template = `{namespace examples.simple}
+/**
+ * Says hello to the world.
+ */
+{template .helloWorld}
+  Hello world!
+{/template}
+
+/**
+ * Greets a person using "Hello" by default.
+ * @param name The name of the person.
+ * @param? greetingWord Optional greeting word to use instead of "Hello".
+ */
+{template .helloName}
+  {if not $greetingWord}
+    Hello {$name}!
+  {else}
+    {$greetingWord} {$name}!
+  {/if}
+{/template}
+
+/**
+ * Greets a person and optionally a list of other people.
+ * @param name The name of the person.
+ * @param additionalNames The additional names to greet. May be an empty list.
+ */
+{template .helloNames}
+  // Greet the person.
+  {call .helloName data="all" /}<br>
+  // Greet the additional people.
+  {foreach $additionalName in $additionalNames}
+    {call .helloName}
+      {param name: $additionalName /}
+    {/call}
+    {if not isLast($additionalName)}
+      <br>  // break after every line except the last
+    {/if}
+  {ifempty}
+    No additional people to greet.
+  {/foreach}
+{/template}`
+
+	runExecTests(t, []execTest{
+		{"no data", "examples.simple.helloWorld", template,
+			"Hello world!",
+			data{},
+			true,
+		},
+
+		{"1 name", "examples.simple.helloName", template,
+			"Hello Ana!",
+			data{"name": "Ana"},
+			true,
+		},
+
+		{"additional names", "examples.simple.helloNames", template,
+			"Hello Ana!<br>Hello Bob!<br>Hello Cid!<br>Hello Dee!",
+			data{"name": "Ana", "additionalNames": []string{"Bob", "Cid", "Dee"}},
+			true,
+		},
+	})
+}
+
 // helpers
 
 var globals = make(map[string]interface{})
