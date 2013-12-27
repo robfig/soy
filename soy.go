@@ -51,7 +51,6 @@ func (tofu Tofu) ParseGlobals(input io.Reader) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println(exprValue)
 		tofu.globals[name] = exprValue.Interface()
 	}
 	if err := scanner.Err(); err != nil {
