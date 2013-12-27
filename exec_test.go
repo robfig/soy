@@ -219,10 +219,14 @@ func TestCall(t *testing.T) {
 {call .boo_ /}{sp}
 {call .boo_ data="all"/}{sp}
 {call .zoo data="$animals"}
-  ` /*{param yoo: round($too) /}*/ + `
+      // Note that the {param} blocks for the message and listItems parameter are declared to have
+      // content of kind HTML. This instructs the contextual autoescaper to process the content of
+      // these blocks as HTML, and to wrap the the value of the parameter as a soydata.SanitizedHtml
+      // object.
+  {param yoo: round($too) /}
   {param woo}poo{/param}
   {param zoo: 0 /}
-  ` /* {param doo kind="html"}doopoo{/param} */ + `
+  {param doo kind="html"}doopoo{/param}
 {/call}
 {/template}
 
@@ -238,7 +242,7 @@ func TestCall(t *testing.T) {
  {$zoo} {$animal} {$woo}!
 {/template}`,
 			"Boo! Yay! 0 roos poo!",
-			data{"animals": data{"animal": "roos"}},
+			data{"animals": data{"animal": "roos"}, "too": 2.4},
 			true,
 		},
 	})

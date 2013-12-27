@@ -320,6 +320,8 @@ var parseTests = []parseTest{
 {call name=".booTemplate_" /}
 {call function="foo.goo.mooTemplate" data="all" /}
 {call name=".zooTemplate" data="$animals"}
+  // comments are allowed here
+
   {param key="yoo" value="round($too)" /}
   {param key="woo"}poo{/param}
   {param key="doo" kind="html"}doopoo{/param}

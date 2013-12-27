@@ -303,6 +303,7 @@ func (t *Tree) parseCall(token item) Node {
 // {param a}expr{/param}
 // {param key="a" value="'expr'"/}
 // {param key="a"}expr{/param}
+// The closing delimiter of the {call} has just been read.
 func (t *Tree) parseCallParams() []Node {
 	var params []Node
 	for {
@@ -310,8 +311,22 @@ func (t *Tree) parseCallParams() []Node {
 			key   string
 			value Node
 		)
-		initial := t.expect(itemLeftDelim, "param")
-		cmd := t.next()
+
+		var initial = t.nextNonComment()
+		for initial.typ == itemText {
+			// content is not allowed outside a param, but it's ok if it's a comment.
+			// see if anything is left after running it through rawtext()
+			var text = rawtext(initial.val, true, true)
+			if len(text) != 0 {
+				t.unexpected(initial, "{call} found orphan content outside of params: "+string(text))
+			}
+			initial = t.nextNonComment()
+		}
+		if initial.typ != itemLeftDelim {
+			t.unexpected(initial, "expected { when scanning param")
+		}
+
+		var cmd = t.next()
 		if cmd.typ == itemCallEnd {
 			t.backup2(initial)
 			return params
@@ -319,7 +334,8 @@ func (t *Tree) parseCallParams() []Node {
 		if cmd.typ != itemParam {
 			t.errorf("expected param declaration")
 		}
-		firstIdent := t.expect(itemIdent, "param")
+
+		var firstIdent = t.expect(itemIdent, "param")
 		switch tok := t.next(); tok.typ {
 		case itemColon:
 			key = firstIdent.val
@@ -338,7 +354,6 @@ func (t *Tree) parseCallParams() []Node {
 			t.backup()
 		case itemEquals:
 			t.backup2(firstIdent)
-
 		default:
 			t.errorf("expected :, }, or = in param, got %q", tok)
 		}
@@ -968,6 +983,14 @@ func (t *Tree) next() item {
 		t.token[0] = t.lex.nextItem()
 	}
 	return t.token[t.peekCount]
+}
+
+func (t *Tree) nextNonComment() item {
+	for {
+		if tok := t.next(); tok.typ != itemComment {
+			return tok
+		}
+	}
 }
 
 // backup backs the input stream up one token.
