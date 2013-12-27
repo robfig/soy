@@ -128,7 +128,7 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 			s.walk(dot, node)
 		}
 
-		// Output nodes
+		// Output nodes ----------
 	case *parse.PrintNode:
 		s.evalPrint(dot, node)
 	case *parse.RawTextNode:
@@ -150,7 +150,7 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 	case *parse.LogNode:
 		Logger.Print(string(s.renderBlock(dot, node.Body)))
 
-		// Control flow
+		// Control flow ----------
 	case *parse.IfNode:
 		for _, cond := range node.Conds {
 			if cond.Cond == nil || truthiness(s.eval(dot, cond.Cond)) {
@@ -192,7 +192,7 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 	case *parse.CallNode:
 		s.evalCall(dot, node)
 
-		// Values
+		// Values ----------
 	case *parse.NullNode:
 		s.val = nullValue
 	case *parse.StringNode:
@@ -226,7 +226,7 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 	case *parse.DataRefNode:
 		s.val = s.evalDataRef(dot, node)
 
-		// Arithmetic operators
+		// Arithmetic operators ----------
 	case *parse.NegateNode:
 		var arg = s.eval(dot, node.Arg)
 		if isInt(arg) {
@@ -267,7 +267,7 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2)
 		s.val = val(arg1.Int() % arg2.Int())
 
-		// Arithmetic comparisons
+		// Arithmetic comparisons ----------
 	case *parse.EqNode:
 		s.val = val(equals(s.eval2(dot, node.Arg1, node.Arg2)))
 	case *parse.NotEqNode:
@@ -285,7 +285,7 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2)
 		s.val = val(toFloat(arg1) >= toFloat(arg2))
 
-		// Boolean operators
+		// Boolean operators ----------
 	case *parse.NotNode:
 		s.val = val(!truthiness(s.eval(dot, node.Arg)))
 	case *parse.AndNode:

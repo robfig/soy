@@ -429,6 +429,13 @@ var lexTests = []lexTest{
 		{itemComment, 0, "// this is a {comment} "},
 		tEOF,
 	}},
+	{"line comment2", "// this is a {comment}\n{/log}", []item{
+		{itemComment, 0, "// this is a {comment}\n"},
+		tLeft,
+		{itemLogEnd, 0, "/log"},
+		tRight,
+		tEOF,
+	}},
 	{"line comment3", "a // this is a {comment} \n", []item{
 		{itemText, 0, "a "},
 		{itemComment, 0, "// this is a {comment} \n"},

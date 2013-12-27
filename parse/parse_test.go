@@ -133,6 +133,12 @@ var parseTests = []parseTest{
 			&PrintNode{0, &DataRefNode{0, "name", nil}, nil},
 		)},
 	)},
+	{"log+comment", "{log}Hello {$name} // comment\n{/log}", tList(
+		&LogNode{0, tList(
+			newText(0, "Hello "),
+			&PrintNode{0, &DataRefNode{0, "name", nil}, nil},
+		)},
+	)},
 
 	{"debugger", "{debugger}", tList(&DebuggerNode{0})},
 	{"global", "{GLOBAL_STR}{app.GLOBAL}", tList(

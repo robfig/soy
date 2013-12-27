@@ -70,36 +70,36 @@ func (t *Tree) itemList(until ...itemType) *ListNode {
 		if list == nil {
 			list = newList(token.pos)
 		}
-
-		// Two ways to end a list:
-		// 1. We found the until token (e.g. EOF)
-		if isOneOf(token.typ, until) {
+		var node, halt = t.textOrTag(token, until)
+		if halt {
 			return list
 		}
-
-		// 2. The until token is a command, e.g. {else} {/template}
-		var token2 = t.next()
-		if token.typ == itemLeftDelim && isOneOf(token2.typ, until) {
-			return list
-		}
-
-		// Not exiting, so backup two tokens ago.
-		t.backup2(token)
-		var node = t.textOrTag()
 		if node != nil {
 			list.append(node)
 		}
 	}
-	return list
 }
 
-func (t *Tree) textOrTag() Node {
-	var token = t.next()
+// textOrTag reads raw text or recognizes the start of tags until the end tag.
+func (t *Tree) textOrTag(token item, until []itemType) (node Node, halt bool) {
 	var seenComment = token.typ == itemComment
 	for token.typ == itemComment {
 		token = t.next() // skip any comments
 	}
 
+	// Two ways to end a list:
+	// 1. We found the until token (e.g. EOF)
+	if isOneOf(token.typ, until) {
+		return nil, true
+	}
+
+	// 2. The until token is a command, e.g. {else} {/template}
+	var token2 = t.next()
+	if token.typ == itemLeftDelim && isOneOf(token2.typ, until) {
+		return nil, true
+	}
+
+	t.backup()
 	switch token.typ {
 	case itemText:
 		var text = token.val
@@ -114,17 +114,17 @@ func (t *Tree) textOrTag() Node {
 		t.backup()
 		var textvalue = rawtext(text, seenComment, next.typ == itemComment)
 		if len(textvalue) == 0 {
-			return nil
+			return nil, false
 		}
-		return &RawTextNode{token.pos, textvalue}
+		return &RawTextNode{token.pos, textvalue}, false
 	case itemLeftDelim:
-		return t.beginTag()
+		return t.beginTag(), false
 	case itemSoyDocStart:
-		return t.parseSoyDoc(token)
+		return t.parseSoyDoc(token), false
 	default:
 		t.unexpected(token, "input")
 	}
-	return nil
+	return nil, false
 }
 
 func (t *Tree) parseSoydoc() Node {
