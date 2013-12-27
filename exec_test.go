@@ -403,6 +403,52 @@ func TestGlobals(t *testing.T) {
 	})
 }
 
+// TODO: Test parsing globals file
+
+func TestAutoescapeModes(t *testing.T) {
+	runExecTests(t, []execTest{
+		{"template autoescape=false", "test.autoescapeoff", `{namespace test}
+
+{template .autoescapeoff autoescape="false"}
+  {$foo} {$foo|escapeHtml}
+{/template}`,
+			"<b>hello</b> &lt;b&gt;hello&lt;/b&gt;",
+			data{"foo": "<b>hello</b>"},
+			true,
+		},
+
+		{"autoescape mode w/ call", "test.autowcall", `{namespace test}
+
+{template .autowcall}
+  {call .called data="all"/}
+{/template}
+
+{template .called autoescape="false"}
+  {$foo}
+{/template}
+`,
+			"<b>hello</b>",
+			data{"foo": "<b>hello</b>"},
+			true,
+		},
+
+		{"autoescape mode w/ call2", "test.autowcall", `{namespace test}
+
+{template .autowcall autoescape="false"}
+  {call .called data="all"/}
+{/template}
+
+{template .called}
+  {$foo}
+{/template}
+`,
+			"&lt;b&gt;hello&lt;/b&gt;",
+			data{"foo": "<b>hello</b>"},
+			true,
+		},
+	})
+}
+
 // helpers
 
 var globals = make(map[string]interface{})

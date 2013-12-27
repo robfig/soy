@@ -55,13 +55,14 @@ func (s scope) lookup(k string) reflect.Value {
 // template so that multiple executions of the same template
 // can execute in parallel.
 type state struct {
-	namespace string
-	tmpl      *parse.TemplateNode
-	wr        io.Writer
-	node      parse.Node    // current node, for errors
-	bundle    Tofu          // the entire bundle of templates
-	val       reflect.Value // temp value for expression being computed
-	context   scope         // variable scope
+	namespace  string
+	tmpl       *parse.TemplateNode
+	wr         io.Writer
+	node       parse.Node           // current node, for errors
+	bundle     Tofu                 // the entire bundle of templates
+	val        reflect.Value        // temp value for expression being computed
+	context    scope                // variable scope
+	autoescape parse.AutoescapeType // escaping mode
 }
 
 // variable holds the dynamic value of a variable such as $, $x etc.
@@ -132,6 +133,7 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 	s.at(node)
 	switch node := node.(type) {
 	case *parse.TemplateNode:
+		s.autoescape = node.Autoescape
 		s.walk(dot, node.Body)
 	case *parse.ListNode:
 		for _, node := range node.Nodes {
@@ -326,7 +328,7 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 
 func (s *state) evalPrint(dot reflect.Value, node *parse.PrintNode) {
 	s.walk(dot, node.Arg)
-	var escapeHtml = true
+	var escapeHtml = s.autoescape == parse.AutoescapeOn
 	var result = s.val
 	for _, directiveNode := range node.Directives {
 		var directive, ok = printDirectiveByName[directiveNode.Name]
@@ -400,7 +402,7 @@ func (s *state) evalCall(dot reflect.Value, node *parse.CallNode) {
 		wr:        s.wr,
 		context:   callData,
 	}
-	state.walk(dot, calledTmpl.Body)
+	state.walk(dot, calledTmpl)
 }
 
 func (s *state) renderBlock(dot reflect.Value, node parse.Node) []byte {
