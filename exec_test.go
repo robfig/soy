@@ -15,7 +15,7 @@ type execTest struct {
 	templateName string
 	input        string
 	output       string
-	data         map[string]interface{}
+	data         interface{}
 	ok           bool
 }
 
@@ -303,7 +303,6 @@ func TestDataRefs(t *testing.T) {
 	})
 }
 
-// TODO: Can you add special chars within tags too?
 func TestSpecialChars(t *testing.T) {
 	runExecTests(t, []execTest{
 		exprtest("special chars", `{sp}{nil}{\r}{\n}{\t}{lb}{rb}`, " \r\n\t{}"),
@@ -449,9 +448,7 @@ func TestAutoescapeModes(t *testing.T) {
 	})
 }
 
-// TestHelloWorld executes the Hello World tutorial on the Soy Templates site.
-func TestHelloWorld(t *testing.T) {
-	var template = `{namespace examples.simple}
+var helloWorldTemplate = `{namespace examples.simple}
 /**
  * Says hello to the world.
  */
@@ -493,22 +490,43 @@ func TestHelloWorld(t *testing.T) {
   {/foreach}
 {/template}`
 
+// TestHelloWorld executes the Hello World tutorial on the Soy Templates site.
+func TestHelloWorld(t *testing.T) {
 	runExecTests(t, []execTest{
-		{"no data", "examples.simple.helloWorld", template,
+		{"no data", "examples.simple.helloWorld", helloWorldTemplate,
 			"Hello world!",
 			data{},
 			true,
 		},
 
-		{"1 name", "examples.simple.helloName", template,
+		{"1 name", "examples.simple.helloName", helloWorldTemplate,
 			"Hello Ana!",
 			data{"name": "Ana"},
 			true,
 		},
 
-		{"additional names", "examples.simple.helloNames", template,
+		{"additional names", "examples.simple.helloNames", helloWorldTemplate,
 			"Hello Ana!<br>Hello Bob!<br>Hello Cid!<br>Hello Dee!",
 			data{"name": "Ana", "additionalNames": []string{"Bob", "Cid", "Dee"}},
+			true,
+		},
+	})
+}
+
+func TestStructData(t *testing.T) {
+	runExecTests(t, []execTest{
+		{"1 name", "examples.simple.helloName", helloWorldTemplate,
+			"Hello Ana!",
+			struct{ Name string }{"Ana"},
+			true,
+		},
+
+		{"additional names", "examples.simple.helloNames", helloWorldTemplate,
+			"Hello Ana!<br>Hello Bob!<br>Hello Cid!<br>Hello Dee!",
+			struct {
+				Name            string
+				AdditionalNames []string
+			}{"Ana", []string{"Bob", "Cid", "Dee"}},
 			true,
 		},
 	})

@@ -9,6 +9,7 @@ import (
 	"log"
 	"reflect"
 	"runtime"
+	"strings"
 	"text/template"
 
 	"github.com/robfig/soy/parse"
@@ -16,7 +17,7 @@ import (
 
 var Logger *log.Logger
 
-type scope []map[string]interface{} // a stack of variable scopes
+type scope []interface{} // a stack of variable scopes
 
 // push creates a new scope
 func (s *scope) push() {
@@ -34,19 +35,32 @@ func (s *scope) augment(m map[string]interface{}) {
 
 // set adds a new binding to the deepest scope
 func (s scope) set(k string, v reflect.Value) {
-	s[len(s)-1][k] = v.Interface()
+	s[len(s)-1].(map[string]interface{})[k] = v.Interface()
 }
 
 // lookup checks the variable scopes, deepest out, for the given key
 func (s scope) lookup(k string) reflect.Value {
 	for i := range s {
-		if v, ok := s[len(s)-i-1][k]; ok {
-			vv := val(v)
-			for vv.Kind() == reflect.Interface {
-				vv = vv.Elem()
-			}
-			return vv
+		var elem = s[len(s)-i-1]
+		var field reflect.Value
+		switch v := reflect.ValueOf(elem); v.Kind() {
+		case reflect.Map:
+			field = v.MapIndex(reflect.ValueOf(k))
+		case reflect.Struct:
+			field = v.FieldByName(strings.ToUpper(k[0:1]) + k[1:])
+		default:
+			panic(fmt.Errorf("unexpected type: %v", v.Type()))
 		}
+		if !field.IsValid() {
+			continue
+		}
+		for field.Kind() == reflect.Interface {
+			if field.IsNil() {
+				return nullValue
+			}
+			field = field.Elem()
+		}
+		return field
 	}
 	return undefinedValue
 }
@@ -110,7 +124,7 @@ func EvalExpr(node parse.Node) (val reflect.Value, err error) {
 
 // Execute applies a parsed template to the specified data object,
 // and writes the output to wr.
-func (t Template) Execute(wr io.Writer, data map[string]interface{}) (err error) {
+func (t Template) Execute(wr io.Writer, data interface{}) (err error) {
 	if t.node == nil {
 		return errors.New("no template found")
 	}
@@ -119,7 +133,7 @@ func (t Template) Execute(wr io.Writer, data map[string]interface{}) (err error)
 		bundle:    t.tofu,
 		namespace: t.namespace,
 		wr:        wr,
-		context:   []map[string]interface{}{data},
+		context:   []interface{}{data},
 	}
 	defer state.errRecover(&err)
 	state.walk(reflect.ValueOf(nil), t.node)
