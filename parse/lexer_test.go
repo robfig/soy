@@ -25,6 +25,12 @@ var lexTests = []lexTest{
 		tRight,
 		tEOF,
 	}},
+	{"double delimiters", "{{namespace/}}", []item{
+		{itemLeftDelim, 0, "{{"},
+		{itemNamespace, 0, "namespace"},
+		{itemRightDelimEnd, 0, "/}}"},
+		tEOF,
+	}},
 	{"dottted ident", "{namespace a.namespace.name}", []item{
 		tLeft,
 		{itemNamespace, 0, "namespace"},
@@ -302,6 +308,15 @@ var lexTests = []lexTest{
 		tEOF,
 	}},
 
+	{"functions w/ newline", "{foo(\n)}", []item{
+		tLeft,
+		{itemIdent, 0, "foo"},
+		{itemLeftParen, 0, "("},
+		{itemRightParen, 0, ")"},
+		tRight,
+		tEOF,
+	}},
+
 	{"msg", `{msg desc="msg description"}Hello{/msg}`, []item{
 		tLeft,
 		{itemMsg, 0, "msg"},
@@ -425,11 +440,11 @@ var lexTests = []lexTest{
 		tEOF,
 	}},
 
-	{"line comment", `// this is a {comment} `, []item{
+	{"line comment", ` // this is a {comment} `, []item{
 		{itemComment, 0, "// this is a {comment} "},
 		tEOF,
 	}},
-	{"line comment2", "// this is a {comment}\n{/log}", []item{
+	{"line comment2", " // this is a {comment}\n{/log}", []item{
 		{itemComment, 0, "// this is a {comment}\n"},
 		tLeft,
 		{itemLogEnd, 0, "/log"},
@@ -437,10 +452,18 @@ var lexTests = []lexTest{
 		tEOF,
 	}},
 	{"line comment3", "a // this is a {comment} \n", []item{
-		{itemText, 0, "a "},
+		{itemText, 0, "a"},
 		{itemComment, 0, "// this is a {comment} \n"},
 		tEOF,
 	}},
+	{"line comment4", "{a}//not a comment", []item{
+		tLeft,
+		{itemIdent, 0, "a"},
+		tRight,
+		{itemText, 0, "//not a comment"},
+		tEOF,
+	}},
+
 	{"block comment", "/* this is a {comment} \n * multi line \n */", []item{
 		{itemComment, 0, "/* this is a {comment} \n * multi line \n */"},
 		tEOF,

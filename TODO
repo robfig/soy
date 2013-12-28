@@ -3,7 +3,6 @@ Now:
 - content "kind": text, html, uri, js (code), js (str chars), html attributes
 - implement user provided functions
 - {msg}
-- {let}
 - {alias}
 - attributes for all the commands
 - Source location / error messages

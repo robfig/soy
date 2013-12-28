@@ -409,11 +409,16 @@ func lexText(l *lexer) stateFn {
 		r = l.next()
 
 		// comment / soydoc handling
-		if r == '/' && (isSpace(lastChar) || isEndOfLine(lastChar) || lastChar == 0) {
+		if r == '/' {
 			switch l.next() {
 			case '/':
-				maybeEmitText(l, 2)
-				return lexLineComment(l)
+				// '//' only begins a comment if the previous character is whitespace,
+				// or if we are the start of input.
+				if isSpace(lastChar) || isEndOfLine(lastChar) || (lastChar == 0 && l.lastEmit == 0) {
+					maybeEmitText(l, 3)
+					l.start++ // ignore the required space
+					return lexLineComment(l)
+				}
 			case '*':
 				maybeEmitText(l, 2)
 				if l.next() == '*' {
@@ -431,6 +436,8 @@ func lexText(l *lexer) stateFn {
 			l.backup()
 			maybeEmitText(l, 0)
 			return lexLeftDelim
+		case '}':
+			return l.errorf("unexpected closing delimiter } found in input.")
 		case eof:
 			l.backup()
 			maybeEmitText(l, 0)
@@ -468,6 +475,17 @@ func lexRightDelim(l *lexer) stateFn {
 	return lexText
 }
 
+// lexRightDelim scans the self-closing right template tag delimiter
+// / has already been read.
+func lexRightDelimEnd(l *lexer) stateFn {
+	l.next()
+	if l.doubleDelim && l.next() != '}' {
+		return l.errorf("expected double closing braces in tag")
+	}
+	l.emit(itemRightDelimEnd)
+	return lexText
+}
+
 // lexBeginTag handles an ambiguity:
 //  - "/" is arithmetic or begins the "/if" command?
 func lexBeginTag(l *lexer) stateFn {
@@ -482,12 +500,10 @@ func lexBeginTag(l *lexer) stateFn {
 // itemLeftDelim has just been emitted.
 func lexInsideTag(l *lexer) stateFn {
 	switch r := l.next(); {
-	case isSpace(r):
+	case isSpace(r) || isEndOfLine(r):
 		l.ignore()
 	case r == '/' && l.peek() == '}':
-		l.next()
-		l.emit(itemRightDelimEnd)
-		return lexText
+		return lexRightDelimEnd
 	case r == '$', r == '.':
 		l.backup()
 		return lexIdent
@@ -531,7 +547,7 @@ func lexInsideTag(l *lexer) stateFn {
 		return stringLexer(r)
 	case r == '=':
 		l.emit(itemEquals)
-	case r == eof || isEndOfLine(r):
+	case r == eof:
 		return l.errorf("unclosed tag")
 	case r == '|':
 		l.emit(itemPipe)

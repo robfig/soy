@@ -355,11 +355,19 @@ var parseTests = []parseTest{
 		&LetContentNode{0, "beta", tList(newText(0, "Boo!"))},
 	)},
 
-	// {"spaces", " \t\n", noError, `" \t\n"`},
-	// {"text", "some text", noError, `"some text"`},
-	// {"emptyAction", "{{}}", hasError, `{{}}`},
-	// {"simple command", "{template .templateName}", noError, `{{printf}}`},
-	// {"$ invocation", "{{$varname}}", noError, "{{$varname}}"},
+	{"comments", `
+  {sp}  // {sp}
+  /* {sp} {sp} */  // {sp}
+  /* {sp} */{sp}/* {sp} */
+  /* {sp}
+  {sp} */{sp}
+  // {sp} /* {sp} */
+  http://www.google.com`, tList(
+		newText(0, " "),
+		newText(0, " "),
+		newText(0, " "),
+		newText(0, "http://www.google.com"),
+	)},
 }
 
 var builtins = map[string]interface{}{
@@ -612,198 +620,178 @@ func printTree(t *testing.T, n Node, depth int) {
 	}
 }
 
-// func TestRecognizeSoyTag(t *testing.T) {
-// 	works(t, "{sp}")
-// 	works(t, "{space}")
-// 	works(t, "{ sp }")
-// 	works(t, "{{sp}}")
-// 	works(t, "{{space}}")
-// 	works(t, "{{ {sp} }}")
+// Parser tests imported from the official Soy project
 
-// 	fails(t, "{}")
-// 	fails(t, "{sp")
-// 	fails(t, "{sp blah}")
-// 	fails(t, "{print { }")
-// 	fails(t, "{print } }")
-// 	fails(t, "{print }}")
-// 	fails(t, "{{}}")
-// 	fails(t, "{{{blah: blah}}}")
-// 	fails(t, "blah}blah")
-// 	fails(t, "blah}}blah")
-// 	fails(t, "{{print {{ }}")
-// 	fails(t, "{{print {}}")
-// }
+func TestRecognizeSoyTag(t *testing.T) {
+	works(t, "{sp}")
+	works(t, "{space}")
+	works(t, "{ sp }")
+	works(t, "{{sp}}")
+	works(t, "{{space}}")
 
-// func TestRecognizeRawText(t *testing.T) {
-// 	works(t, "blah>blah<blah<blah>blah>blah>blah>blah<blah")
-// 	works(t, "{sp}{nil}{\\n}{{\\r}}{\\t}{lb}{{rb}}")
-// 	works(t, "blah{literal}{ {{{ } }{ {}} { }}}}}}}\n"+
-// 		"}}}}}}}}}{ { {{/literal}blah")
+	// Soy V1 syntax. will not fix.
+	// works(t, "{{ {sp} }}")
 
-// 	fails(t, "{sp ace}")
-// 	fails(t, "{/literal}")
-// 	fails(t, "{literal attrib=\"value\"}")
-// 	fails(t, "{literal}{literal}{/literal}")
-// }
+	fails(t, "{}")
+	fails(t, "{sp")
+	fails(t, "{sp blah}")
+	fails(t, "{print { }")
+	fails(t, "{print } }")
+	fails(t, "{print }}")
+	fails(t, "{{}}")
+	fails(t, "{{{blah: blah}}}")
+	fails(t, "blah}blah")
+	fails(t, "blah}}blah")
+	fails(t, "{{print {{ }}")
+	fails(t, "{{print {}}")
+}
 
-// func TestRecognizeCommands(t *testing.T) {
-// 	works(t, ""+
-// 		"{msg desc=\"blah\" hidden=\"true\"}\n"+
-// 		"  {$boo} is a <a href=\"{$fooUrl}\">{$foo}</a>.\n"+
-// 		"{/msg}")
-// 	works(t, "{$aaa + 1}{print $bbb.ccc[$ddd] |noescape}")
-// 	works(t, "{css selected-option}{css CSS_SELECTED_OPTION}{css $cssSelectedOption}")
-// 	works(t, "{if $boo}foo{elseif $goo}moo{else}zoo{/if}")
-// 	works(t, ""+
-// 		"  {switch $boo}\n"+
-// 		"    {case $foo} blah blah\n"+
-// 		"    {case 2, $goo.moo, 'too'} bleh bleh\n"+
-// 		"    {default} bluh bluh\n"+
-// 		"  {/switch}\n")
-// 	works(t, "{foreach $item in $items}{index($item)}. {$item.name}<br>{/foreach}")
-// 	works(t, ""+
-// 		"{for $i in range($boo + 1,\n"+
-// 		"                 88, 11)}\n"+
-// 		"Number {$i}.{{/for}}")
-// 	works(t, "{call function=\"aaa.bbb.ccc\" data=\"all\" /}")
-// 	works(t, ""+
-// 		"{call name=\".aaa\"}\n"+
-// 		"  {{param key=\"boo\" value=\"$boo\" /}}\n"+
-// 		"  {param key=\"foo\"}blah blah{/param}\n"+
-// 		"  {param key=\"foo\" kind=\"html\"}blah blah{/param}\n"+
-// 		"  {param foo kind=\"html\"}blah blah{/param}\n"+
-// 		"{/call}")
-// 	works(t,
-// 		"{call .aaa}\n"+
-// 			"  {param foo : bar \" baz/}\n"+
-// 			"{/call}\n")
-// 	works(t, "{call aaa.bbb.ccc data=\"all\" /}")
-// 	works(t, ""+
-// 		"{call .aaa}\n"+
-// 		"  {{param key=\"boo\" value=\"$boo\" /}}\n"+
-// 		"  {param key=\"foo\"}blah blah{/param}\n"+
-// 		"{/call}")
-// 	works(t, "{delcall aaa.bbb.ccc data=\"all\" /}")
-// 	works(t, ""+
-// 		"{delcall name=\"ddd.eee\"}\n"+
-// 		"  {{param key=\"boo\" value=\"$boo\" /}}\n"+
-// 		"  {param key=\"foo\"}blah blah{/param}\n"+
-// 		"{/delcall}")
-// 	works(t, ""+
-// 		"{msg meaning=\"boo\" desc=\"blah\"}\n"+
-// 		"  {$boo phname=\"foo\"} is a \n"+
-// 		"  <a phname=\"begin_link\" href=\"{$fooUrl}\">\n"+
-// 		"    {$foo |noAutoescape phname=\"booFoo\" }\n"+
-// 		"  </a phname=\"END_LINK\" >.\n"+
-// 		"  {call .aaa data=\"all\"\nphname=\"AaaBbb\"/}\n"+
-// 		"  {call .aaa phname=\"AaaBbb\" data=\"all\"}{/call}\n"+
-// 		"{/msg}")
-// 	works(t, "{log}Blah blah.{/log}")
-// 	works(t, "{debugger}")
-// 	works(t, "{let $foo : 1 + 2/}\n")
-// 	works(t, "{let $foo : '\"'/}\n")
-// 	works(t, "{let $foo}Hello{/let}\n")
-// 	works(t, "{let $foo kind=\"html\"}Hello{/let}\n")
+func TestRecognizeRawText(t *testing.T) {
+	works(t, "blah>blah<blah<blah>blah>blah>blah>blah<blah")
+	works(t, "{sp}{nil}{\\n}{{\\r}}{\\t}{lb}{{rb}}")
+	works(t, "blah{literal}{ {{{ } }{ {}} { }}}}}}}\n"+
+		"}}}}}}}}}{ { {{/literal}blah")
 
-// 	fails(t, "{msg}blah{/msg}")
-// 	fails(t, "{/msg}")
-// 	fails(t, "{msg desc=\"\"}<a href=http://www.google.com{/msg}")
-// 	fails(t, "{msg desc=\"\"}blah{msg desc=\"\"}bleh{/msg}bluh{/msg}")
-// 	fails(t, "{msg desc=\"\"}blah{/msg blah}")
-// 	fails(t, "{namespace}")
-// 	fails(t, "{template}\n"+"blah\n"+"{/template}\n")
-// 	fails(t, "{msg}<blah<blah>{/msg}")
-// 	fails(t, "{msg}blah>blah{/msg}")
-// 	fails(t, "{msg}<blah>blah>{/msg}")
-// 	fails(t, "{print $boo /}")
-// 	fails(t, "{if true}aaa{else/}bbb{/if}")
-// 	fails(t, "{call .aaa.bbb /}")
-// 	fails(t, "{delcall name=\"ddd.eee\"}{param foo: 0}{/call}")
-// 	fails(t, "{delcall .dddEee /}")
-// 	fails(t, "{msg desc=\"\"}{$boo phname=\"boo.foo\"}{/msg}")
-// 	fails(t, "{msg desc=\"\"}<br phname=\"boo-foo\" />{/msg}")
-// 	fails(t, "{msg desc=\"\"}{call .boo phname=\"boo\" phname=\"boo\" /}{/msg}")
-// 	fails(t, "{msg desc=\"\"}<br phname=\"break\" phname=\"break\" />{/msg}")
-// 	fails(t, "{call name=\".aaa\"}{param boo kind=\"html\": 123 /}{/call}\n")
-// 	fails(t, "{log}")
-// 	fails(t, "{log 'Blah blah.'}")
-// 	fails(t, "{let $foo kind=\"html\" : 1 + 1/}\n")
-// }
+	fails(t, "{sp ace}")
+	fails(t, "{/literal}")
+	fails(t, "{literal attrib=\"value\"}")
+}
 
-// func TestRecognizeComments(t *testing.T) {
-// 	works(t, "blah // }\n"+
-// 		"{$boo}{msg desc=\"\"} //}\n"+
-// 		"{/msg} // {/msg}\n"+
-// 		"{foreach $item in $items}\t// }\n"+
-// 		"{$item.name}{/foreach} //{{{{\n")
-// 	works(t, "blah /* } */\n"+
-// 		"{msg desc=\"\"} /*}*/{$boo}\n"+
-// 		"/******************/ {/msg}\n"+
-// 		"/* {}} { }* }* / }/ * { **}  //}{ { } {\n"+
-// 		"\n  } {//*} {* /} { /* /}{} {}/ } **}}} */\n"+
-// 		"{foreach $item in $items} /* }\n"+
-// 		"{{{{{*/{$item.name}{/foreach}/*{{{{*/\n")
-// 	works(t, "//}\n")
-// 	works(t, " //}\n")
-// 	works(t, "\n//}\n")
-// 	works(t, "\n //}\n")
+func TestRecognizeCommands(t *testing.T) {
+	works(t, ""+
+		"{msg desc=\"blah\" hidden=\"true\"}\n"+
+		"  {$boo} is a <a href=\"{$fooUrl}\">{$foo}</a>.\n"+
+		"{/msg}")
+	works(t, "{$aaa + 1}{print $bbb.ccc[$ddd] |noescape}")
+	works(t, "{css selected-option}{css CSS_SELECTED_OPTION}{css $cssSelectedOption}")
+	works(t, "{if $boo}foo{elseif $goo}moo{else}zoo{/if}")
+	works(t, ""+
+		"  {switch $boo}\n"+
+		"    {case $foo} blah blah\n"+
+		"    {case 2, $goo.moo, 'too'} bleh bleh\n"+
+		"    {default} bluh bluh\n"+
+		"  {/switch}\n")
+	works(t, "{foreach $item in $items}{index($item)}. {$item.name}<br>{/foreach}")
+	works(t, ""+
+		"{for $i in range($boo + 1,\n"+
+		"                 88, 11)}\n"+
+		"Number {$i}.{{/for}}")
+	works(t, "{call function=\"aaa.bbb.ccc\" data=\"all\" /}")
+	works(t, ""+
+		"{call name=\".aaa\"}\n"+
+		"  {{param key=\"boo\" value=\"$boo\" /}}\n"+
+		"  {param key=\"foo\"}blah blah{/param}\n"+
+		"  {param key=\"foo\" kind=\"html\"}blah blah{/param}\n"+
+		"  {param foo kind=\"html\"}blah blah{/param}\n"+
+		"{/call}")
+	// Soy V1 syntax.  will not fix.
+	// works(t,
+	// 	"{call .aaa}\n"+
+	// 		"  {param foo : bar \" baz/}\n"+
+	// 		"{/call}\n")
+	works(t, "{call aaa.bbb.ccc data=\"all\" /}")
+	works(t, ""+
+		"{call .aaa}\n"+
+		"  {{param key=\"boo\" value=\"$boo\" /}}\n"+
+		"  {param key=\"foo\"}blah blah{/param}\n"+
+		"{/call}")
 
-// 	fails(t, "{blah /* { */ blah}")
-// 	fails(t, "{foreach $item // }\n"+
-// 		"         in $items}\n"+
-// 		"{$item}{/foreach}\n")
-// 	fails(t, "aa////}\n")
-// 	fails(t, "{nil}//}\n")
-// }
+	// TODO: implement delcall
+	// works(t, "{delcall aaa.bbb.ccc data=\"all\" /}")
+	// works(t, ""+
+	// 	"{delcall name=\"ddd.eee\"}\n"+
+	// 	"  {{param key=\"boo\" value=\"$boo\" /}}\n"+
+	// 	"  {param key=\"foo\"}blah blah{/param}\n"+
+	// 	"{/delcall}")
 
-// // func TestParseComments(t *testing.T) {
+	// TODO: implement phname
+	// works(t, ""+
+	// 	"{msg meaning=\"boo\" desc=\"blah\"}\n"+
+	// 	"  {$boo phname=\"foo\"} is a \n"+
+	// 	"  <a phname=\"begin_link\" href=\"{$fooUrl}\">\n"+
+	// 	"    {$foo |noAutoescape phname=\"booFoo\" }\n"+
+	// 	"  </a phname=\"END_LINK\" >.\n"+
+	// 	"  {call .aaa data=\"all\"\nphname=\"AaaBbb\"/}\n"+
+	// 	"  {call .aaa phname=\"AaaBbb\" data=\"all\"}{/call}\n"+
+	// 	"{/msg}")
 
-// // 	templateBody :=
-// //         "  {sp}  // {sp}\n" +  // first {sp} outside of comments
-// //         "  /* {sp} {sp} */  // {sp}\n" +
-// //         "  /* {sp} */{sp}/* {sp} */\n" +  // middle {sp} outside of comments
-// //         "  /* {sp}\n" +
-// //         "  {sp} */{sp}\n" +  // last {sp} outside of comments
-// //         "  // {sp} /* {sp} */\n" +
-// //         "  http://www.google.com\n";  // not a comment if "//" preceded by a non-space such as ":"
+	works(t, "{log}Blah blah.{/log}")
+	works(t, "{debugger}")
+	works(t, "{let $foo : 1 + 2/}\n")
+	works(t, "{let $foo : '\"'/}\n")
+	works(t, "{let $foo}Hello{/let}\n")
 
-// //     List<StandaloneNode> nodes = parseTemplateBody(templateBody);
-// //     assertEquals(1, nodes.size());
-// //     assertEquals("   http://www.google.com", ((RawRawTextNode) nodes.get(0)).getRawText());
-// //   }
+	// TODO: implement kind
+	// works(t, "{let $foo kind=\"html\"}Hello{/let}\n")
 
-// // public void testParseRawText() throws Exception {
+	fails(t, "{msg}blah{/msg}")
+	fails(t, "{/msg}")
 
-// //   String templateBody =
-// //       "  {sp} aaa bbb  \n" +
-// //       "  ccc {lb}{rb} ddd {\\n}\n" +
-// //       "  eee <br>\n" +
-// //       "  fff\n" +
-// //       "  {literal}ggg\n" +
-// //       "hhh }{  {/literal}  \n" +
-// //       "  \u2222\uEEEE\u9EC4\u607A\n";
+	// TODO: implement well-formed HTML checks.
+	// fails(t, "{msg desc=\"\"}<a href=http://www.google.com{/msg}")
 
-// //   List<StandaloneNode> nodes = parseTemplateBody(templateBody);
-// //   assertEquals(1, nodes.size());
-// //   RawRawTextNode rtn = (RawRawTextNode) nodes.get(0);
-// //   assertEquals(
-// //       "  aaa bbb ccc {} ddd \neee <br>fffggg\nhhh }{  \u2222\uEEEE\u9EC4\u607A",
-// //       rtn.getRawText());
-// //   assertEquals(
-// //       "  aaa bbb ccc {lb}{rb} ddd {\\n}eee <br>fffggg{\\n}hhh {rb}{lb}  \u2222\uEEEE\u9EC4\u607A",
-// //       rtn.toSourceString());
-// // }
+	// TODO: disallow nested message tags
+	// fails(t, "{msg desc=\"\"}blah{msg desc=\"\"}bleh{/msg}bluh{/msg}")
 
-// func works(t *testing.T, body string) {
-// 	_, err := New(body).Parse(body, nil)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
-// }
+	fails(t, "{msg desc=\"\"}blah{/msg blah}")
+	fails(t, "{namespace}")
+	fails(t, "{template}\n"+"blah\n"+"{/template}\n")
+	fails(t, "{msg}<blah<blah>{/msg}")
+	fails(t, "{msg}blah>blah{/msg}")
+	fails(t, "{msg}<blah>blah>{/msg}")
+	fails(t, "{print $boo /}")
+	fails(t, "{if true}aaa{else/}bbb{/if}")
+	fails(t, "{call .aaa.bbb /}")
+	fails(t, "{delcall name=\"ddd.eee\"}{param foo: 0}{/call}")
+	fails(t, "{delcall .dddEee /}")
 
-// func fails(t *testing.T, body string) {
-// 	_, err := New(body).Parse(body, nil)
-// 	if err == nil {
-// 		t.Errorf("should fail: %s", body)
-// 	}
-// }
+	// TODO: implement phname
+	// fails(t, "{msg desc=\"\"}{$boo phname=\"boo.foo\"}{/msg}")
+	// fails(t, "{msg desc=\"\"}<br phname=\"boo-foo\" />{/msg}")
+	// fails(t, "{msg desc=\"\"}{call .boo phname=\"boo\" phname=\"boo\" /}{/msg}")
+	// fails(t, "{msg desc=\"\"}<br phname=\"break\" phname=\"break\" />{/msg}")
+
+	fails(t, "{call name=\".aaa\"}{param boo kind=\"html\": 123 /}{/call}\n")
+	fails(t, "{log}")
+	fails(t, "{log 'Blah blah.'}")
+	fails(t, "{let $foo kind=\"html\" : 1 + 1/}\n")
+}
+
+func TestRecognizeComments(t *testing.T) {
+	works(t, "blah // }\n"+
+		"{$boo}{msg desc=\"\"} //}\n"+
+		"{/msg} // {/msg}\n"+
+		"{foreach $item in $items}\t// }\n"+
+		"{$item.name}{/foreach} //{{{{\n")
+	works(t, "blah /* } */\n"+
+		"{msg desc=\"\"} /*}*/{$boo}\n"+
+		"/******************/ {/msg}\n"+
+		"/* {}} { }* }* / }/ * { **}  //}{ { } {\n"+
+		"\n  } {//*} {* /} { /* /}{} {}/ } **}}} */\n"+
+		"{foreach $item in $items} /* }\n"+
+		"{{{{{*/{$item.name}{/foreach}/*{{{{*/\n")
+	works(t, " //}\n")
+	works(t, "\n//}\n")
+	works(t, "\n //}\n")
+
+	fails(t, "{blah /* { */ blah}")
+	fails(t, "{foreach $item // }\n"+
+		"         in $items}\n"+
+		"{$item}{/foreach}\n")
+	fails(t, "aa////}\n")
+	fails(t, "{nil}//}\n")
+}
+
+func works(t *testing.T, body string) {
+	_, err := New(body).Parse(body, nil)
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func fails(t *testing.T, body string) {
+	_, err := New(body).Parse(body, nil)
+	if err == nil {
+		t.Errorf("should fail: %s", body)
+	}
+}

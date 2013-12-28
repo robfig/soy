@@ -565,7 +565,10 @@ func (t *Tree) parseAttrs(allowedNames ...string) map[string]string {
 // "msg" has just been read.
 func (t *Tree) parseMsg(token item) Node {
 	const ctx = "msg"
-	var attrs = t.parseAttrs("desc", "meaning")
+	var attrs = t.parseAttrs("desc", "meaning", "hidden")
+	if _, ok := attrs["desc"]; !ok {
+		t.errorf("Tag 'msg' must have a 'desc' attribute")
+	}
 	t.expect(itemRightDelim, ctx)
 	var node = &MsgNode{token.pos, attrs["desc"], t.itemList(itemMsgEnd)}
 	t.expect(itemRightDelim, ctx)
