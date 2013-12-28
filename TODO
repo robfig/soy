@@ -8,18 +8,19 @@ Now:
 - attributes for all the commands
 - Source location / error messages
 - TODO sweep
-- use xliff bundles
 - test coverage
 --- v1
 - Contextual autoescape
-- parsepasses (optimizations) (Simplify, CombineConsecutiveRawText, Prerender)
 - Delegates (delpackage, delcall, deltemplate)
+- JS code generation
 - Injected data
+- parsepasses (optimizations) (Simplify, CombineConsecutiveRawText, Prerender)
 - Bidi
+- use xliff message bundles
+- use PO messages
 - Message extractor (placeholders/phname)
 - CSS renaming
 - Go code generation
-- JS code generation
 
 Issues:
 - replace reflect.Value usage with own types.  or figure out solution for drilling through interface/ptr)

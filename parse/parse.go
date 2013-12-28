@@ -179,6 +179,8 @@ func (t *Tree) beginTag() Node {
 	case itemDebugger:
 		t.expect(itemRightDelim, "debugger")
 		return &DebuggerNode{token.pos}
+	case itemLet:
+		return t.parseLet(token)
 	case itemNil, itemSpace, itemTab, itemNewline, itemCarriageReturn, itemLeftBrace, itemRightBrace:
 		t.expect(itemRightDelim, "special char")
 		return newText(token.pos, specialChars[token.typ])
@@ -221,6 +223,24 @@ func (t *Tree) parsePrint(token item) Node {
 			t.errorf("print: expected directive or close delimiter, got %v", tok.val)
 		}
 	}
+}
+
+// "let" has just been read.
+func (t *Tree) parseLet(token item) Node {
+	var name = t.expect(itemDollarIdent, "let")
+	switch next := t.next(); next.typ {
+	case itemColon:
+		var node = &LetValueNode{token.pos, name.val[1:], t.parseExpr(0)}
+		t.expect(itemRightDelimEnd, "let")
+		return node
+	case itemRightDelim:
+		var node = &LetContentNode{token.pos, name.val[1:], t.itemList(itemLetEnd)}
+		t.expect(itemRightDelim, "let")
+		return node
+	default:
+		t.errorf("unexpected token parsing {let}: %v", next.val)
+	}
+	panic("unreachable")
 }
 
 // "css" has just been read.

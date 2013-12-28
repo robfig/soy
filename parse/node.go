@@ -197,6 +197,26 @@ func (n *DebuggerNode) String() string {
 	return "{debugger}"
 }
 
+type LetValueNode struct {
+	Pos
+	Name string
+	Expr Node
+}
+
+func (n *LetValueNode) String() string {
+	return fmt.Sprintf("{let $%s: %s /}", n.Name, n.Expr)
+}
+
+type LetContentNode struct {
+	Pos
+	Name string
+	Body Node
+}
+
+func (n *LetContentNode) String() string {
+	return fmt.Sprintf("{let $%s}%s{/let}", n.Name, n.Body)
+}
+
 type IdentNode struct {
 	Pos
 	Ident string // The ident's name.

@@ -217,6 +217,10 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 		}
 	case *parse.CallNode:
 		s.evalCall(dot, node)
+	case *parse.LetValueNode:
+		s.context.set(node.Name, s.eval(dot, node.Expr))
+	case *parse.LetContentNode:
+		s.context.set(node.Name, val(string(s.renderBlock(dot, node.Body))))
 
 		// Values ----------
 	case *parse.NullNode:

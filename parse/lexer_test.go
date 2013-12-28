@@ -476,6 +476,26 @@ var lexTests = []lexTest{
 		tEOF,
 	}},
 
+	{"let", `{let $ident: 1+1/}{let $ident}content{/let}`, []item{
+		tLeft,
+		{itemLet, 0, "let"},
+		{itemDollarIdent, 0, "$ident"},
+		{itemColon, 0, ":"},
+		{itemInteger, 0, "1"},
+		{itemAdd, 0, "+"},
+		{itemInteger, 0, "1"},
+		{itemRightDelimEnd, 0, "/}"},
+		tLeft,
+		{itemLet, 0, "let"},
+		{itemDollarIdent, 0, "$ident"},
+		tRight,
+		{itemText, 0, "content"},
+		tLeft,
+		{itemLetEnd, 0, "/let"},
+		tRight,
+		tEOF,
+	}},
+
 	{"namespace and template", `{namespace example}
 
 {template .templateName}

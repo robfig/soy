@@ -532,6 +532,22 @@ func TestStructData(t *testing.T) {
 	})
 }
 
+func TestLet(t *testing.T) {
+	runExecTests(t, []execTest{
+		exprtestwdata("let", `
+{let $alpha: $boo.foo /}
+{let $beta}Boo!{/let}
+{let $gamma}
+  {for $i in range($alpha)}
+    {$i}{$beta}
+  {/for}
+{/let}
+{$gamma}`,
+			"0Boo!1Boo!2Boo!",
+			data{"boo": data{"foo": 3}}),
+	})
+}
+
 // helpers
 
 var globals = make(map[string]interface{})

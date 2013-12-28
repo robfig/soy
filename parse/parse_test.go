@@ -347,14 +347,13 @@ var parseTests = []parseTest{
 			&CallParamContentNode{0, "doo", tList(newText(0, "doopoo"))}}},
 	)},
 
-	// "  {let $alpha: $boo.foo /}\n" +
-	// "  {let $beta}Boo!{/let}\n" +
-	// "  {let $gamma}\n" +
-	// "    {for $i in range($alpha)}\n" +
-	// "      {$i}{$beta}\n" +
-	// "    {/for}\n" +
-	// "  {/let}\n" +
-	// "  {let $delta kind=\"html\"}Boo!{/let}\n";
+	{"let", `
+{let $alpha: $boo.foo /}
+{let $beta}Boo!{/let}
+`, /*{let $delta kind="html"}Boo!{/let}*/ tList(
+		&LetValueNode{0, "alpha", &DataRefNode{0, "boo", []Node{&DataRefKeyNode{0, false, "foo"}}}},
+		&LetContentNode{0, "beta", tList(newText(0, "Boo!"))},
+	)},
 
 	// {"spaces", " \t\n", noError, `" \t\n"`},
 	// {"text", "some text", noError, `"some text"`},
@@ -427,6 +426,12 @@ func eqTree(t *testing.T, expected, actual Node) bool {
 		return true
 	case *LogNode:
 		return eqTree(t, expected.(*LogNode).Body, actual.(*LogNode).Body)
+	case *LetValueNode:
+		return eqstr(t, "let", expected.(*LetValueNode).Name, actual.(*LetValueNode).Name) &&
+			eqTree(t, expected.(*LetValueNode).Expr, actual.(*LetValueNode).Expr)
+	case *LetContentNode:
+		return eqstr(t, "let", expected.(*LetContentNode).Name, actual.(*LetContentNode).Name) &&
+			eqTree(t, expected.(*LetContentNode).Body, actual.(*LetContentNode).Body)
 
 	case *NullNode:
 		return true

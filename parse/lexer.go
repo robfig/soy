@@ -114,6 +114,7 @@ const (
 	itemForeach     // {foreach ...}
 	itemIf          // {if ...}
 	itemIfempty     // {ifempty}
+	itemLet         // {let}
 	itemLiteral     // {literal}
 	itemMsg         // {msg ...}
 	itemNamespace   // {namespace}
@@ -140,6 +141,7 @@ const (
 	itemForEnd         // {/for}
 	itemForeachEnd     // {/foreach}
 	itemIfEnd          // {/if}
+	itemLetEnd         // {/let}
 	itemLiteralEnd     // {/literal}
 	itemMsgEnd         // {/msg}
 	itemParamEnd       // {/param}
@@ -173,6 +175,7 @@ var builtinIdents = map[string]itemType{
 	"foreach":   itemForeach,
 	"if":        itemIf,
 	"ifempty":   itemIfempty,
+	"let":       itemLet,
 	"literal":   itemLiteral,
 	"msg":       itemMsg,
 	"param":     itemParam,
@@ -187,6 +190,7 @@ var builtinIdents = map[string]itemType{
 	"/for":         itemForEnd,
 	"/foreach":     itemForeachEnd,
 	"/if":          itemIfEnd,
+	"/let":         itemLetEnd,
 	"/literal":     itemLiteralEnd,
 	"/msg":         itemMsgEnd,
 	"/param":       itemParamEnd,
