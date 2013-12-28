@@ -10,9 +10,10 @@ Now:
 - Source location / error messages
 - TODO sweep
 - use xliff bundles
+- test coverage
 --- v1
-- parsepasses (optimizations) (Simplify, CombineConsecutiveRawText, Prerender)
 - Contextual autoescape
+- parsepasses (optimizations) (Simplify, CombineConsecutiveRawText, Prerender)
 - Delegates (delpackage, delcall, deltemplate)
 - Injected data
 - Bidi
@@ -22,8 +23,7 @@ Now:
 - JS code generation
 
 Issues:
-- How are escape sequences handled within strings? e.g. 'string\nvalue' or desc="hello\nworld". check if {'abc{lb}xyz'} works
 - replace reflect.Value usage with own types.  or figure out solution for drilling through interface/ptr)
 
 Ideas:
-- Reduce lexed tokens by removing delim items around commands
+- if foreach on undefined or null thing, what happens?
