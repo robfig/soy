@@ -7,21 +7,19 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"reflect"
-	"runtime"
-	"strings"
 	"text/template"
 
+	"github.com/robfig/soy/data"
 	"github.com/robfig/soy/parse"
 )
 
 var Logger *log.Logger
 
-type scope []interface{} // a stack of variable scopes
+type scope []data.Map // a stack of variable scopes
 
 // push creates a new scope
 func (s *scope) push() {
-	*s = append(*s, make(map[string]interface{}))
+	*s = append(*s, make(data.Map))
 }
 
 // pop discards the last scope pushed.
@@ -30,39 +28,23 @@ func (s *scope) pop() {
 }
 
 func (s *scope) augment(m map[string]interface{}) {
-	*s = append(*s, m)
+	*s = append(*s, data.New(m).(data.Map))
 }
 
 // set adds a new binding to the deepest scope
-func (s scope) set(k string, v reflect.Value) {
-	s[len(s)-1].(map[string]interface{})[k] = v.Interface()
+func (s scope) set(k string, v data.Value) {
+	s[len(s)-1][k] = v
 }
 
 // lookup checks the variable scopes, deepest out, for the given key
-func (s scope) lookup(k string) reflect.Value {
+func (s scope) lookup(k string) data.Value {
 	for i := range s {
 		var elem = s[len(s)-i-1]
-		var field reflect.Value
-		switch v := reflect.ValueOf(elem); v.Kind() {
-		case reflect.Map:
-			field = v.MapIndex(reflect.ValueOf(k))
-		case reflect.Struct:
-			field = v.FieldByName(strings.ToUpper(k[0:1]) + k[1:])
-		default:
-			panic(fmt.Errorf("unexpected type: %v", v.Type()))
+		if val, ok := elem[k]; ok {
+			return val
 		}
-		if !field.IsValid() {
-			continue
-		}
-		for field.Kind() == reflect.Interface {
-			if field.IsNil() {
-				return nullValue
-			}
-			field = field.Elem()
-		}
-		return field
 	}
-	return undefinedValue
+	return data.Undefined{}
 }
 
 // state represents the state of an execution. It's not part of the
@@ -74,15 +56,9 @@ type state struct {
 	wr         io.Writer
 	node       parse.Node           // current node, for errors
 	bundle     Tofu                 // the entire bundle of templates
-	val        reflect.Value        // temp value for expression being computed
+	val        data.Value           // temp value for expression being computed
 	context    scope                // variable scope
 	autoescape parse.AutoescapeType // escaping mode
-}
-
-// variable holds the dynamic value of a variable such as $, $x etc.
-type variable struct {
-	name  string
-	value reflect.Value
 }
 
 // at marks the state to be on node n, for error reporting.
@@ -101,72 +77,74 @@ func (s *state) errorf(format string, args ...interface{}) {
 func (s *state) errRecover(errp *error) {
 	e := recover()
 	if e != nil {
-		switch err := e.(type) {
-		case runtime.Error:
-			panic(e)
-		case error:
-			*errp = fmt.Errorf("%#v: %v", s.node, err)
-			//			*errp = err
-		default:
-			*errp = fmt.Errorf("%#v: %v", s.node, e)
-		}
+		*errp = fmt.Errorf("%#v: %v", s.node, e)
 	}
 }
 
-func EvalExpr(node parse.Node) (val reflect.Value, err error) {
+func EvalExpr(node parse.Node) (val data.Value, err error) {
 	state := &state{
 		wr: ioutil.Discard,
 	}
 	defer state.errRecover(&err)
-	state.walk(reflect.ValueOf(nil), node)
+	state.walk(node)
 	return state.val, nil
 }
 
 // Execute applies a parsed template to the specified data object,
 // and writes the output to wr.
-func (t Template) Execute(wr io.Writer, data interface{}) (err error) {
+func (t Template) Execute(wr io.Writer, obj interface{}) (err error) {
 	if t.node == nil {
 		return errors.New("no template found")
+	}
+	var m data.Map
+	if obj == nil {
+		m = data.Map{}
+	} else {
+		var ok bool
+		m, ok = data.New(obj).(data.Map)
+		if !ok {
+			return fmt.Errorf("Execute data must be a map or struct, got %T", obj)
+		}
 	}
 	state := &state{
 		tmpl:      t.node,
 		bundle:    t.tofu,
 		namespace: t.namespace,
 		wr:        wr,
-		context:   []interface{}{data},
+		context:   scope{m},
 	}
 	defer state.errRecover(&err)
-	state.walk(reflect.ValueOf(nil), t.node)
+	state.walk(t.node)
 	return
 }
 
 // walk recursively goes through each node and executes the indicated logic and
 // writes the output
-func (s *state) walk(dot reflect.Value, node parse.Node) {
-	s.val = undefinedValue
+func (s *state) walk(node parse.Node) {
+	s.val = data.Undefined{}
 	s.at(node)
 	switch node := node.(type) {
 	case *parse.TemplateNode:
 		s.autoescape = node.Autoescape
-		s.walk(dot, node.Body)
+		s.walk(node.Body)
 	case *parse.ListNode:
 		for _, node := range node.Nodes {
-			s.walk(dot, node)
+			s.walk(node)
 		}
 
 		// Output nodes ----------
 	case *parse.PrintNode:
-		s.evalPrint(dot, node)
+		s.evalPrint(node)
 	case *parse.RawTextNode:
 		if _, err := s.wr.Write(node.Text); err != nil {
 			s.errorf("%s", err)
 		}
 	case *parse.MsgNode:
-		s.walk(dot, node.Body)
+		s.walk(node.Body)
 	case *parse.CssNode:
 		var prefix = ""
 		if node.Expr != nil {
-			prefix = toString(s.eval(dot, node.Expr)) + "-"
+			prefix = s.eval(node.Expr).String() + "-"
 		}
 		if _, err := s.wr.Write([]byte(prefix + node.Suffix)); err != nil {
 			s.errorf("%s", err)
@@ -174,169 +152,169 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 	case *parse.DebuggerNode:
 		// nothing to do
 	case *parse.LogNode:
-		Logger.Print(string(s.renderBlock(dot, node.Body)))
+		Logger.Print(string(s.renderBlock(node.Body)))
 
 		// Control flow ----------
 	case *parse.IfNode:
 		for _, cond := range node.Conds {
-			if cond.Cond == nil || truthiness(s.eval(dot, cond.Cond)) {
-				s.walk(dot, cond.Body)
+			if cond.Cond == nil || s.eval(cond.Cond).Truthy() {
+				s.walk(cond.Body)
 				break
 			}
 		}
 	case *parse.ForNode:
-		var list = s.eval(dot, node.List)
-		if list.Kind() != reflect.Slice {
-			s.errorf("expected list type to iterate, got %v", list.Kind())
+		var list, ok = s.eval(node.List).(data.List)
+		if !ok {
+			s.errorf("expected list type to iterate, got %v", s.eval(node.List))
 		}
-		if list.Len() == 0 && node.IfEmpty != nil {
-			s.walk(dot, node.IfEmpty)
+		if len(list) == 0 {
+			if node.IfEmpty != nil {
+				s.walk(node.IfEmpty)
+			}
 			break
 		}
 		s.context.push()
-		for i := 0; i < list.Len(); i++ {
-			s.context.set(node.Var, list.Index(i))
-			s.context.set(node.Var+"__index", val(i))
-			s.context.set(node.Var+"__lastIndex", val(list.Len()-1))
-			s.walk(dot, node.Body)
+		for i, item := range list {
+			s.context.set(node.Var, item)
+			s.context.set(node.Var+"__index", data.Int(i))
+			s.context.set(node.Var+"__lastIndex", data.Int(len(list)-1))
+			s.walk(node.Body)
 		}
 		s.context.pop()
 	case *parse.SwitchNode:
-		var switchValue = s.eval(dot, node.Value)
+		var switchValue = s.eval(node.Value)
 		for _, caseNode := range node.Cases {
 			for _, caseValueNode := range caseNode.Values {
-				if equals(switchValue, s.eval(dot, caseValueNode)) {
-					s.walk(dot, caseNode.Body)
+				if switchValue.Equals(s.eval(caseValueNode)) {
+					s.walk(caseNode.Body)
 					return
 				}
 			}
 			if len(caseNode.Values) == 0 { // default/last case
-				s.walk(dot, caseNode.Body)
+				s.walk(caseNode.Body)
 				return
 			}
 		}
 	case *parse.CallNode:
-		s.evalCall(dot, node)
+		s.evalCall(node)
 	case *parse.LetValueNode:
-		s.context.set(node.Name, s.eval(dot, node.Expr))
+		s.context.set(node.Name, s.eval(node.Expr))
 	case *parse.LetContentNode:
-		s.context.set(node.Name, val(string(s.renderBlock(dot, node.Body))))
+		s.context.set(node.Name, data.String(s.renderBlock(node.Body)))
 
 		// Values ----------
 	case *parse.NullNode:
-		s.val = nullValue
+		s.val = data.Null{}
 	case *parse.StringNode:
-		s.val = val(node.Value)
+		s.val = data.String(node.Value)
 	case *parse.IntNode:
-		s.val = val(node.Value)
+		s.val = data.Int(node.Value)
 	case *parse.FloatNode:
-		s.val = val(node.Value)
+		s.val = data.Float(node.Value)
 	case *parse.BoolNode:
-		s.val = val(node.True)
+		s.val = data.Bool(node.True)
 	case *parse.GlobalNode:
 		var value, ok = s.bundle.globals[node.Name]
 		if !ok {
 			s.errorf("failed to find global: %q", node.Name)
 		}
-		s.val = val(value)
+		s.val = value
 	case *parse.ListLiteralNode:
-		var items = make([]interface{}, len(node.Items))
+		var items = make(data.List, len(node.Items))
 		for i, item := range node.Items {
-			items[i] = s.eval(dot, item)
+			items[i] = s.eval(item)
 		}
-		s.val = val(items)
+		s.val = data.List(items)
 	case *parse.MapLiteralNode:
-		var items = make(map[string]interface{}, len(node.Items))
+		var items = make(data.Map, len(node.Items))
 		for k, v := range node.Items {
-			items[k] = s.eval(dot, v)
+			items[k] = s.eval(v)
 		}
-		s.val = val(items)
+		s.val = data.Map(items)
 	case *parse.FunctionNode:
 		s.val = s.evalFunc(node)
 	case *parse.DataRefNode:
-		s.val = s.evalDataRef(dot, node)
+		s.val = s.evalDataRef(node)
 
 		// Arithmetic operators ----------
 	case *parse.NegateNode:
-		var arg = s.eval(dot, node.Arg)
-		if isInt(arg) {
-			s.val = val(-arg.Int())
-		} else {
-			s.val = val(-toFloat(arg))
+		switch arg := s.eval(node.Arg).(type) {
+		case data.Int:
+			s.val = data.Int(-arg)
+		case data.Float:
+			s.val = data.Float(-arg)
+		default:
+			s.errorf("can not negate non-number: %v", arg)
 		}
 	case *parse.AddNode:
-		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2)
+		var arg1, arg2 = s.eval2(node.Arg1, node.Arg2)
 		switch {
 		case isInt(arg1) && isInt(arg2):
-			s.val = val(arg1.Int() + arg2.Int())
-		case arg1.Kind() == reflect.String || arg2.Kind() == reflect.String:
-			s.val = val(toString(arg1) + toString(arg2))
+			s.val = data.Int(arg1.(data.Int) + arg2.(data.Int))
+		case isString(arg1) || isString(arg2):
+			s.val = data.String(arg1.String() + arg2.String())
 		default:
-			s.val = val(toFloat(arg1) + toFloat(arg2))
+			s.val = data.Float(toFloat(arg1) + toFloat(arg2))
 		}
 	case *parse.SubNode:
-		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2)
+		var arg1, arg2 = s.eval2(node.Arg1, node.Arg2)
 		switch {
 		case isInt(arg1) && isInt(arg2):
-			s.val = val(arg1.Int() - arg2.Int())
+			s.val = data.Int(arg1.(data.Int) - arg2.(data.Int))
 		default:
-			s.val = val(toFloat(arg1) - toFloat(arg2))
+			s.val = data.Float(toFloat(arg1) - toFloat(arg2))
 		}
 	case *parse.DivNode:
-		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2)
-		s.val = val(toFloat(arg1) / toFloat(arg2))
+		var arg1, arg2 = s.eval2(node.Arg1, node.Arg2)
+		s.val = data.Float(toFloat(arg1) / toFloat(arg2))
 	case *parse.MulNode:
-		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2)
+		var arg1, arg2 = s.eval2(node.Arg1, node.Arg2)
 		switch {
 		case isInt(arg1) && isInt(arg2):
-			s.val = val(arg1.Int() * arg2.Int())
+			s.val = data.Int(arg1.(data.Int) * arg2.(data.Int))
 		default:
-			s.val = val(toFloat(arg1) * toFloat(arg2))
+			s.val = data.Float(toFloat(arg1) * toFloat(arg2))
 		}
 	case *parse.ModNode:
-		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2)
-		s.val = val(arg1.Int() % arg2.Int())
+		var arg1, arg2 = s.eval2(node.Arg1, node.Arg2)
+		s.val = data.Int(arg1.(data.Int) % arg2.(data.Int))
 
 		// Arithmetic comparisons ----------
 	case *parse.EqNode:
-		s.val = val(equals(s.eval2(dot, node.Arg1, node.Arg2)))
+		s.val = data.Bool(s.eval(node.Arg1).Equals(s.eval(node.Arg2)))
 	case *parse.NotEqNode:
-		s.val = val(!equals(s.eval2(dot, node.Arg1, node.Arg2)))
+		s.val = data.Bool(!s.eval(node.Arg1).Equals(s.eval(node.Arg2)))
 	case *parse.LtNode:
-		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2)
-		s.val = val(toFloat(arg1) < toFloat(arg2))
+		s.val = data.Bool(toFloat(s.eval(node.Arg1)) < toFloat(s.eval(node.Arg2)))
 	case *parse.LteNode:
-		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2)
-		s.val = val(toFloat(arg1) <= toFloat(arg2))
+		s.val = data.Bool(toFloat(s.eval(node.Arg1)) <= toFloat(s.eval(node.Arg2)))
 	case *parse.GtNode:
-		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2)
-		s.val = val(toFloat(arg1) > toFloat(arg2))
+		s.val = data.Bool(toFloat(s.eval(node.Arg1)) > toFloat(s.eval(node.Arg2)))
 	case *parse.GteNode:
-		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2)
-		s.val = val(toFloat(arg1) >= toFloat(arg2))
+		s.val = data.Bool(toFloat(s.eval(node.Arg1)) >= toFloat(s.eval(node.Arg2)))
 
 		// Boolean operators ----------
 	case *parse.NotNode:
-		s.val = val(!truthiness(s.eval(dot, node.Arg)))
+		s.val = data.New(!s.eval(node.Arg).Truthy())
 	case *parse.AndNode:
-		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2)
-		s.val = val(truthiness(arg1) && truthiness(arg2))
+		var arg1, arg2 = s.eval2(node.Arg1, node.Arg2)
+		s.val = data.New(arg1.Truthy() && arg2.Truthy())
 	case *parse.OrNode:
-		var arg1, arg2 = s.eval2(dot, node.Arg1, node.Arg2)
-		s.val = val(truthiness(arg1) || truthiness(arg2))
+		var arg1, arg2 = s.eval2(node.Arg1, node.Arg2)
+		s.val = data.New(arg1.Truthy() || arg2.Truthy())
 	case *parse.ElvisNode:
-		var arg1 = s.eval(dot, node.Arg1)
-		if arg1 != nullValue && arg1 != undefinedValue {
+		var arg1 = s.eval(node.Arg1)
+		if arg1 != (data.Null{}) && arg1 != (data.Undefined{}) {
 			s.val = arg1
 		} else {
-			s.val = s.eval(dot, node.Arg2)
+			s.val = s.eval(node.Arg2)
 		}
 	case *parse.TernNode:
-		var arg1 = s.eval(dot, node.Arg1)
-		if truthiness(arg1) {
-			s.val = s.eval(dot, node.Arg2)
+		var arg1 = s.eval(node.Arg1)
+		if arg1.Truthy() {
+			s.val = s.eval(node.Arg2)
 		} else {
-			s.val = s.eval(dot, node.Arg3)
+			s.val = s.eval(node.Arg3)
 		}
 
 	default:
@@ -344,8 +322,30 @@ func (s *state) walk(dot reflect.Value, node parse.Node) {
 	}
 }
 
-func (s *state) evalPrint(dot reflect.Value, node *parse.PrintNode) {
-	s.walk(dot, node.Arg)
+func isInt(v data.Value) bool {
+	_, ok := v.(data.Int)
+	return ok
+}
+
+func isString(v data.Value) bool {
+	_, ok := v.(data.String)
+	return ok
+}
+
+func toFloat(v data.Value) float64 {
+	switch v := v.(type) {
+	case data.Int:
+		return float64(v)
+	case data.Float:
+		return float64(v)
+	default:
+		panic(fmt.Errorf("not a number: %v", v))
+		return 0
+	}
+}
+
+func (s *state) evalPrint(node *parse.PrintNode) {
+	s.walk(node.Arg)
 	var escapeHtml = s.autoescape == parse.AutoescapeOn
 	var result = s.val
 	for _, directiveNode := range node.Directives {
@@ -354,9 +354,9 @@ func (s *state) evalPrint(dot reflect.Value, node *parse.PrintNode) {
 			s.errorf("print directive %q does not exist", directiveNode.Name)
 		}
 		// TODO: validate # args
-		var args []reflect.Value
+		var args []data.Value
 		for _, arg := range directiveNode.Args {
-			args = append(args, s.eval(dot, arg))
+			args = append(args, s.eval(arg))
 		}
 		result = directive.Apply(result, args)
 		if directive.CancelAutoescape {
@@ -365,15 +365,15 @@ func (s *state) evalPrint(dot reflect.Value, node *parse.PrintNode) {
 	}
 
 	if escapeHtml {
-		template.HTMLEscape(s.wr, []byte(toString(result)))
+		template.HTMLEscape(s.wr, []byte(result.String()))
 	} else {
-		if _, err := s.wr.Write([]byte(toString(result))); err != nil {
+		if _, err := s.wr.Write([]byte(result.String())); err != nil {
 			s.errorf("%s", err)
 		}
 	}
 }
 
-func (s *state) evalCall(dot reflect.Value, node *parse.CallNode) {
+func (s *state) evalCall(node *parse.CallNode) {
 	// get template node we're calling
 	var fqTemplateName = node.Name
 	if node.Name[0] == '.' {
@@ -390,26 +390,24 @@ func (s *state) evalCall(dot reflect.Value, node *parse.CallNode) {
 		callData = s.context
 		callData.push()
 	} else if node.Data != nil {
-		result := s.eval(dot, node.Data)
-		if result.Kind() != reflect.Map {
+		result, ok := s.eval(node.Data).(data.Map)
+		if !ok {
 			s.errorf("In 'call' command %s, the data reference does not resolve to a map.", node)
 		}
-		callData = scope{
-			result.Convert(reflect.TypeOf(map[string]interface{}{})).
-				Interface().(map[string]interface{})}
+		callData = scope{result}
 	} else {
-		callData = scope{make(map[string]interface{})}
+		callData = scope{make(data.Map)}
 	}
 
 	// resolve the params
 	for _, param := range node.Params {
 		switch param := param.(type) {
 		case *parse.CallParamValueNode:
-			callData.set(param.Key, s.eval(dot, param.Value))
+			callData.set(param.Key, s.eval(param.Value))
 		case *parse.CallParamContentNode:
-			callData.set(param.Key, val(string(s.renderBlock(dot, param.Content))))
+			callData.set(param.Key, data.New(string(s.renderBlock(param.Content))))
 		default:
-			panic(fmt.Errorf("unexpected call param type: %T", param))
+			s.errorf("unexpected call param type: %T", param)
 		}
 	}
 
@@ -420,19 +418,19 @@ func (s *state) evalCall(dot reflect.Value, node *parse.CallNode) {
 		wr:        s.wr,
 		context:   callData,
 	}
-	state.walk(dot, calledTmpl)
+	state.walk(calledTmpl)
 }
 
-func (s *state) renderBlock(dot reflect.Value, node parse.Node) []byte {
+func (s *state) renderBlock(node parse.Node) []byte {
 	var buf bytes.Buffer
 	origWriter := s.wr
 	s.wr = &buf
-	s.walk(dot, node)
+	s.walk(node)
 	s.wr = origWriter
 	return buf.Bytes()
 }
 
-func (s *state) evalFunc(node *parse.FunctionNode) reflect.Value {
+func (s *state) evalFunc(node *parse.FunctionNode) data.Value {
 	if fn, ok := loopFuncs[node.Name]; ok {
 		return fn(s, node.Args[0].(*parse.DataRefNode).Key)
 	}
@@ -444,20 +442,21 @@ func (s *state) evalFunc(node *parse.FunctionNode) reflect.Value {
 			}
 		}
 		if !valid {
-			panic(fmt.Errorf("call to %v with %v args, expected %v",
-				node.Name, len(node.Args), fn.ValidArgLengths))
+			s.errorf("call to %v with %v args, expected %v",
+				node.Name, len(node.Args), fn.ValidArgLengths)
 		}
 
-		var args []reflect.Value
+		var args []data.Value
 		for _, arg := range node.Args {
-			args = append(args, s.eval(reflect.Value{}, arg))
+			args = append(args, s.eval(arg))
 		}
-		return fn.Func(args...)
+		return fn.Func(args)
 	}
-	panic(fmt.Errorf("unrecognized function name: %s", node.Name))
+	s.errorf("unrecognized function name: %s", node.Name)
+	return nil
 }
 
-func (s *state) evalDataRef(dot reflect.Value, node *parse.DataRefNode) reflect.Value {
+func (s *state) evalDataRef(node *parse.DataRefNode) data.Value {
 	// get the initial value
 	var ref = s.context.lookup(node.Key)
 	if len(node.Access) == 0 {
@@ -466,34 +465,47 @@ func (s *state) evalDataRef(dot reflect.Value, node *parse.DataRefNode) reflect.
 
 	// handle the accesses
 	for _, accessNode := range node.Access {
-		// require val to be a slice/map at the start of each iteration.
-		var kind = ref.Kind()
-		if kind != reflect.Slice && kind != reflect.Map {
-			if isNullSafeAccess(accessNode) {
-				if ref == undefinedValue || ref == nullValue {
-					return nullValue
-				}
-				panic(fmt.Sprintf("While evaluating \"%s\", encountered non-collection"+
-					" just before accessing \"%s\".", node, accessNode))
-			}
-			return undefinedValue
-		}
-
-		// get a string or integer index
+		// resolve the index or key to look up.
+		var (
+			index int = -1
+			key   string
+		)
 		switch node := accessNode.(type) {
 		case *parse.DataRefIndexNode:
-			ref = accessIndex(ref, val(node), node.Index)
+			index = node.Index
 		case *parse.DataRefKeyNode:
-			ref = accessKey(ref, val(node), node.Key)
+			key = node.Key
 		case *parse.DataRefExprNode:
-			switch keyRef := s.eval(dot, node.Arg); {
-			case isInt(keyRef):
-				ref = accessIndex(ref, keyRef, int(keyRef.Int()))
+			switch keyRef := s.eval(node.Arg).(type) {
+			case data.Int:
+				index = int(keyRef)
 			default:
-				ref = accessKey(ref, keyRef, toString(keyRef))
+				key = keyRef.String()
 			}
 		default:
-			panic(fmt.Sprintf("unexpected access node: %T", node))
+			s.errorf("unexpected access node: %T", node)
+		}
+
+		// use the key/index, depending on the data type we're accessing.
+		switch obj := ref.(type) {
+		case data.Undefined, data.Null:
+			if isNullSafeAccess(accessNode) {
+				return data.Null{}
+			}
+			s.errorf("%v: access failed due to null/undefined reference", accessNode)
+		case data.List:
+			if index == -1 {
+				s.errorf("%v: access list with non-integer index failed.", accessNode)
+			}
+			ref = obj.Index(index)
+		case data.Map:
+			if key == "" {
+				s.errorf("%v: access to map requires a string key.", accessNode)
+			}
+			ref = obj.Key(key)
+		default:
+			s.errorf("While evaluating \"%s\", encountered non-collection"+
+				" just before accessing \"%s\".", node, accessNode)
 		}
 	}
 
@@ -515,11 +527,11 @@ func isNullSafeAccess(n parse.Node) bool {
 }
 
 // eval2 is a helper for binary ops.  it evaluates the two given nodes.
-func (s *state) eval2(dot reflect.Value, n1, n2 parse.Node) (reflect.Value, reflect.Value) {
-	return s.eval(dot, n1), s.eval(dot, n2)
+func (s *state) eval2(n1, n2 parse.Node) (data.Value, data.Value) {
+	return s.eval(n1), s.eval(n2)
 }
 
-func (s *state) eval(dot reflect.Value, n parse.Node) reflect.Value {
-	s.walk(dot, n)
-	return drill(s.val)
+func (s *state) eval(n parse.Node) data.Value {
+	s.walk(n)
+	return s.val
 }

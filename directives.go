@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"net/url"
-	"reflect"
 	"regexp"
 	"text/template"
 	"unicode/utf8"
+
+	"github.com/robfig/soy/data"
 )
 
 type PrintDirective struct {
@@ -17,7 +18,7 @@ type PrintDirective struct {
 	Apply            PrintDirectiveFunc
 }
 
-type PrintDirectiveFunc func(value reflect.Value, args []reflect.Value) reflect.Value
+type PrintDirectiveFunc func(value data.Value, args []data.Value) data.Value
 
 var printDirectives = []*PrintDirective{
 	{"insertWordBreaks", []int{1}, true, directiveInsertWordBreaks},
@@ -38,13 +39,13 @@ func init() {
 	}
 }
 
-func directiveInsertWordBreaks(value reflect.Value, args []reflect.Value) reflect.Value {
+func directiveInsertWordBreaks(value data.Value, args []data.Value) data.Value {
 	if !isInt(args[0]) {
-		panic(fmt.Errorf("Parameter of '|insertWordBreaks' is not an integer: %v", args[0].Interface()))
+		panic(fmt.Errorf("Parameter of '|insertWordBreaks' is not an integer: %v", args[0]))
 	}
 	var (
-		input    = template.HTMLEscapeString(toString(value))
-		maxChars = int(args[0].Int())
+		input    = template.HTMLEscapeString(value.String())
+		maxChars = int(args[0].(data.Int))
 		chars    = 0
 		output   *bytes.Buffer // create the buffer lazily
 	)
@@ -68,31 +69,34 @@ func directiveInsertWordBreaks(value reflect.Value, args []reflect.Value) reflec
 	if output == nil {
 		return value
 	}
-	return val(output.String())
+	return data.String(output.String())
 }
 
 var newlinePattern = regexp.MustCompile(`\r\n|\r|\n`)
 
-func directiveChangeNewlineToBr(value reflect.Value, _ []reflect.Value) reflect.Value {
-	return val(newlinePattern.ReplaceAllString(template.HTMLEscapeString(toString(value)), "<br>"))
+func directiveChangeNewlineToBr(value data.Value, _ []data.Value) data.Value {
+	return data.String(newlinePattern.ReplaceAllString(
+		template.HTMLEscapeString(value.String()),
+		"<br>"))
 }
 
-func directiveTruncate(value reflect.Value, args []reflect.Value) reflect.Value {
+func directiveTruncate(value data.Value, args []data.Value) data.Value {
 	if !isInt(args[0]) {
-		panic(fmt.Errorf("First parameter of '|truncate' is not an integer: %v", args[0].Interface()))
+		panic(fmt.Errorf("First parameter of '|truncate' is not an integer: %v", args[0]))
 	}
-	var maxLen = int(args[0].Int())
-	var str = toString(value)
+	var maxLen = int(args[0].(data.Int))
+	var str = value.String()
 	if len(str) <= maxLen {
 		return value
 	}
 
-	var ellipsis = true
+	var ellipsis = data.Bool(true)
 	if len(args) == 2 {
-		if args[1].Kind() != reflect.Bool {
-			panic(fmt.Errorf("Second parameter of '|truncate' is not a bool: %v", args[1].Interface()))
+		var ok bool
+		ellipsis, ok = args[1].(data.Bool)
+		if !ok {
+			panic(fmt.Errorf("Second parameter of '|truncate' is not a bool: %v", args[1]))
 		}
-		ellipsis = args[1].Bool()
 	}
 
 	if ellipsis {
@@ -111,21 +115,21 @@ func directiveTruncate(value reflect.Value, args []reflect.Value) reflect.Value 
 	if ellipsis {
 		str += "..."
 	}
-	return val(str)
+	return data.String(str)
 }
 
-func directiveNoAutoescape(value reflect.Value, args []reflect.Value) reflect.Value {
+func directiveNoAutoescape(value data.Value, _ []data.Value) data.Value {
 	return value
 }
 
-func directiveEscapeHtml(value reflect.Value, args []reflect.Value) reflect.Value {
-	return val(template.HTMLEscapeString(toString(value)))
+func directiveEscapeHtml(value data.Value, _ []data.Value) data.Value {
+	return data.String(template.HTMLEscapeString(value.String()))
 }
 
-func directiveEscapeUri(value reflect.Value, args []reflect.Value) reflect.Value {
-	return val(url.QueryEscape(toString(value)))
+func directiveEscapeUri(value data.Value, _ []data.Value) data.Value {
+	return data.String(url.QueryEscape(value.String()))
 }
 
-func directiveEscapeJsString(value reflect.Value, args []reflect.Value) reflect.Value {
-	return val(template.JSEscapeString(toString(value)))
+func directiveEscapeJsString(value data.Value, _ []data.Value) data.Value {
+	return data.String(template.JSEscapeString(value.String()))
 }

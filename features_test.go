@@ -6,11 +6,13 @@ import (
 	"math/rand"
 	"os"
 	"testing"
+
+	"github.com/robfig/soy/data"
 )
 
 type featureTest struct {
 	name   string
-	data   data
+	data   d
 	output string
 }
 
@@ -36,7 +38,7 @@ BB<br>` +
 			`Literal     : AA	BB { CC
   DD } EE {sp}{\n}{rb} FF</pre>`},
 
-	{"demoPrint", data{"boo": "Boo!", "two": 2},
+	{"demoPrint", d{"boo": "Boo!", "two": 2},
 		`Boo!<br>` +
 			`Boo!<br>` +
 			`3<br>` +
@@ -44,7 +46,7 @@ BB<br>` +
 			`3<br>` +
 			`88, false.<br>`},
 
-	{"demoPrintDirectives", data{
+	{"demoPrintDirectives", d{
 		"longVarName": "thisIsSomeRidiculouslyLongVariableName",
 		"elementId":   "my_element_id",
 		"cssClass":    "my_css_class",
@@ -54,30 +56,30 @@ BB<br>` +
 		`</div>id:<br>` +
 		`<span id="my_element_id" class="my_css_class" style="border:1px solid #000000">Hello</span>`},
 
-	{"demoAutoescapeTrue", data{"italicHtml": "<i>italic</i>"},
+	{"demoAutoescapeTrue", d{"italicHtml": "<i>italic</i>"},
 		`&lt;i&gt;italic&lt;/i&gt;<br>` +
 			`<i>italic</i><br>`},
 
-	{"demoAutoescapeFalse", data{"italicHtml": "<i>italic</i>"},
+	{"demoAutoescapeFalse", d{"italicHtml": "<i>italic</i>"},
 		`<i>italic</i><br>` +
 			`&lt;i&gt;italic&lt;/i&gt;<br>`},
 
-	{"demoMsg", data{"name": "Ed", "labsUrl": "http://labs.google.com"},
+	{"demoMsg", d{"name": "Ed", "labsUrl": "http://labs.google.com"},
 		`Hello Ed!<br>` +
 			`Click <a href="http://labs.google.com">here</a> to access Labs.<br>` +
 			`Archive<br>` +
 			`Archive<br>`},
 
-	{"demoIf", data{"pi": 3.14159}, `3.14159 is a good approximation of pi.<br>`},
-	{"demoIf", data{"pi": 2.71828}, `2.71828 is a bad approximation of pi.<br>`},
-	{"demoIf", data{"pi": 1.61803}, `1.61803 is nowhere near the value of pi.<br>`},
+	{"demoIf", d{"pi": 3.14159}, `3.14159 is a good approximation of pi.<br>`},
+	{"demoIf", d{"pi": 2.71828}, `2.71828 is a bad approximation of pi.<br>`},
+	{"demoIf", d{"pi": 1.61803}, `1.61803 is nowhere near the value of pi.<br>`},
 
-	{"demoSwitch", data{"name": "Fay"}, `Dear Fay, &nbsp;You've been good this year.&nbsp; --Santa<br>`},
-	{"demoSwitch", data{"name": "Go"}, `Dear Go, &nbsp;You've been bad this year.&nbsp; --Santa<br>`},
-	{"demoSwitch", data{"name": "Hal"}, `Dear Hal, &nbsp;You don't really believe in me, do you?&nbsp; --Santa<br>`},
-	{"demoSwitch", data{"name": "Ivy"}, `Dear Ivy, &nbsp;You've been good this year.&nbsp; --Santa<br>`},
+	{"demoSwitch", d{"name": "Fay"}, `Dear Fay, &nbsp;You've been good this year.&nbsp; --Santa<br>`},
+	{"demoSwitch", d{"name": "Go"}, `Dear Go, &nbsp;You've been bad this year.&nbsp; --Santa<br>`},
+	{"demoSwitch", d{"name": "Hal"}, `Dear Hal, &nbsp;You don't really believe in me, do you?&nbsp; --Santa<br>`},
+	{"demoSwitch", d{"name": "Ivy"}, `Dear Ivy, &nbsp;You've been good this year.&nbsp; --Santa<br>`},
 
-	{"demoForeach", data{"persons": []data{
+	{"demoForeach", d{"persons": []d{
 		{"name": "Jen", "numWaffles": 1},
 		{"name": "Kai", "numWaffles": 3},
 		{"name": "Lex", "numWaffles": 1},
@@ -87,20 +89,20 @@ BB<br>` +
 		`Then Lex ate 1 waffle.<br>` +
 		`Finally, Mel ate 2 waffles.<br>`},
 
-	{"demoFor", data{"numLines": 3},
+	{"demoFor", d{"numLines": 3},
 		`Line 1 of 3.<br>` +
 			`Line 2 of 3.<br>` +
 			`Line 3 of 3.<br>` +
 			`2... 4... 6... 8... Who do we appreciate?<br>`},
 
 	{"demoCallWithoutParam",
-		data{"name": "Neo", "tripInfo": data{"name": "Neo", "destination": "The Matrix"}},
+		d{"name": "Neo", "tripInfo": d{"name": "Neo", "destination": "The Matrix"}},
 		`Hello world!<br>` +
 			`A trip was taken.<br>` +
 			`Neo took a trip.<br>` +
 			`Neo took a trip to The Matrix.<br>`},
 
-	{"demoCallWithParam", data{
+	{"demoCallWithParam", d{
 		"name":          "Oz",
 		"companionName": "Pip",
 		"destinations": []string{
@@ -115,11 +117,11 @@ BB<br>` +
 			`Pip took a trip to Quadling Country.<br>` +
 			`Oz took a trip to Winkie Country.<br>`},
 
-	{"demoCallWithParamBlock", data{"name": "Quo"}, `Quo took a trip to Zurich.<br>`},
+	{"demoCallWithParamBlock", d{"name": "Quo"}, `Quo took a trip to Zurich.<br>`},
 
-	{"demoExpressions", data{
+	{"demoExpressions", d{
 		"currentYear": 2008,
-		"students": []data{
+		"students": []d{
 			{"name": "Rob", "major": "Physics", "year": 1999},
 			{"name": "Sha", "major": "Finance", "year": 1980},
 			{"name": "Tim", "major": "Engineering", "year": 2005},
@@ -133,13 +135,13 @@ BB<br>` +
 			`Tim: Engineering. Young. 00s. 00s.<br>` +
 			`Uma: Last. Even. Biology. Scientist. 70s. 70s.<br>`},
 
-	{"demoDoubleBraces", data{
+	{"demoDoubleBraces", d{
 		"setName":    "prime numbers",
 		"setMembers": []int{2, 3, 5, 7, 11, 13},
 	},
 		`The set of prime numbers is {2, 3, 5, 7, 11, 13, ...}.`},
 
-	// 	{"demoBidiSupport", data{
+	// 	{"demoBidiSupport", d{
 	// 		"title":  "2008: A BiDi Odyssey",
 	// 		"author": "John Doe, Esq.",
 	// 		"year":   "1973",
@@ -206,7 +208,7 @@ func BenchmarkExecuteFeatures(b *testing.B) {
 			if !ok {
 				b.Errorf("couldn't find template for test: %s", test.name)
 			}
-			err := tmpl.Execute(buf, test.data)
+			err := tmpl.Execute(buf, data.New(test.data))
 			if err != nil {
 				b.Error(err)
 			}
@@ -228,7 +230,7 @@ func runFeatureTests(t *testing.T, tests []featureTest) {
 			t.Errorf("couldn't find template for test: %s", test.name)
 			continue
 		}
-		err := tmpl.Execute(b, test.data)
+		err := tmpl.Execute(b, data.New(test.data))
 		if err != nil {
 			t.Error(err)
 			continue

@@ -7,17 +7,18 @@ import (
 	"io"
 	"strings"
 
+	"github.com/robfig/soy/data"
 	"github.com/robfig/soy/parse"
 )
 
 // Tofu is the aggregate of all your soy.
 type Tofu struct {
 	templates map[string]*parse.TemplateNode
-	globals   map[string]interface{}
+	globals   data.Map
 }
 
 func New() Tofu {
-	return Tofu{make(map[string]*parse.TemplateNode), make(map[string]interface{})}
+	return Tofu{make(map[string]*parse.TemplateNode), make(data.Map)}
 }
 
 // Globals configures Tofu with the given input file, in the form:
@@ -51,7 +52,7 @@ func (tofu Tofu) ParseGlobals(input io.Reader) error {
 		if err != nil {
 			return err
 		}
-		tofu.globals[name] = exprValue.Interface()
+		tofu.globals[name] = exprValue
 	}
 	if err := scanner.Err(); err != nil {
 		return err

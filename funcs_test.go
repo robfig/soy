@@ -1,8 +1,9 @@
 package soy
 
 import (
-	"reflect"
 	"testing"
+
+	"github.com/robfig/soy/data"
 )
 
 var rangeTests = []struct{ args, result []int }{
@@ -19,18 +20,18 @@ var rangeTests = []struct{ args, result []int }{
 
 func TestRange(t *testing.T) {
 	for _, test := range rangeTests {
-		var args []reflect.Value
+		var args []data.Value
 		for _, a := range test.args {
-			args = append(args, val(a))
+			args = append(args, data.New(a))
 		}
-		result := funcRange(args...)
-		if result.Len() != len(test.result) {
-			t.Errorf("%v => %v, expected %v", test.args, result.Interface(), test.result)
+		result := funcRange(args).(data.List)
+		if len(result) != len(test.result) {
+			t.Errorf("%v => %v, expected %v", test.args, result, test.result)
 			continue
 		}
 		for i, r := range test.result {
-			if drill(result.Index(i)).Int() != int64(r) {
-				t.Errorf("%v => %v, expected %v", test.args, result.Interface(), test.result)
+			if int64(result[i].(data.Int)) != int64(r) {
+				t.Errorf("%v => %v, expected %v", test.args, result, test.result)
 				break
 			}
 		}
@@ -54,7 +55,7 @@ var strContainsTests = []struct {
 
 func TestStrContains(t *testing.T) {
 	for _, test := range strContainsTests {
-		actual := funcStrContains(val(test.arg1), val(test.arg2)).Bool()
+		actual := bool(funcStrContains([]data.Value{data.New(test.arg1), data.New(test.arg2)}).(data.Bool))
 		if actual != test.result {
 			t.Errorf("strcontains %s %s => %v, expected %v", test.arg1, test.arg2, actual, test.result)
 		}

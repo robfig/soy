@@ -6,9 +6,11 @@ import (
 	"log"
 	"strings"
 	"testing"
+
+	"github.com/robfig/soy/data"
 )
 
-type data map[string]interface{}
+type d map[string]interface{}
 
 type execTest struct {
 	name         string
@@ -41,7 +43,7 @@ func TestBasicExec(t *testing.T) {
 	Hello {$name}!
 	{/template}`,
 			"Hello Rob!",
-			data{"name": "Rob"}, true},
+			d{"name": "Rob"}, true},
 
 		// {"call w/ line join", "test.callLine",
 		// 	`{namespace test}
@@ -97,22 +99,22 @@ func TestIf(t *testing.T) {
 {else}
   Y {$moo?:''}
 {/if}`, []datatest{
-		{data{"foo": data{"goo": 0}}, "Y "},
-		{data{"zoo": "abc", "foo": data{"goo": 0}}, "abcY "},
-		{data{"zoo": "", "boo": 1}, "X"},
-		{data{"zoo": 0, "boo": true}, "X"},
-		{data{"boo": "abc"}, "X"},
-		{data{"boo": "", "foo": data{"goo": 2}}, "Y "},
-		{data{"boo": 0, "foo": data{"goo": 3}}, "0"},
-		{data{"boo": 0, "foo": data{"goo": 3.0}}, "0"},
-		{data{"zoo": "zoo", "foo": data{"goo": 0}, "moo": 3}, "zooY 3"},
+		{d{"foo": d{"goo": 0}}, "Y "},
+		{d{"zoo": "abc", "foo": d{"goo": 0}}, "abcY "},
+		{d{"zoo": "", "boo": 1}, "X"},
+		{d{"zoo": 0, "boo": true}, "X"},
+		{d{"boo": "abc"}, "X"},
+		{d{"boo": "", "foo": d{"goo": 2}}, "Y "},
+		{d{"boo": 0, "foo": d{"goo": 3}}, "0"},
+		{d{"boo": 0, "foo": d{"goo": 3.0}}, "0"},
+		{d{"zoo": "zoo", "foo": d{"goo": 0}, "moo": 3}, "zooY 3"},
 	}, []errortest{
 		{nil},
-		{data{"foo": nil}},             // $foo.goo fails
-		{data{"foo": "str"}},           // $foo.goo must be number
-		{data{"foo": true}},            // $foo.goo must be number
-		{data{"foo": data{}}},          // $foo.goo must be number
-		{data{"foo": []interface{}{}}}, // $foo.goo must be number
+		{d{"foo": nil}},             // $foo.goo fails
+		{d{"foo": "str"}},           // $foo.goo must be number
+		{d{"foo": true}},            // $foo.goo must be number
+		{d{"foo": d{}}},             // $foo.goo must be number
+		{d{"foo": []interface{}{}}}, // $foo.goo must be number
 	}))
 }
 
@@ -128,31 +130,31 @@ func TestForeach(t *testing.T) {
 {ifempty}
   Sorry, no booze.
 {/foreach}`, []datatest{
-		{data{
+		{d{
 			"goose": []interface{}{},
-			"foo":   data{"booze": []interface{}{}},
+			"foo":   d{"booze": []interface{}{}},
 		}, "Sorry, no booze."},
-		{data{
+		{d{
 			"goose": []interface{}{},
-			"foo":   data{"booze": []interface{}{data{"name": "boo"}}},
+			"foo":   d{"booze": []interface{}{d{"name": "boo"}}},
 		}, "->\n0: Scary drink boo!"},
-		{data{
+		{d{
 			"goose": []interface{}{},
-			"foo":   data{"booze": []interface{}{data{"name": "a"}, data{"name": "b"}}},
+			"foo":   d{"booze": []interface{}{d{"name": "a"}, d{"name": "b"}}},
 		}, "->\n0: Scary drink a!\n1: Scary drink b!"},
-		{data{
-			"goose": []interface{}{data{"numKids": 1}, data{"numKids": 2}},
-			"foo":   data{"booze": []interface{}{}},
+		{d{
+			"goose": []interface{}{d{"numKids": 1}, d{"numKids": 2}},
+			"foo":   d{"booze": []interface{}{}},
 		}, "1 goslings.\n2 goslings.\nSorry, no booze."},
 	}, []errortest{
-		{nil},                                    // non-null-safe eval of $foo.booze fails
-		{data{"foo": nil}},                       // ditto
-		{data{"foo": data{}}},                    // $foo.booze must be a list
-		{data{"foo": data{"booze": "str"}}},      // $foo.booze must be list
-		{data{"foo": data{"booze": 5}}},          // $foo.booze must be list
-		{data{"foo": data{"booze": data{}}}},     // $foo.booze must be list
-		{data{"foo": data{"booze": true}}},       // $foo.booze must be list
-		{data{"foo": data{"booze": []data{{}}}}}, // $boo.name fails
+		{nil},                           // non-null-safe eval of $foo.booze fails
+		{d{"foo": nil}},                 // ditto
+		{d{"foo": d{}}},                 // $foo.booze must be a list
+		{d{"foo": d{"booze": "str"}}},   // $foo.booze must be list
+		{d{"foo": d{"booze": 5}}},       // $foo.booze must be list
+		{d{"foo": d{"booze": d{}}}},     // $foo.booze must be list
+		{d{"foo": d{"booze": true}}},    // $foo.booze must be list
+		{d{"foo": d{"booze": []d{{}}}}}, // $boo.name fails
 	}))
 }
 
@@ -163,13 +165,13 @@ func TestFor(t *testing.T) {
     {$i}: {$items[$i - 1]}{\n}
   {/msg}
 {/for}`, []datatest{
-		{data{"items": []interface{}{}}, ""},
-		{data{"items": []interface{}{"car"}}, "1: car\n"},
-		{data{"items": []interface{}{"car", "boat"}}, "1: car\n2: boat\n"},
+		{d{"items": []interface{}{}}, ""},
+		{d{"items": []interface{}{"car"}}, "1: car\n"},
+		{d{"items": []interface{}{"car", "boat"}}, "1: car\n2: boat\n"},
 	}, []errortest{
-		{data{}},             // undefined is not a valid slice
-		{data{"items": nil}}, // null is not a valid slice
-		{data{"items": "a"}}, // string is not a valid slice
+		{d{}},             // undefined is not a valid slice
+		{d{"items": nil}}, // null is not a valid slice
+		{d{"items": "a"}}, // string is not a valid slice
 	}))
 }
 
@@ -183,28 +185,28 @@ func TestSwitch(t *testing.T) {
   {default}
     D
 {/switch}`, []datatest{
-		{data{
+		{d{
 			"boo": 0,
 		}, "A"},
-		{data{
+		{d{
 			"boo": 1,
-			"foo": data{"goo": 1},
+			"foo": d{"goo": 1},
 		}, "B"},
-		{data{
+		{d{
 			"boo": -1,
-			"foo": data{"goo": 5},
+			"foo": d{"goo": 5},
 		}, "C"},
-		{data{
+		{d{
 			"boo": 1,
-			"foo": data{"goo": 5},
+			"foo": d{"goo": 5},
 		}, "C"},
-		{data{
+		{d{
 			"boo": 2,
-			"foo": data{"goo": 5},
+			"foo": d{"goo": 5},
 		}, "D"},
-		{data{
+		{d{
 			"boo": 2,
-			"foo": data{"goo": 5},
+			"foo": d{"goo": 5},
 			"moo": 2,
 		}, "C"},
 	}, []errortest{}),
@@ -242,7 +244,7 @@ func TestCall(t *testing.T) {
  {$zoo} {$animal} {$woo}!
 {/template}`,
 			"Boo! Yay! 0 roos poo!",
-			data{"animals": data{"animal": "roos"}, "too": 2.4},
+			d{"animals": d{"animal": "roos"}, "too": 2.4},
 			true,
 		},
 	})
@@ -251,55 +253,55 @@ func TestCall(t *testing.T) {
 func TestDataRefs(t *testing.T) {
 	runExecTests(t, []execTest{
 		// single key
-		exprtestwdata("undefined", "{$foo}", "", nil).fails(),        // undefined = error
-		exprtestwdata("null", "{$foo}", "null", data{"foo": nil}),    // null prints
-		exprtestwdata("string", "{$foo}", "foo", data{"foo": "foo"}), // string print
+		exprtestwdata("undefined", "{$foo}", "", nil).fails(),     // undefined = error
+		exprtestwdata("null", "{$foo}", "null", d{"foo": nil}),    // null prints
+		exprtestwdata("string", "{$foo}", "foo", d{"foo": "foo"}), // string print
 		exprtestwdata("list", "{$foo}", "[a, 5, [2.5], [null]]",
-			data{"foo": []interface{}{"a", 5, []interface{}{2.5}, []interface{}{nil}}}), // list print
+			d{"foo": []interface{}{"a", 5, []interface{}{2.5}, []interface{}{nil}}}), // list print
 		exprtestwdata("map", "{$foo}", "{a: 5, b: [true], c: {}}",
-			data{"foo": data{"a": 5, "b": []interface{}{true}, "c": data{}}}), // map print
+			d{"foo": d{"a": 5, "b": []interface{}{true}, "c": d{}}}), // map print
 
 		// index lookups
 		exprtestwdata("basic", "{$foo.2}", "result",
-			data{"foo": []interface{}{"a", 5, "result"}}),
+			d{"foo": []interface{}{"a", 5, "result"}}),
 		exprtestwdata("out of bounds", "{$foo.7}", "",
-			data{"foo": []interface{}{"a", 5, "result"}}).fails(),
-		exprtestwdata("undefined slice", "{$foo.2}", "", data{}).fails(),
-		exprtestwdata("null slice", "{$foo.2}", "", data{"foo": nil}).fails(),
-		exprtestwdata("nullsafe on undefined slice", "{$foo?.2}", "null", data{}),
-		exprtestwdata("nullsafe on null slice", "{$foo?.2}", "null", data{"foo": nil}),
+			d{"foo": []interface{}{"a", 5, "result"}}).fails(),
+		exprtestwdata("undefined slice", "{$foo.2}", "", d{}).fails(),
+		exprtestwdata("null slice", "{$foo.2}", "", d{"foo": nil}).fails(),
+		exprtestwdata("nullsafe on undefined slice", "{$foo?.2}", "null", d{}),
+		exprtestwdata("nullsafe on null slice", "{$foo?.2}", "null", d{"foo": nil}),
 		exprtestwdata("nullsafe does not save out of bounds", "{$foo?.2}", "",
-			data{"foo": []interface{}{"a"}}).fails(),
-		exprtestwdata("lookup on nonslice", "{$foo?.2}", "", data{"foo": "hello"}).fails(),
+			d{"foo": []interface{}{"a"}}).fails(),
+		exprtestwdata("lookup on nonslice", "{$foo?.2}", "", d{"foo": "hello"}).fails(),
 
 		// key lookups
-		exprtestwdata("basic", "{$foo.bar}", "result", data{"foo": data{"bar": "result"}}),
-		exprtestwdata("undefined map", "{$foo.bar}", "", data{}).fails(),
-		exprtestwdata("null map", "{$foo.bar}", "", data{"foo": nil}).fails(),
-		exprtestwdata("null value is ok", "{$foo.bar}", "null", data{"foo": data{"bar": nil}}),
-		exprtestwdata("nullsafe on undefined map", "{$foo?.bar}", "null", data{}),
-		exprtestwdata("nullsafe on null map", "{$foo?.bar}", "null", data{"foo": nil}),
-		exprtestwdata("lookup on nonmap", "{$foo?.bar}", "", data{"foo": "hello"}).fails(),
+		exprtestwdata("basic", "{$foo.bar}", "result", d{"foo": d{"bar": "result"}}),
+		exprtestwdata("undefined map", "{$foo.bar}", "", d{}).fails(),
+		exprtestwdata("null map", "{$foo.bar}", "", d{"foo": nil}).fails(),
+		exprtestwdata("null value is ok", "{$foo.bar}", "null", d{"foo": d{"bar": nil}}),
+		exprtestwdata("nullsafe on undefined map", "{$foo?.bar}", "null", d{}),
+		exprtestwdata("nullsafe on null map", "{$foo?.bar}", "null", d{"foo": nil}),
+		exprtestwdata("lookup on nonmap", "{$foo?.bar}", "", d{"foo": "hello"}).fails(),
 
 		// expr lookups (index)
-		exprtestwdata("exprbasic", "{$foo[2]}", "result", data{"foo": []interface{}{"a", 5, "result"}}),
-		exprtestwdata("exprout of bounds", "{$foo[7]}", "", data{"foo": []interface{}{"a", 5, "result"}}).fails(),
-		exprtestwdata("exprundefined slice", "{$foo[2]}", "", data{}).fails(),
-		exprtestwdata("exprnull slice", "{$foo[2]}", "", data{"foo": nil}).fails(),
-		exprtestwdata("exprnullsafe on undefined slice", "{$foo?[2]}", "null", data{}),
-		exprtestwdata("exprnullsafe on null slice", "{$foo?[2]}", "null", data{"foo": nil}),
+		exprtestwdata("exprbasic", "{$foo[2]}", "result", d{"foo": []interface{}{"a", 5, "result"}}),
+		exprtestwdata("exprout of bounds", "{$foo[7]}", "", d{"foo": []interface{}{"a", 5, "result"}}).fails(),
+		exprtestwdata("exprundefined slice", "{$foo[2]}", "", d{}).fails(),
+		exprtestwdata("exprnull slice", "{$foo[2]}", "", d{"foo": nil}).fails(),
+		exprtestwdata("exprnullsafe on undefined slice", "{$foo?[2]}", "null", d{}),
+		exprtestwdata("exprnullsafe on null slice", "{$foo?[2]}", "null", d{"foo": nil}),
 		exprtestwdata("exprnullsafe does not save out of bounds", "{$foo?[2]}", "",
-			data{"foo": []interface{}{"a"}}).fails(),
-		exprtestwdata("exprarith", "{$foo[1+1>3.0?8:1]}", "5", data{"foo": []interface{}{"a", 5, "z"}}),
+			d{"foo": []interface{}{"a"}}).fails(),
+		exprtestwdata("exprarith", "{$foo[1+1>3.0?8:1]}", "5", d{"foo": []interface{}{"a", 5, "z"}}),
 
 		// expr lookups (key)
-		exprtestwdata("exprkeybasic", "{$foo['bar']}", "result", data{"foo": data{"bar": "result"}}),
-		exprtestwdata("exprkeyundefined map", "{$foo['bar']}", "", data{}).fails(),
-		exprtestwdata("exprkeynull map", "{$foo['bar']}", "", data{"foo": nil}).fails(),
-		exprtestwdata("exprkeynull value is ok", "{$foo['bar']}", "null", data{"foo": data{"bar": nil}}),
-		exprtestwdata("exprkeynullsafe on undefined map", "{$foo?['bar']}", "null", data{}),
-		exprtestwdata("exprkeynullsafe on null map", "{$foo?['bar']}", "null", data{"foo": nil}),
-		exprtestwdata("exprkeyarith", "{$foo['b'+('a'+'r')]}", "result", data{"foo": data{"bar": "result"}}),
+		exprtestwdata("exprkeybasic", "{$foo['bar']}", "result", d{"foo": d{"bar": "result"}}),
+		exprtestwdata("exprkeyundefined map", "{$foo['bar']}", "", d{}).fails(),
+		exprtestwdata("exprkeynull map", "{$foo['bar']}", "", d{"foo": nil}).fails(),
+		exprtestwdata("exprkeynull value is ok", "{$foo['bar']}", "null", d{"foo": d{"bar": nil}}),
+		exprtestwdata("exprkeynullsafe on undefined map", "{$foo?['bar']}", "null", d{}),
+		exprtestwdata("exprkeynullsafe on null map", "{$foo?['bar']}", "null", d{"foo": nil}),
+		exprtestwdata("exprkeyarith", "{$foo['b'+('a'+'r')]}", "result", d{"foo": d{"bar": "result"}}),
 	})
 }
 
@@ -326,7 +328,7 @@ func TestCss(t *testing.T) {
 		exprtestwdata("css",
 			`<div class="{css my-css-class}"></div> <a class="{css $component, a-class}">link</a>`,
 			`<div class="my-css-class"></div> <a class="page-a-class">link</a>`,
-			data{"component": "page"}),
+			d{"component": "page"}),
 	})
 }
 
@@ -337,7 +339,7 @@ func TestLog(t *testing.T) {
 	var buf bytes.Buffer
 	Logger = log.New(&buf, "", 0)
 	runExecTests(t, []execTest{
-		exprtestwdata("log", "{log} Hello {$name} // comment\n{/log}", ``, data{"name": "Rob"}),
+		exprtestwdata("log", "{log} Hello {$name} // comment\n{/log}", ``, d{"name": "Rob"}),
 	})
 	if strings.TrimSpace(buf.String()) != "Hello Rob" {
 		t.Errorf("logger didn't match: %q", buf.String())
@@ -354,8 +356,8 @@ func TestPrintDirectives(t *testing.T) {
 	runExecTests(t, []execTest{
 		exprtest("sanitized html", "{'<a>'}", "&lt;a&gt;"),
 		exprtest("noAutoescape", "{'<a>'|noAutoescape}", "<a>"),
-		exprtestwdata("sanitized var", "{$var}", "&lt;a&gt;", data{"var": "<a>"}),
-		exprtestwdata("noAutoescape var", "{$var |noAutoescape}", "<a>", data{"var": "<a>"}),
+		exprtestwdata("sanitized var", "{$var}", "&lt;a&gt;", d{"var": "<a>"}),
+		exprtestwdata("noAutoescape var", "{$var |noAutoescape}", "<a>", d{"var": "<a>"}),
 
 		// |id == |noAutoescape (it's deprecated)
 		exprtest("id", "{'<a>'|id}", "<a>"),
@@ -368,15 +370,15 @@ func TestPrintDirectives(t *testing.T) {
 		// TODO: test it escapes kind=HTML content
 		// TODO: test it does not escape kind=URI content
 
-		exprtestwdata("ejs1", "{$var|escapeJsString}", ``, data{"var": ""}),
-		exprtestwdata("ejs2", "{$var|escapeJsString}", `foo`, data{"var": "foo"}),
-		exprtestwdata("ejs3", "{$var|escapeJsString}", `foo\\bar`, data{"var": "foo\\bar"}),
+		exprtestwdata("ejs1", "{$var|escapeJsString}", ``, d{"var": ""}),
+		exprtestwdata("ejs2", "{$var|escapeJsString}", `foo`, d{"var": "foo"}),
+		exprtestwdata("ejs3", "{$var|escapeJsString}", `foo\\bar`, d{"var": "foo\\bar"}),
 		// TODO: test it even escapes "kind=HTML" content
 		// TODO: test it does not escape "kind=JS_STR" content
-		exprtestwdata("ejs4", "{$var|escapeJsString}", `\\`, data{"var": "\\"}),
-		exprtestwdata("ejs5", "{$var|escapeJsString}", `\'\'`, data{"var": "''"}),
-		exprtestwdata("ejs5", "{$var|escapeJsString}", `\"foo\"`, data{"var": `"foo"`}),
-		exprtestwdata("ejs5", "{$var|escapeJsString}", `42`, data{"var": 42}),
+		exprtestwdata("ejs4", "{$var|escapeJsString}", `\\`, d{"var": "\\"}),
+		exprtestwdata("ejs5", "{$var|escapeJsString}", `\'\'`, d{"var": "''"}),
+		exprtestwdata("ejs5", "{$var|escapeJsString}", `\"foo\"`, d{"var": `"foo"`}),
+		exprtestwdata("ejs5", "{$var|escapeJsString}", `42`, d{"var": 42}),
 
 		exprtest("truncate", "{'Lorem Ipsum' |truncate:8}", "Lorem..."),
 		exprtest("truncate w arg", "{'Lorem Ipsum' |truncate:8,false}", "Lorem Ip"),
@@ -389,14 +391,14 @@ func TestPrintDirectives(t *testing.T) {
 		exprtest("insertWordBreaks5", "{''|insertWordBreaks:3}", ""),
 
 		exprtestwdata("nl2br", "{$var|changeNewlineToBr}", "<br>1<br>2<br>3<br><br>4<br><br>",
-			data{"var": "\r1\n2\r3\r\n\n4\n\n"}),
+			d{"var": "\r1\n2\r3\r\n\n4\n\n"}),
 	})
 }
 
 func TestGlobals(t *testing.T) {
-	globals["app.global_str"] = "abc"
-	globals["GLOBAL_INT"] = 5
-	globals["global.nil"] = nil
+	globals["app.global_str"] = data.New("abc")
+	globals["GLOBAL_INT"] = data.New(5)
+	globals["global.nil"] = data.New(nil)
 	runExecTests(t, []execTest{
 		exprtest("global", `{app.global_str} {GLOBAL_INT + 2} {global.nil?:'hi'}`, `abc 7 hi`),
 	})
@@ -412,7 +414,7 @@ func TestAutoescapeModes(t *testing.T) {
   {$foo} {$foo|escapeHtml}
 {/template}`,
 			"<b>hello</b> &lt;b&gt;hello&lt;/b&gt;",
-			data{"foo": "<b>hello</b>"},
+			d{"foo": "<b>hello</b>"},
 			true,
 		},
 
@@ -427,7 +429,7 @@ func TestAutoescapeModes(t *testing.T) {
 {/template}
 `,
 			"<b>hello</b>",
-			data{"foo": "<b>hello</b>"},
+			d{"foo": "<b>hello</b>"},
 			true,
 		},
 
@@ -442,7 +444,7 @@ func TestAutoescapeModes(t *testing.T) {
 {/template}
 `,
 			"&lt;b&gt;hello&lt;/b&gt;",
-			data{"foo": "<b>hello</b>"},
+			d{"foo": "<b>hello</b>"},
 			true,
 		},
 	})
@@ -495,19 +497,19 @@ func TestHelloWorld(t *testing.T) {
 	runExecTests(t, []execTest{
 		{"no data", "examples.simple.helloWorld", helloWorldTemplate,
 			"Hello world!",
-			data{},
+			d{},
 			true,
 		},
 
 		{"1 name", "examples.simple.helloName", helloWorldTemplate,
 			"Hello Ana!",
-			data{"name": "Ana"},
+			d{"name": "Ana"},
 			true,
 		},
 
 		{"additional names", "examples.simple.helloNames", helloWorldTemplate,
 			"Hello Ana!<br>Hello Bob!<br>Hello Cid!<br>Hello Dee!",
-			data{"name": "Ana", "additionalNames": []string{"Bob", "Cid", "Dee"}},
+			d{"name": "Ana", "additionalNames": []string{"Bob", "Cid", "Dee"}},
 			true,
 		},
 	})
@@ -544,13 +546,13 @@ func TestLet(t *testing.T) {
 {/let}
 {$gamma}`,
 			"0Boo!1Boo!2Boo!",
-			data{"boo": data{"foo": 3}}),
+			d{"boo": d{"foo": 3}}),
 	})
 }
 
 // helpers
 
-var globals = make(map[string]interface{})
+var globals = make(data.Map)
 
 func (t execTest) fails() execTest {
 	t.ok = false

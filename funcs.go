@@ -1,14 +1,14 @@
 package soy
 
 import (
-	"fmt"
 	"math"
 	"math/rand"
-	"reflect"
 	"strings"
+
+	"github.com/robfig/soy/data"
 )
 
-type loopFunc func(s *state, key string) reflect.Value
+type loopFunc func(s *state, key string) data.Value
 
 var loopFuncs = map[string]loopFunc{
 	"index":   funcIndex,
@@ -16,20 +16,21 @@ var loopFuncs = map[string]loopFunc{
 	"isLast":  funcIsLast,
 }
 
-func funcIndex(s *state, key string) reflect.Value {
-	return val(s.context.lookup(key + "__index").Int())
+func funcIndex(s *state, key string) data.Value {
+	return s.context.lookup(key + "__index")
 }
 
-func funcIsFirst(s *state, key string) reflect.Value {
-	return val(s.context.lookup(key+"__index").Int() == 0)
+func funcIsFirst(s *state, key string) data.Value {
+	return data.Bool(s.context.lookup(key+"__index").(data.Int) == 0)
 }
 
-func funcIsLast(s *state, key string) reflect.Value {
-	return val(s.context.lookup(key+"__index").Int() == s.context.lookup(key+"__lastIndex").Int())
+func funcIsLast(s *state, key string) data.Value {
+	return data.Bool(
+		s.context.lookup(key+"__index").(data.Int) == s.context.lookup(key+"__lastIndex").(data.Int))
 }
 
 type soyFunc struct {
-	Func            func(...reflect.Value) reflect.Value
+	Func            func([]data.Value) data.Value
 	ValidArgLengths []int
 }
 
@@ -49,49 +50,42 @@ var soyFuncs = map[string]soyFunc{
 	"hasData":     {funcHasData, []int{0}},
 }
 
-func funcIsNonnull(v ...reflect.Value) reflect.Value {
-	return val(v[0].IsValid() && (v[0].Kind() != reflect.Interface || !v[0].IsNil()))
+func funcIsNonnull(v []data.Value) data.Value {
+	return data.Bool(!(v[0] == data.Null{} || v[0] == data.Undefined{}))
 }
 
-func assertKind(v reflect.Value, kind reflect.Kind, name string) {
-	if v.Kind() != kind {
-		panic(fmt.Errorf("argument to %s(): expected %s, got %v", name, kind, v.Kind()))
+func funcLength(v []data.Value) data.Value {
+	return data.Int(len(v[0].(data.List)))
+}
+
+func funcKeys(v []data.Value) data.Value {
+	var keys data.List
+	for k, _ := range v[0].(data.Map) {
+		keys = append(keys, data.String(k))
 	}
+	return keys
 }
 
-func funcLength(v ...reflect.Value) reflect.Value {
-	assertKind(v[0], reflect.Slice, "length")
-	return val(v[0].Len())
-}
-
-func funcKeys(v ...reflect.Value) reflect.Value {
-	assertKind(v[0], reflect.Map, "keys")
-	var keys []interface{}
-	for _, keyVal := range v[0].MapKeys() {
-		keys = append(keys, keyVal.Interface())
+func funcAugmentMap(v []data.Value) data.Value {
+	var m1 = v[0].(data.Map)
+	var m2 = v[1].(data.Map)
+	var result = make(data.Map, len(m1)+len(m2)+4)
+	for k, v := range m1 {
+		result[k] = v
 	}
-	return val(keys)
+	for k, v := range m2 {
+		result[k] = v
+	}
+	return result
 }
 
-func funcAugmentMap(v ...reflect.Value) reflect.Value {
-	assertKind(v[0], reflect.Map, "augmentMap")
-	assertKind(v[1], reflect.Map, "augmentMap")
-	var m = make(map[string]interface{}, v[0].Len()+v[1].Len())
-	for _, k := range v[0].MapKeys() {
-		m[k.Interface().(string)] = v[0].MapIndex(k).Interface()
-	}
-	for _, k := range v[1].MapKeys() {
-		m[k.Interface().(string)] = v[1].MapIndex(k).Interface()
-	}
-	return val(m)
-}
-
-func funcRound(v ...reflect.Value) reflect.Value {
+// TODO: return a value of type data.Int if digitsAfterPt == 0
+func funcRound(v []data.Value) data.Value {
 	var digitsAfterPt = 0
 	if len(v) == 2 {
-		digitsAfterPt = int(v[1].Int())
+		digitsAfterPt = int(v[1].(data.Int))
 	}
-	return val(round(toFloat(v[0]), digitsAfterPt))
+	return data.Float(round(toFloat(v[0]), digitsAfterPt))
 }
 
 func round(x float64, prec int) float64 {
@@ -105,51 +99,49 @@ func round(x float64, prec int) float64 {
 	return float64(int64(intermed)) / float64(pow)
 }
 
-func funcFloor(v ...reflect.Value) reflect.Value {
+func funcFloor(v []data.Value) data.Value {
 	if isInt(v[0]) {
 		return v[0]
 	}
-	return val(int64(math.Floor(toFloat(v[0]))))
+	return data.Int(math.Floor(toFloat(v[0])))
 }
 
-func funcCeiling(v ...reflect.Value) reflect.Value {
+func funcCeiling(v []data.Value) data.Value {
 	if isInt(v[0]) {
 		return v[0]
 	}
-	return val(int64(math.Ceil(toFloat(v[0]))))
+	return data.Int(math.Ceil(toFloat(v[0])))
 }
 
-func funcMin(v ...reflect.Value) reflect.Value {
+func funcMin(v []data.Value) data.Value {
 	if isInt(v[0]) && isInt(v[1]) {
-		if v[0].Int() > v[1].Int() {
+		if v[0].(data.Int) > v[1].(data.Int) {
 			return v[0]
 		}
 		return v[1]
 	}
-	return val(math.Min(toFloat(v[0]), toFloat(v[1])))
+	return data.Float(math.Min(toFloat(v[0]), toFloat(v[1])))
 }
 
-func funcMax(v ...reflect.Value) reflect.Value {
+func funcMax(v []data.Value) data.Value {
 	if isInt(v[0]) && isInt(v[1]) {
-		if v[0].Int() > v[1].Int() {
+		if v[0].(data.Int) > v[1].(data.Int) {
 			return v[0]
 		}
 		return v[1]
 	}
-	return val(math.Max(toFloat(v[0]), toFloat(v[1])))
+	return data.Float(math.Max(toFloat(v[0]), toFloat(v[1])))
 }
 
-func funcRandomInt(v ...reflect.Value) reflect.Value {
-	return val(rand.Int63n(v[0].Int()))
+func funcRandomInt(v []data.Value) data.Value {
+	return data.Int(rand.Int63n(int64(v[0].(data.Int))))
 }
 
-func funcStrContains(v ...reflect.Value) reflect.Value {
-	assertKind(v[0], reflect.String, "strContains")
-	assertKind(v[1], reflect.String, "strContains")
-	return val(strings.Contains(v[0].String(), v[1].String()))
+func funcStrContains(v []data.Value) data.Value {
+	return data.Bool(strings.Contains(string(v[0].(data.String)), string(v[1].(data.String))))
 }
 
-func funcRange(v ...reflect.Value) reflect.Value {
+func funcRange(v []data.Value) data.Value {
 	var (
 		increment = 1
 		init      = 0
@@ -157,24 +149,24 @@ func funcRange(v ...reflect.Value) reflect.Value {
 	)
 	switch len(v) {
 	case 3:
-		increment = int(v[2].Int())
+		increment = int(v[2].(data.Int))
 		fallthrough
 	case 2:
-		init = int(v[0].Int())
-		limit = int(v[1].Int())
+		init = int(v[0].(data.Int))
+		limit = int(v[1].(data.Int))
 	case 1:
-		limit = int(v[0].Int())
+		limit = int(v[0].(data.Int))
 	}
 
-	var indices []interface{}
+	var indices data.List
 	var i = 0
 	for index := init; index < limit; index += increment {
-		indices = append(indices, index)
+		indices = append(indices, data.Int(index))
 		i++
 	}
-	return val(indices)
+	return indices
 }
 
-func funcHasData(v ...reflect.Value) reflect.Value {
-	return val(true)
+func funcHasData(v []data.Value) data.Value {
+	return data.Bool(true)
 }
