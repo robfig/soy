@@ -499,6 +499,20 @@ var lexTests = []lexTest{
 		tEOF,
 	}},
 
+	{"soydoc2", `
+/**
+ * @param boo
+ * @param? goo
+ */`, []item{
+		{itemSoyDocStart, 0, "/**"},
+		{itemSoyDocParam, 0, "@param"},
+		{itemIdent, 0, "boo"},
+		{itemSoyDocOptionalParam, 0, "@param?"},
+		{itemIdent, 0, "goo"},
+		{itemSoyDocEnd, 0, "*/"},
+		tEOF,
+	}},
+
 	{"let", `{let $ident: 1+1/}{let $ident}content{/let}`, []item{
 		tLeft,
 		{itemLet, 0, "let"},

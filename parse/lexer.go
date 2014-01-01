@@ -629,7 +629,10 @@ func lexSoyDoc(l *lexer) stateFn {
 func lexSoyDocParam(l *lexer) {
 	l.pos += Pos(len("@param"))
 	switch ch := l.next(); {
-	case ch == '?' && l.next() == ' ':
+	case ch == '?':
+		if l.next() != ' ' {
+			return
+		}
 		l.backup()
 		l.emit(itemSoyDocOptionalParam)
 	case ch == ' ':
@@ -655,7 +658,10 @@ func lexSoyDocParam(l *lexer) {
 		if isSpace(r) || isEndOfLine(r) || r == eof {
 			l.pos--
 			l.emit(itemIdent)
-			l.pos++
+			// don't skip newlines. the outer routine needs to know about it
+			if isSpace(r) || r == eof {
+				l.pos++
+			}
 			l.ignore()
 			break
 		}
