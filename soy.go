@@ -71,22 +71,10 @@ func (tofu Tofu) Parse(input string) error {
 		return errors.New("empty")
 	}
 
-	// require namespace before any templates
-	var namespace *parse.NamespaceNode
-	for _, node := range nodes {
-		var ok bool
-		if namespace, ok = node.(*parse.NamespaceNode); ok {
-			break
-		}
-		if _, ok = node.(*parse.TemplateNode); ok {
-			return errors.New("namespace must come before any templates")
-		}
-	}
-
 	// get all the template nodes
 	for _, n := range tree.Root.Nodes[1:] {
 		if tmpl, ok := n.(*parse.TemplateNode); ok {
-			tofu.templates[namespace.Name+tmpl.Name] = tmpl
+			tofu.templates[tmpl.Name] = tmpl
 		}
 	}
 	return nil

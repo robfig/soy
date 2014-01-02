@@ -23,6 +23,7 @@ type Tree struct {
 	peekCount int
 	vars      []string // variables defined at the moment.
 	text      string
+	namespace string
 }
 
 // Template is an individual template in the soy file
@@ -287,6 +288,9 @@ func (t *Tree) parseCall(token item) Node {
 	}
 	if templateName == "" {
 		t.errorf("call: template name not found")
+	}
+	if templateName[0] == '.' {
+		templateName = t.namespace + templateName
 	}
 
 	var allData = false
@@ -573,6 +577,9 @@ func (t *Tree) parseMsg(token item) Node {
 }
 
 func (t *Tree) parseNamespace(token item) Node {
+	if t.namespace != "" {
+		t.errorf("file may have only one namespace declaration")
+	}
 	const ctx = "namespace"
 	var name = t.expect(itemIdent, ctx).val
 	for {
@@ -580,6 +587,7 @@ func (t *Tree) parseNamespace(token item) Node {
 		case itemDotIdent:
 			name += part.val
 		case itemRightDelim:
+			t.namespace = name
 			return newNamespace(token.pos, name)
 		default:
 			t.errorf("unexpected token parsing namespace: %v", part)
@@ -604,7 +612,13 @@ func (t *Tree) parseTemplate(token item) Node {
 	}
 	var private = t.boolAttr(attrs, "private", false)
 	t.expect(itemRightDelim, ctx)
-	tmpl := &TemplateNode{token.pos, id.val, t.itemList(itemTemplateEnd), autoescape, private}
+	tmpl := &TemplateNode{
+		token.pos,
+		t.namespace + id.val,
+		t.itemList(itemTemplateEnd),
+		autoescape,
+		private,
+	}
 	t.expect(itemRightDelim, "template tag")
 	return tmpl
 }
