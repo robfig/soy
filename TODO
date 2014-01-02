@@ -1,15 +1,15 @@
 Now:
+- implement user provided functions
 - soydoc requirements
 - content "kind": text, html, uri, js (code), js (str chars), html attributes
-- implement user provided functions
-- {msg}
 - {alias}
 - attributes for all the commands
 - Source location / error messages
 - TODO sweep
 - test coverage
---- v1
 - Contextual autoescape
+--- v1
+- {msg}
 - Delegates (delpackage, delcall, deltemplate)
 - JS code generation
 - Injected data
@@ -20,9 +20,6 @@ Now:
 - Message extractor (placeholders/phname)
 - CSS renaming
 - Go code generation
-
-Issues:
-- replace reflect.Value usage with own types.  or figure out solution for drilling through interface/ptr)
 
 Ideas:
 - if foreach on undefined or null thing, what happens?

@@ -21,6 +21,11 @@ type Node interface {
 	Position() Pos // byte position of start of node in full original input string
 }
 
+type ParentNode interface {
+	Node
+	Children() []Node
+}
+
 // ListNode holds a sequence of nodes.
 type ListNode struct {
 	Pos
@@ -41,6 +46,10 @@ func (l *ListNode) String() string {
 		fmt.Fprint(b, n)
 	}
 	return b.String()
+}
+
+func (l *ListNode) Children() []Node {
+	return l.Nodes
 }
 
 type RawTextNode struct {
@@ -89,7 +98,11 @@ type TemplateNode struct {
 }
 
 func (n *TemplateNode) String() string {
-	return fmt.Sprintf("{template %s}%s{/template}", n.Name, n.Body)
+	return fmt.Sprintf("{template %s}\n%s\n{/template}\n", n.Name, n.Body)
+}
+
+func (n *TemplateNode) Children() []Node {
+	return []Node{n.Body}
 }
 
 type SoyDocNode struct {
@@ -98,11 +111,22 @@ type SoyDocNode struct {
 }
 
 func (n *SoyDocNode) String() string {
-	var expr = "/**\n"
-	for _, param := range n.Params {
-		expr += " * " + param.String()
+	if len(n.Params) == 0 {
+		return "\n/** */\n"
 	}
-	return expr + " */\n"
+	var expr = "\n/**"
+	for _, param := range n.Params {
+		expr += "\n * " + param.String()
+	}
+	return expr + "\n */\n"
+}
+
+func (n *SoyDocNode) Children() []Node {
+	var nodes []Node
+	for _, param := range n.Params {
+		nodes = append(nodes, param)
+	}
+	return nodes
 }
 
 // SoyDocParam represents a parameter to a soy template.
@@ -122,7 +146,7 @@ func (n *SoyDocParamNode) String() string {
 	if n.Optional {
 		expr += "?"
 	}
-	return expr + " " + n.Name + "\n"
+	return expr + " " + n.Name
 }
 
 type PrintNode struct {
@@ -137,6 +161,14 @@ func (n *PrintNode) String() string {
 		expr += d.String()
 	}
 	return expr + "}"
+}
+
+func (n *PrintNode) Children() []Node {
+	var nodes = []Node{n.Arg}
+	for _, child := range n.Directives {
+		nodes = append(nodes, child)
+	}
+	return nodes
 }
 
 type PrintDirectiveNode struct {
@@ -180,6 +212,10 @@ func (n *CssNode) String() string {
 	return expr + n.Suffix + "}"
 }
 
+func (n *CssNode) Children() []Node {
+	return []Node{n.Expr}
+}
+
 type LogNode struct {
 	Pos
 	Body Node
@@ -187,6 +223,10 @@ type LogNode struct {
 
 func (n *LogNode) String() string {
 	return "{log}" + n.Body.String() + "{/log}"
+}
+
+func (n *LogNode) Children() []Node {
+	return []Node{n.Body}
 }
 
 type DebuggerNode struct {
@@ -207,6 +247,10 @@ func (n *LetValueNode) String() string {
 	return fmt.Sprintf("{let $%s: %s /}", n.Name, n.Expr)
 }
 
+func (n *LetValueNode) Children() []Node {
+	return []Node{n.Expr}
+}
+
 type LetContentNode struct {
 	Pos
 	Name string
@@ -215,6 +259,10 @@ type LetContentNode struct {
 
 func (n *LetContentNode) String() string {
 	return fmt.Sprintf("{let $%s}%s{/let}", n.Name, n.Body)
+}
+
+func (n *LetContentNode) Children() []Node {
+	return []Node{n.Body}
 }
 
 type IdentNode struct {
@@ -234,6 +282,10 @@ type MsgNode struct {
 
 func (n *MsgNode) String() string {
 	return fmt.Sprintf("{msg desc=%q}", n.Desc)
+}
+
+func (n *MsgNode) Children() []Node {
+	return []Node{n.Body}
 }
 
 type CallNode struct {
@@ -261,6 +313,15 @@ func (n *CallNode) String() string {
 	return expr + "{/call}"
 }
 
+func (n *CallNode) Children() []Node {
+	var nodes []Node
+	nodes = append(nodes, n.Data)
+	for _, child := range n.Params {
+		nodes = append(nodes, child)
+	}
+	return nodes
+}
+
 type CallParamValueNode struct {
 	Pos
 	Key   string
@@ -271,6 +332,10 @@ func (n *CallParamValueNode) String() string {
 	return fmt.Sprintf("{param %s: %s/}", n.Key, n.Value.String())
 }
 
+func (n *CallParamValueNode) Children() []Node {
+	return []Node{n.Value}
+}
+
 type CallParamContentNode struct {
 	Pos
 	Key     string
@@ -279,6 +344,10 @@ type CallParamContentNode struct {
 
 func (n *CallParamContentNode) String() string {
 	return fmt.Sprintf("{param %s}%s{/param}", n.Key, n.Content.String())
+}
+
+func (n *CallParamContentNode) Children() []Node {
+	return []Node{n.Content}
 }
 
 // Control flow ----------
@@ -303,6 +372,14 @@ func (n *IfNode) String() string {
 	return expr + "{/if}"
 }
 
+func (n *IfNode) Children() []Node {
+	var nodes []Node
+	for _, child := range n.Conds {
+		nodes = append(nodes, child)
+	}
+	return nodes
+}
+
 type IfCondNode struct {
 	Pos
 	Cond Node // nil if "else"
@@ -317,6 +394,10 @@ func (n *IfCondNode) String() string {
 	return expr + n.Body.String()
 }
 
+func (n *IfCondNode) Children() []Node {
+	return []Node{n.Cond, n.Body}
+}
+
 type SwitchNode struct {
 	Pos
 	Value Node
@@ -329,6 +410,14 @@ func (n *SwitchNode) String() string {
 		expr += caseNode.String()
 	}
 	return expr + "{/switch}"
+}
+
+func (n *SwitchNode) Children() []Node {
+	var nodes = []Node{n.Value}
+	for _, child := range n.Cases {
+		nodes = append(nodes, child)
+	}
+	return nodes
 }
 
 type SwitchCaseNode struct {
@@ -346,6 +435,14 @@ func (n *SwitchCaseNode) String() string {
 		expr += val.String()
 	}
 	return expr + "}" + n.Body.String()
+}
+
+func (n *SwitchCaseNode) Children() []Node {
+	var nodes = []Node{n.Body}
+	for _, child := range n.Values {
+		nodes = append(nodes, child)
+	}
+	return nodes
 }
 
 // Note:
@@ -374,6 +471,10 @@ func (n *ForNode) String() string {
 	return expr + "{/" + name + "}"
 }
 
+func (n *ForNode) Children() []Node {
+	return []Node{n.List, n.Body, n.IfEmpty}
+}
+
 // Values ----------
 
 type NullNode struct {
@@ -386,7 +487,7 @@ func (s *NullNode) String() string {
 
 type BoolNode struct {
 	Pos
-	True bool // The value of the boolean constant.
+	True bool
 }
 
 func (b *BoolNode) String() string {
@@ -449,6 +550,10 @@ func (n *FunctionNode) String() string {
 	return expr + ")"
 }
 
+func (n *FunctionNode) Children() []Node {
+	return n.Args
+}
+
 type ListLiteralNode struct {
 	Pos
 	Items []Node
@@ -463,6 +568,10 @@ func (n *ListLiteralNode) String() string {
 		expr += item.String()
 	}
 	return expr + "]"
+}
+
+func (n *ListLiteralNode) Children() []Node {
+	return n.Items
 }
 
 type MapLiteralNode struct {
@@ -483,6 +592,14 @@ func (n *MapLiteralNode) String() string {
 	return expr + "]"
 }
 
+func (n *MapLiteralNode) Children() []Node {
+	var nodes []Node
+	for _, v := range n.Items {
+		nodes = append(nodes, v)
+	}
+	return nodes
+}
+
 // Data References ----------
 
 type DataRefNode struct {
@@ -497,6 +614,10 @@ func (n *DataRefNode) String() string {
 		expr += access.String()
 	}
 	return expr
+}
+
+func (n *DataRefNode) Children() []Node {
+	return n.Access
 }
 
 type DataRefIndexNode struct {
@@ -552,6 +673,10 @@ func (n *NotNode) String() string {
 	return "not " + n.Arg.String()
 }
 
+func (n *NotNode) Children() []Node {
+	return []Node{n.Arg}
+}
+
 type NegateNode struct {
 	Pos
 	Arg Node
@@ -559,6 +684,10 @@ type NegateNode struct {
 
 func (n *NegateNode) String() string {
 	return "-" + n.Arg.String()
+}
+
+func (n *NegateNode) Children() []Node {
+	return []Node{n.Arg}
 }
 
 type binaryOpNode struct {
@@ -569,6 +698,10 @@ type binaryOpNode struct {
 
 func (n *binaryOpNode) String() string {
 	return n.Arg1.String() + n.Name + n.Arg2.String()
+}
+
+func (n *binaryOpNode) Children() []Node {
+	return []Node{n.Arg1, n.Arg2}
 }
 
 type (
@@ -594,5 +727,9 @@ type TernNode struct {
 }
 
 func (n *TernNode) String() string {
-	return "?:"
+	return n.Arg1.String() + "?" + n.Arg2.String() + ":" + n.Arg3.String()
+}
+
+func (n *TernNode) Children() []Node {
+	return []Node{n.Arg1, n.Arg2, n.Arg3}
 }
