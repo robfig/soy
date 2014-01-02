@@ -318,7 +318,7 @@ var parseTests = []parseTest{
 
 	{"call", `
 {call name=".booTemplate_" /}
-{call function="foo.goo.mooTemplate" data="all" /}
+{call name="foo.goo.mooTemplate" data="all" /}
 {call name=".zooTemplate" data="$animals"}
   // comments are allowed here
 
@@ -676,7 +676,7 @@ func TestRecognizeCommands(t *testing.T) {
 		"{for $i in range($boo + 1,\n"+
 		"                 88, 11)}\n"+
 		"Number {$i}.{{/for}}")
-	works(t, "{call function=\"aaa.bbb.ccc\" data=\"all\" /}")
+	works(t, "{call name=\"aaa.bbb.ccc\" data=\"all\" /}")
 	works(t, ""+
 		"{call name=\".aaa\"}\n"+
 		"  {{param key=\"boo\" value=\"$boo\" /}}\n"+

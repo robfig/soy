@@ -280,13 +280,10 @@ func (t *Tree) parseCall(token item) Node {
 	default:
 		t.backup()
 	}
-	attrs := t.parseAttrs("name", "function", "data")
+	attrs := t.parseAttrs("name", "data")
 
 	if templateName == "" {
 		templateName = attrs["name"]
-	}
-	if templateName == "" {
-		templateName = attrs["function"]
 	}
 	if templateName == "" {
 		t.errorf("call: template name not found")
