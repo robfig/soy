@@ -101,6 +101,7 @@ const (
 
 	// Commands
 	itemCommand     // used only to delimit the commands
+	itemAlias       // {alias ...}
 	itemCall        // {call ...}
 	itemCase        // {case ...}
 	itemCss         // {css ...}
@@ -152,7 +153,6 @@ const (
 	// These commands are defined in TemplateParser.jj but not in the docs.
 	// Apparently they are not available in the open source version of Soy.
 	// See http://goo.gl/V0wsd
-	// itemLet                  // {let}{/let}
 	// itemPlural               // {plural}{/plural}
 	// itemSelect               // {select}{/select}
 )
@@ -163,11 +163,11 @@ func (t itemType) isOp() bool {
 }
 
 var builtinIdents = map[string]itemType{
-	"namespace": itemNamespace,
-	"template":  itemTemplate,
+	"alias":     itemAlias,
 	"call":      itemCall,
 	"case":      itemCase,
 	"css":       itemCss,
+	"debugger":  itemDebugger,
 	"default":   itemDefault,
 	"else":      itemElse,
 	"elseif":    itemElseif,
@@ -177,12 +177,13 @@ var builtinIdents = map[string]itemType{
 	"ifempty":   itemIfempty,
 	"let":       itemLet,
 	"literal":   itemLiteral,
+	"log":       itemLog,
 	"msg":       itemMsg,
+	"namespace": itemNamespace,
 	"param":     itemParam,
 	"print":     itemPrint,
 	"switch":    itemSwitch,
-	"log":       itemLog,
-	"debugger":  itemDebugger,
+	"template":  itemTemplate,
 
 	"/call":        itemCallEnd,
 	"/delcall":     itemDelcallEnd,
@@ -192,11 +193,11 @@ var builtinIdents = map[string]itemType{
 	"/if":          itemIfEnd,
 	"/let":         itemLetEnd,
 	"/literal":     itemLiteralEnd,
+	"/log":         itemLogEnd,
 	"/msg":         itemMsgEnd,
 	"/param":       itemParamEnd,
 	"/switch":      itemSwitchEnd,
 	"/template":    itemTemplateEnd,
-	"/log":         itemLogEnd,
 
 	"sp":  itemSpace,
 	"nil": itemNil,

@@ -533,6 +533,16 @@ var lexTests = []lexTest{
 		tEOF,
 	}},
 
+	{"alias", `{alias a.b.c}`, []item{
+		tLeft,
+		{itemAlias, 0, "alias"},
+		{itemIdent, 0, "a"},
+		{itemDotIdent, 0, ".b"},
+		{itemDotIdent, 0, ".c"},
+		tRight,
+		tEOF,
+	}},
+
 	{"namespace and template", `{namespace example}
 
 {template .templateName}

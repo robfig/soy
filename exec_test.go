@@ -550,6 +550,36 @@ func TestLet(t *testing.T) {
 	})
 }
 
+// testing cross namespace stuff requires multiple file bodies
+type nsExecTest struct {
+	name         string
+	templateName string
+	input        []string
+	output       string
+	data         interface{}
+	ok           bool
+}
+
+func TestAlias(t *testing.T) {
+	runNsExecTests(t, []nsExecTest{
+		{"alias", "test.alias",
+			[]string{`
+{namespace test}
+{alias foo.bar.baz}
+
+{template .alias}
+{call baz.hello/}
+{/template}
+`, `
+{namespace foo.bar.baz}
+
+{template .hello}
+Hello world
+{/template}`},
+			"Hello world", nil, true},
+	})
+}
+
 // helpers
 
 var globals = make(data.Map)
@@ -605,14 +635,33 @@ func multidatatest(name, body string, successes []datatest, failures []errortest
 }
 
 func runExecTests(t *testing.T, tests []execTest) {
-	b := new(bytes.Buffer)
+	var nstest []nsExecTest
 	for _, test := range tests {
+		nstest = append(nstest, nsExecTest{
+			test.name,
+			test.templateName,
+			[]string{test.input},
+			test.output,
+			test.data,
+			test.ok,
+		})
+	}
+	runNsExecTests(t, nstest)
+}
+
+func runNsExecTests(t *testing.T, tests []nsExecTest) {
+	b := new(bytes.Buffer)
+NEXT_TEST:
+	for _, test := range tests {
+		var err error
 		var tofu = New()
 		tofu.globals = globals
-		var err = tofu.Parse(test.input)
-		if err != nil {
-			t.Errorf("%s: parse error: %s", test.name, err)
-			continue
+		for _, input := range test.input {
+			var err = tofu.Parse(input)
+			if err != nil {
+				t.Errorf("%s: parse error: %s", test.name, err)
+				continue NEXT_TEST
+			}
 		}
 		b.Reset()
 		tmpl, _ := tofu.Template(test.templateName)

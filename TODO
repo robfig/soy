@@ -1,6 +1,6 @@
 Now:
+- move exec into own package.  apply the parsepasses from soy.
 - implement user provided functions
-- soydoc requirements
 - content "kind": text, html, uri, js (code), js (str chars), html attributes
 - {alias}
 - attributes for all the commands
@@ -11,7 +11,7 @@ Now:
 --- v1
 - {msg}
 - Delegates (delpackage, delcall, deltemplate)
-- JS code generation
+- js code generation
 - Injected data
 - parsepasses (optimizations) (Simplify, CombineConsecutiveRawText, Prerender)
 - Bidi

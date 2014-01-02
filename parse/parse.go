@@ -21,15 +21,9 @@ type Tree struct {
 	lex       *lexer
 	token     [3]item // three-token lookahead for parser.
 	peekCount int
-	vars      []string // variables defined at the moment.
-	text      string
-	namespace string
-}
-
-// Template is an individual template in the soy file
-type Template struct {
-	Name       string // fully qualified template name
-	ParamNames []string
+	text      string            // the full text of the soy file
+	namespace string            // the namespace found in the soy file being parsed.
+	aliases   map[string]string // map from alias to namespace e.g. {"c": "a.b.c"}
 }
 
 func Parse(name, text string, funcs ...map[string]interface{}) (f *Tree, err error) {
@@ -41,8 +35,9 @@ func Parse(name, text string, funcs ...map[string]interface{}) (f *Tree, err err
 // New allocates a new parse tree with the given name.
 func New(name string, funcs ...map[string]interface{}) *Tree {
 	return &Tree{
-		Name:  name,
-		funcs: funcs,
+		Name:    name,
+		funcs:   funcs,
+		aliases: make(map[string]string),
 	}
 }
 
@@ -182,6 +177,9 @@ func (t *Tree) beginTag() Node {
 		return &DebuggerNode{token.pos}
 	case itemLet:
 		return t.parseLet(token)
+	case itemAlias:
+		t.parseAlias(token)
+		return nil
 	case itemNil, itemSpace, itemTab, itemNewline, itemCarriageReturn, itemLeftBrace, itemRightBrace:
 		t.expect(itemRightDelim, "special char")
 		return newText(token.pos, specialChars[token.typ])
@@ -222,6 +220,26 @@ func (t *Tree) parsePrint(token item) Node {
 			}
 		default:
 			t.errorf("print: expected directive or close delimiter, got %v", tok.val)
+		}
+	}
+}
+
+// parseAlias updates the Tree with the given alias.
+// Aliases are applied at immediately (at parse time) to new nodes.
+// "alias" has just been read.
+func (t *Tree) parseAlias(token item) {
+	var name = t.expect(itemIdent, "alias").val
+	var lastSegment = name
+	for {
+		switch next := t.next(); next.typ {
+		case itemDotIdent:
+			name += next.val
+			lastSegment = next.val[1:]
+		case itemRightDelim:
+			t.aliases[lastSegment] = name
+			return
+		default:
+			t.errorf("alias: expected close delimiter, got %v", next.val)
 		}
 	}
 }
@@ -289,8 +307,14 @@ func (t *Tree) parseCall(token item) Node {
 	if templateName == "" {
 		t.errorf("call: template name not found")
 	}
+
+	// If it's not a fully qualified template name, apply the namespace or aliases
 	if templateName[0] == '.' {
 		templateName = t.namespace + templateName
+	} else if dot := strings.Index(templateName, "."); dot != -1 {
+		if alias, ok := t.aliases[templateName[:dot]]; ok {
+			templateName = alias + templateName[dot:]
+		}
 	}
 
 	var allData = false
@@ -1012,7 +1036,6 @@ func (t *Tree) startParse(funcs []map[string]interface{}, lex *lexer) {
 // stopParse terminates parsing.
 func (t *Tree) stopParse() {
 	t.lex = nil
-	t.vars = nil
 	t.funcs = nil
 }
 

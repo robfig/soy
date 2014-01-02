@@ -267,7 +267,6 @@ Hello {$var}
 
 // Test that {call} checks work on calls across namespaces too.
 func TestCrossNamespace(t *testing.T) {
-	t.Skip("Namespace support pending.")
 	runCheckerTests(t, []checkerTest{
 		{[]string{`
 {namespace ns.a}

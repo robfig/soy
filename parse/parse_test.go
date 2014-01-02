@@ -3,9 +3,7 @@ package parse
 import (
 	"fmt"
 	"reflect"
-
 	"strings"
-
 	"testing"
 )
 
@@ -367,6 +365,10 @@ var parseTests = []parseTest{
 		newText(0, " "),
 		newText(0, " "),
 		newText(0, "http://www.google.com"),
+	)},
+
+	{"alias", `{alias a.b.c}{call c.d/}`, tList(
+		&CallNode{0, "a.b.c.d", false, nil, nil},
 	)},
 }
 
