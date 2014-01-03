@@ -61,7 +61,7 @@ func (tofu Tofu) ParseGlobals(input io.Reader) error {
 }
 
 func (tofu Tofu) Parse(input string) error {
-	var tree, err = parse.Parse("", input)
+	var tree, err = parse.New("", tofu.globals).Parse(input)
 	if err != nil {
 		return err
 	}

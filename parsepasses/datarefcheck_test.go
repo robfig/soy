@@ -324,7 +324,7 @@ func runCheckerTests(t *testing.T, tests []checkerTest) {
 			err  error
 		)
 		for _, body := range test.body {
-			tree, err = parse.Parse("", body)
+			tree, err = parse.New("", nil).Parse(body)
 			if err != nil {
 				t.Error(err)
 				continue

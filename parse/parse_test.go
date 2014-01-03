@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/robfig/soy/data"
 )
 
 type parseTest struct {
@@ -140,8 +142,8 @@ var parseTests = []parseTest{
 
 	{"debugger", "{debugger}", tList(&DebuggerNode{0})},
 	{"global", "{GLOBAL_STR}{app.GLOBAL}", tList(
-		&PrintNode{0, &GlobalNode{0, "GLOBAL_STR"}, nil},
-		&PrintNode{0, &GlobalNode{0, "app.GLOBAL"}, nil},
+		&PrintNode{0, &GlobalNode{0, "GLOBAL_STR", data.String("a")}, nil},
+		&PrintNode{0, &GlobalNode{0, "app.GLOBAL", data.String("b")}, nil},
 	)},
 
 	{"expression1", "{not false and (isFirst($foo) or (-$x - 5) > 3.1)}", tList(&PrintNode{0, &AndNode{bin(
@@ -376,11 +378,16 @@ var builtins = map[string]interface{}{
 	"printf": fmt.Sprintf,
 }
 
+var globals = data.Map{
+	"GLOBAL_STR": data.String("a"),
+	"app.GLOBAL": data.String("b"),
+}
+
 func TestParse(t *testing.T) {
 	textFormat = "%q"
 	defer func() { textFormat = "%s" }()
 	for _, test := range parseTests {
-		tmpl, err := New(test.name).Parse(test.input, builtins)
+		tmpl, err := New(test.name, globals).Parse(test.input, builtins)
 
 		switch {
 		// case err == nil && !test.ok:
@@ -626,12 +633,12 @@ func printTree(t *testing.T, n Node, depth int) {
 
 func TestRecognizeSoyTag(t *testing.T) {
 	works(t, "{sp}")
-	works(t, "{space}")
 	works(t, "{ sp }")
 	works(t, "{{sp}}")
-	works(t, "{{space}}")
 
 	// Soy V1 syntax. will not fix.
+	// works(t, "{space}")
+	// works(t, "{{space}}")
 	// works(t, "{{ {sp} }}")
 
 	fails(t, "{}")
@@ -785,14 +792,14 @@ func TestRecognizeComments(t *testing.T) {
 }
 
 func works(t *testing.T, body string) {
-	_, err := New(body).Parse(body, nil)
+	_, err := New(body, nil).Parse(body, nil)
 	if err != nil {
 		t.Error(err)
 	}
 }
 
 func fails(t *testing.T, body string) {
-	_, err := New(body).Parse(body, nil)
+	_, err := New(body, nil).Parse(body, nil)
 	if err == nil {
 		t.Errorf("should fail: %s", body)
 	}

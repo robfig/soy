@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"strconv"
+
+	"github.com/robfig/soy/data"
 )
 
 var textFormat = "%s" // Changed to "%q" in tests for better error messages.
@@ -527,6 +529,7 @@ func (s *StringNode) String() string {
 type GlobalNode struct {
 	Pos
 	Name string
+	data.Value
 }
 
 func (n *GlobalNode) String() string {

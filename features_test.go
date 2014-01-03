@@ -192,9 +192,9 @@ func BenchmarkLexParseFeatures(b *testing.B) {
 
 func BenchmarkExecuteFeatures(b *testing.B) {
 	var tofu = New()
+	mustParseGlobals(tofu, "testdata/FeaturesUsage_globals.txt")
 	mustParseFile(tofu, "testdata/simple.soy")
 	mustParseFile(tofu, "testdata/features.soy")
-	mustParseGlobals(tofu, "testdata/FeaturesUsage_globals.txt")
 	b.ResetTimer()
 
 	var buf = new(bytes.Buffer)
@@ -218,9 +218,9 @@ func BenchmarkExecuteFeatures(b *testing.B) {
 
 func runFeatureTests(t *testing.T, tests []featureTest) {
 	var tofu = New()
+	mustParseGlobals(tofu, "testdata/FeaturesUsage_globals.txt")
 	mustParseFile(tofu, "testdata/simple.soy")
 	mustParseFile(tofu, "testdata/features.soy")
-	mustParseGlobals(tofu, "testdata/FeaturesUsage_globals.txt")
 
 	b := new(bytes.Buffer)
 	for _, test := range tests {

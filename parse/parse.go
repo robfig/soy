@@ -1,7 +1,5 @@
 package parse
 
-// TODO: How to leave out ListNode when its only one item
-
 import (
 	"errors"
 	"fmt"
@@ -9,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/robfig/soy/data"
 )
 
 // Tree is the parsed representation of a single soy file.
@@ -21,23 +21,19 @@ type Tree struct {
 	lex       *lexer
 	token     [3]item // three-token lookahead for parser.
 	peekCount int
-	text      string            // the full text of the soy file
-	namespace string            // the namespace found in the soy file being parsed.
-	aliases   map[string]string // map from alias to namespace e.g. {"c": "a.b.c"}
-}
-
-func Parse(name, text string, funcs ...map[string]interface{}) (f *Tree, err error) {
-	f = New(name)
-	_, err = f.Parse(text, funcs...)
-	return
+	text      string                // the full text of the soy file
+	namespace string                // the namespace found in the soy file being parsed.
+	aliases   map[string]string     // map from alias to namespace e.g. {"c": "a.b.c"}
+	globals   map[string]data.Value // global (compile-time constants) values by name
 }
 
 // New allocates a new parse tree with the given name.
-func New(name string, funcs ...map[string]interface{}) *Tree {
+// Any globals used in the soy files must be provided ahead of time.
+func New(name string, globals map[string]data.Value) *Tree {
 	return &Tree{
 		Name:    name,
-		funcs:   funcs,
 		aliases: make(map[string]string),
+		globals: globals,
 	}
 }
 
@@ -1000,7 +996,11 @@ func (t *Tree) newGlobalNode(tok, next item) Node {
 		next = t.next()
 	}
 	t.backup()
-	return &GlobalNode{tok.pos, name}
+	if value, ok := t.globals[name]; ok {
+		return &GlobalNode{tok.pos, name, value}
+	}
+	t.errorf("global %q is undefined", name)
+	return nil
 }
 
 func (t *Tree) newFunctionNode(tok item) Node {
