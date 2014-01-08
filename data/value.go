@@ -50,6 +50,9 @@ func New(value interface{}) Value {
 	for v.Kind() == reflect.Interface || v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
+	if !v.IsValid() {
+		return Null{}
+	}
 
 	switch v.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,

@@ -17,6 +17,8 @@ var (
 	_ Value = Map{}
 )
 
+type AInt struct{ A int }
+
 func TestNew(t *testing.T) {
 	tests := []struct{ input, expected interface{} }{
 		// basic types
@@ -49,6 +51,10 @@ func TestNew(t *testing.T) {
 			PI *int
 		}{Int(5), List{}, pInt(2)},
 			Map{"a": Int(5), "l": List(nil), "pI": Int(2)}},
+		{[]*struct {
+			PI *AInt
+		}{{nil}},
+			List{Map{"pI": Null{}}}},
 	}
 
 	for _, test := range tests {
