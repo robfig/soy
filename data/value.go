@@ -86,7 +86,7 @@ func New(value interface{}) Value {
 			var fieldName = valType.Field(i).Name
 			var firstRune, size = utf8.DecodeRuneInString(fieldName)
 			var key = string(unicode.ToLower(firstRune)) + fieldName[size:]
-			if string(fieldName[0])+strings.ToLower(fieldName[1:]) == strings.ToLower(fieldName) {
+			if !v.Field(i).CanInterface() {
 				continue
 			}
 			m[key] = New(v.Field(i).Interface())
