@@ -86,6 +86,11 @@ func TestExpressions(t *testing.T) {
 		exprtest("elvis3", `{0?:'hello'}`, "0"),         // 0 is non-null
 		exprtest("elvis4", `{false?:'hello'}`, "false"), // false is non-null
 		exprtest("negate", `{-(1+1)}`, "-2"),
+
+		// short-circuiting
+		exprtest("shortcircuit precondition undef key fails", "{$undef.key}", "").fails(),
+		exprtest("shortcircuit and", "{$undef and $undef.key}", "false"),
+		exprtest("shortcircuit or", "{'yay' or $undef.key}", "true"),
 	})
 }
 

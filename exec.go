@@ -295,13 +295,11 @@ func (s *state) walk(node parse.Node) {
 
 		// Boolean operators ----------
 	case *parse.NotNode:
-		s.val = data.New(!s.eval(node.Arg).Truthy())
+		s.val = data.Bool(!s.eval(node.Arg).Truthy())
 	case *parse.AndNode:
-		var arg1, arg2 = s.eval2(node.Arg1, node.Arg2)
-		s.val = data.New(arg1.Truthy() && arg2.Truthy())
+		s.val = data.Bool(s.eval(node.Arg1).Truthy() && s.eval(node.Arg2).Truthy())
 	case *parse.OrNode:
-		var arg1, arg2 = s.eval2(node.Arg1, node.Arg2)
-		s.val = data.New(arg1.Truthy() || arg2.Truthy())
+		s.val = data.Bool(s.eval(node.Arg1).Truthy() || s.eval(node.Arg2).Truthy())
 	case *parse.ElvisNode:
 		var arg1 = s.eval(node.Arg1)
 		if arg1 != (data.Null{}) && arg1 != (data.Undefined{}) {
