@@ -45,6 +45,11 @@ func New(value interface{}) Value {
 		return Null{}
 	}
 
+	// quick return if we're passed an existing data.Map.
+	if value, ok := value.(Map); ok {
+		return value
+	}
+
 	// drill through pointers and interfaces to the underlying type
 	var v = reflect.ValueOf(value)
 	for v.Kind() == reflect.Interface || v.Kind() == reflect.Ptr {
