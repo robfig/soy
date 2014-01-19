@@ -26,6 +26,7 @@ func TestNew(t *testing.T) {
 		{true, Bool(true)},
 		{int(0), Int(0)},
 		{int64(0), Int(0)},
+		{uint32(0), Int(0)},
 		{float32(0), Float(0)},
 		{"", String("")},
 		{[]string{"a"}, List{String("a")}},

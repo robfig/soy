@@ -55,9 +55,10 @@ func New(value interface{}) Value {
 	}
 
 	switch v.Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		return Int(v.Int())
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return Int(v.Uint())
 	case reflect.Float32, reflect.Float64:
 		return Float(v.Float())
 	case reflect.Bool:
