@@ -83,12 +83,12 @@ func New(value interface{}) Value {
 		var m = make(map[string]Value)
 		var valType = v.Type()
 		for i := 0; i < valType.NumField(); i++ {
-			var fieldName = valType.Field(i).Name
-			var firstRune, size = utf8.DecodeRuneInString(fieldName)
-			var key = string(unicode.ToLower(firstRune)) + fieldName[size:]
 			if !v.Field(i).CanInterface() {
 				continue
 			}
+			var fieldName = valType.Field(i).Name
+			var firstRune, size = utf8.DecodeRuneInString(fieldName)
+			var key = string(unicode.ToLower(firstRune)) + fieldName[size:]
 			m[key] = New(v.Field(i).Interface())
 		}
 		return Map(m)
