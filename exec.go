@@ -93,7 +93,7 @@ func EvalExpr(node parse.Node) (val data.Value, err error) {
 // Execute applies a parsed template to the specified data object,
 // and writes the output to wr.
 func (t Template) Execute(wr io.Writer, obj interface{}) (err error) {
-	if t.node == nil {
+	if t.Node == nil {
 		return errors.New("no template found")
 	}
 	var m data.Map
@@ -107,14 +107,14 @@ func (t Template) Execute(wr io.Writer, obj interface{}) (err error) {
 		}
 	}
 	state := &state{
-		tmpl:      t.node,
+		tmpl:      t.Node,
 		bundle:    t.tofu,
 		namespace: t.namespace,
 		wr:        wr,
 		context:   scope{m},
 	}
 	defer state.errRecover(&err)
-	state.walk(t.node)
+	state.walk(t.Node)
 	return
 }
 

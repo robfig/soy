@@ -33,6 +33,11 @@ var printDirectives = []*PrintDirective{
 
 var printDirectiveByName = make(map[string]*PrintDirective)
 
+func RegisterPrintDirective(dir *PrintDirective) {
+	printDirectives = append(printDirectives, dir)
+	printDirectiveByName[dir.Name] = dir
+}
+
 func init() {
 	for _, directive := range printDirectives {
 		printDirectiveByName[directive.Name] = directive

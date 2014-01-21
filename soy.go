@@ -93,7 +93,7 @@ func namespace(fqTemplateName string) string {
 }
 
 type Template struct {
-	node      *parse.TemplateNode
+	Node      *parse.TemplateNode
 	namespace string
 	tofu      Tofu
 }
