@@ -16,8 +16,9 @@ type simpleCheckerTest struct {
 	success bool
 }
 
-// Test: all data references are provided by @param declarations or {let} nodes
-func TestAllDataRefsProvidedByParamOrLet(t *testing.T) {
+// Test: all data references are provided by @param declarations or {let},
+// {for}, {foreach} nodes
+func TestAllDataRefsProvided(t *testing.T) {
 	runSimpleCheckerTests(t, []simpleCheckerTest{
 		{`
 /** no data refs */
@@ -52,6 +53,22 @@ Goodbye {$param1} {$param2} {$let1}
 {/template}`, true},
 
 		{`
+/** for loop */
+{template .for}
+{for $x in range(5)}
+  Hello {$x}
+{/for}
+{/template}`, true},
+
+		{`
+/** @param vars */
+{template .foreach}
+{foreach $x in $vars}
+  Hello world
+{/for}
+{/template}`, true},
+
+		{`
 /** missing param */
 {template .missingParam}
 Hello {$param}
@@ -67,6 +84,7 @@ Hello {$param}
 Hello {$param}
 {/template}`, false},
 	})
+
 }
 
 // Test: any data declared as a @param is used by the template (or passed via {call})
@@ -242,7 +260,7 @@ func TestCalledTemplatesRequiredToExist(t *testing.T) {
 	})
 }
 
-// Test: any variable created by {let} is used somewhere
+// Test: any variable created by {let}, {for}, {foreach} is used somewhere
 func TestLetVariablesAreUsed(t *testing.T) {
 	runSimpleCheckerTests(t, []simpleCheckerTest{
 		{`

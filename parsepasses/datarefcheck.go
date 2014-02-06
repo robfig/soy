@@ -8,12 +8,12 @@ import (
 )
 
 // CheckDataRefs validates that:
-// 1. all data references are provided by @param declarations or {let} nodes
-// 2. any data declared as a @param is used by the template (or passed via {call})
-// 3. all {call} params are declared as @params in the called template soydoc.
-// 4. a {call}'ed template is passed all required @params, or a data="$var"
-// 5. {call}'d templates actually exist in the registry.
-// 6. any variable created by {let} is used somewhere
+//  1. all data references are provided by @param declarations or {let} nodes
+//  2. any data declared as a @param is used by the template (or passed via {call})
+//  3. all {call} params are declared as @params in the called template soydoc.
+//  4. a {call}'ed template is passed all required @params, or a data="$var"
+//  5. {call}'d templates actually exist in the registry.
+//  6. any variable created by {let} is used somewhere
 func CheckDataRefs(reg template.Registry) (err error) {
 	var currentTemplate string
 	defer func() {
@@ -41,6 +41,7 @@ type templateChecker struct {
 	registry template.Registry
 	params   []string
 	letVars  []string
+	forVars  []string
 	usedKeys []string
 }
 
@@ -49,7 +50,7 @@ func newTemplateChecker(reg template.Registry, params []*parse.SoyDocParamNode) 
 	for _, param := range params {
 		paramNames = append(paramNames, param.Name)
 	}
-	return &templateChecker{reg, paramNames, nil, nil}
+	return &templateChecker{reg, paramNames, nil, nil, nil}
 }
 
 func (tc *templateChecker) checkTemplate(node parse.Node) {
@@ -60,6 +61,8 @@ func (tc *templateChecker) checkTemplate(node parse.Node) {
 		tc.letVars = append(tc.letVars, node.Name)
 	case *parse.CallNode:
 		tc.checkCall(node)
+	case *parse.ForNode:
+		tc.forVars = append(tc.forVars, node.Var)
 	case *parse.DataRefNode:
 		tc.visitKey(node.Key)
 		return
@@ -70,7 +73,6 @@ func (tc *templateChecker) checkTemplate(node parse.Node) {
 }
 
 func (tc *templateChecker) checkCall(node *parse.CallNode) {
-	// TODO: This requires the called template name to have been FQ'd
 	var callee = tc.registry.Template(node.Name)
 	if callee == nil {
 		panic(fmt.Errorf("{call}: template %q not found", node.Name))
@@ -130,11 +132,13 @@ func (tc *templateChecker) checkCall(node *parse.CallNode) {
 }
 
 func (tc *templateChecker) recurse(parent parse.ParentNode) {
+	var initialForVars = len(tc.forVars)
 	var initialLetVars = len(tc.letVars)
 	var initialUsedKeys = len(tc.usedKeys)
 	for _, child := range parent.Children() {
 		tc.checkTemplate(child)
 	}
+	tc.forVars = tc.forVars[:initialForVars]
 
 	// quick return if there were no {let}s
 	if initialLetVars == len(tc.letVars) {
@@ -183,6 +187,11 @@ func (tc *templateChecker) checkKey(key string) bool {
 		}
 	}
 	for _, varName := range tc.letVars {
+		if varName == key {
+			return true
+		}
+	}
+	for _, varName := range tc.forVars {
 		if varName == key {
 			return true
 		}
