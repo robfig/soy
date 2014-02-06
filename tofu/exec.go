@@ -1,51 +1,19 @@
-package soy
+package tofu
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"text/template"
 
 	"github.com/robfig/soy/data"
 	"github.com/robfig/soy/parse"
+	soyt "github.com/robfig/soy/template"
 )
 
+// Logger collects output from {log} commands.
 var Logger *log.Logger
-
-type scope []data.Map // a stack of variable scopes
-
-// push creates a new scope
-func (s *scope) push() {
-	*s = append(*s, make(data.Map))
-}
-
-// pop discards the last scope pushed.
-func (s *scope) pop() {
-	*s = (*s)[:len(*s)-1]
-}
-
-func (s *scope) augment(m map[string]interface{}) {
-	*s = append(*s, data.New(m).(data.Map))
-}
-
-// set adds a new binding to the deepest scope
-func (s scope) set(k string, v data.Value) {
-	s[len(s)-1][k] = v
-}
-
-// lookup checks the variable scopes, deepest out, for the given key
-func (s scope) lookup(k string) data.Value {
-	for i := range s {
-		var elem = s[len(s)-i-1]
-		if val, ok := elem[k]; ok {
-			return val
-		}
-	}
-	return data.Undefined{}
-}
 
 // state represents the state of an execution. It's not part of the
 // template so that multiple executions of the same template
@@ -55,7 +23,7 @@ type state struct {
 	tmpl       *parse.TemplateNode
 	wr         io.Writer
 	node       parse.Node           // current node, for errors
-	bundle     Tofu                 // the entire bundle of templates
+	registry   soyt.Registry        // the entire bundle of templates
 	val        data.Value           // temp value for expression being computed
 	context    scope                // variable scope
 	autoescape parse.AutoescapeType // escaping mode
@@ -79,43 +47,6 @@ func (s *state) errRecover(errp *error) {
 	if e != nil {
 		*errp = fmt.Errorf("%#v: %v", s.node, e)
 	}
-}
-
-func EvalExpr(node parse.Node) (val data.Value, err error) {
-	state := &state{
-		wr: ioutil.Discard,
-	}
-	defer state.errRecover(&err)
-	state.walk(node)
-	return state.val, nil
-}
-
-// Execute applies a parsed template to the specified data object,
-// and writes the output to wr.
-func (t Template) Execute(wr io.Writer, obj interface{}) (err error) {
-	if t.Node == nil {
-		return errors.New("no template found")
-	}
-	var m data.Map
-	if obj == nil {
-		m = data.Map{}
-	} else {
-		var ok bool
-		m, ok = data.New(obj).(data.Map)
-		if !ok {
-			return fmt.Errorf("Execute data must be a map or struct, got %T", obj)
-		}
-	}
-	state := &state{
-		tmpl:      t.Node,
-		bundle:    t.tofu,
-		namespace: t.namespace,
-		wr:        wr,
-		context:   scope{m},
-	}
-	defer state.errRecover(&err)
-	state.walk(t.Node)
-	return
 }
 
 // walk recursively goes through each node and executes the indicated logic and
@@ -373,8 +304,8 @@ func (s *state) evalCall(node *parse.CallNode) {
 	if node.Name[0] == '.' {
 		fqTemplateName = s.namespace + node.Name
 	}
-	calledTmpl, ok := s.bundle.templates[fqTemplateName]
-	if !ok {
+	calledTmpl := s.registry.Template(fqTemplateName)
+	if calledTmpl == nil {
 		s.errorf("failed to find template: %s", fqTemplateName)
 	}
 
@@ -406,15 +337,17 @@ func (s *state) evalCall(node *parse.CallNode) {
 	}
 
 	state := &state{
-		tmpl:      calledTmpl,
-		bundle:    s.bundle,
+		tmpl:      calledTmpl.TemplateNode,
+		registry:  s.registry,
 		namespace: namespace(fqTemplateName),
 		wr:        s.wr,
 		context:   callData,
 	}
-	state.walk(calledTmpl)
+	state.walk(state.tmpl)
 }
 
+// renderBlock is a helper that renders the given node to a temporary output
+// buffer and returns that result.  nothing is written to the main output.
 func (s *state) renderBlock(node parse.Node) []byte {
 	var buf bytes.Buffer
 	origWriter := s.wr

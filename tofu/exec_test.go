@@ -1,4 +1,4 @@
-package soy
+package tofu
 
 import (
 	"bytes"
@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/robfig/soy/data"
+	"github.com/robfig/soy/parse"
+	"github.com/robfig/soy/template"
 )
 
 type d map[string]interface{}
@@ -656,21 +658,29 @@ func runExecTests(t *testing.T, tests []execTest) {
 
 func runNsExecTests(t *testing.T, tests []nsExecTest) {
 	b := new(bytes.Buffer)
-NEXT_TEST:
 	for _, test := range tests {
-		var err error
-		var tofu = New()
-		tofu.globals = globals
+		var registry = template.Registry{}
 		for _, input := range test.input {
-			var err = tofu.Parse(input)
+			var tree, err = parse.New("", globals).Parse(input)
 			if err != nil {
 				t.Errorf("%s: parse error: %s", test.name, err)
-				continue NEXT_TEST
+				continue
 			}
+			registry.Add(tree.Root)
 		}
+		var tofu = Tofu{registry}
+
 		b.Reset()
-		tmpl, _ := tofu.Template(test.templateName)
-		err = tmpl.Execute(b, test.data)
+		tmpl := tofu.Template(test.templateName)
+		if tmpl == nil {
+			t.Errorf("couldn't find template %q", test.templateName)
+			continue
+		}
+		var datamap data.Map
+		if test.data != nil {
+			datamap = data.New(test.data).(data.Map)
+		}
+		err := tmpl.Render(b, datamap)
 		switch {
 		case !test.ok && err == nil:
 			t.Errorf("%s: expected error; got none", test.name)

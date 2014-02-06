@@ -10,6 +10,8 @@ import (
 	"github.com/robfig/soy/data"
 )
 
+type d map[string]interface{}
+
 type featureTest struct {
 	name   string
 	data   d
@@ -169,21 +171,17 @@ func TestFeatures(t *testing.T) {
 }
 
 func BenchmarkLexParseFeatures(b *testing.B) {
-	features := mustReadFile("testdata/features.soy")
-	simple := mustReadFile("testdata/simple.soy")
-	globals := bytes.NewBufferString(mustReadFile("testdata/FeaturesUsage_globals.txt"))
+	var (
+		features = mustReadFile("testdata/features.soy")
+		simple   = mustReadFile("testdata/simple.soy")
+	)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		var tofu = New()
-		var err = tofu.ParseGlobals(globals)
-		if err != nil {
-			b.Error(err)
-		}
-		err = tofu.Parse(features)
-		if err != nil {
-			b.Error(err)
-		}
-		err = tofu.Parse(simple)
+		var _, err = NewBundle().
+			AddGlobalsFile("testdata/FeaturesUsage_globals.txt").
+			AddTemplateString(features, "").
+			AddTemplateString(simple, "").
+			CompileToTofu()
 		if err != nil {
 			b.Error(err)
 		}
@@ -191,10 +189,18 @@ func BenchmarkLexParseFeatures(b *testing.B) {
 }
 
 func BenchmarkExecuteFeatures(b *testing.B) {
-	var tofu = New()
-	mustParseGlobals(tofu, "testdata/FeaturesUsage_globals.txt")
-	mustParseFile(tofu, "testdata/simple.soy")
-	mustParseFile(tofu, "testdata/features.soy")
+	var (
+		features = mustReadFile("testdata/features.soy")
+		simple   = mustReadFile("testdata/simple.soy")
+	)
+	var tofu, err = NewBundle().
+		AddGlobalsFile("testdata/FeaturesUsage_globals.txt").
+		AddTemplateString(features, "").
+		AddTemplateString(simple, "").
+		CompileToTofu()
+	if err != nil {
+		panic(err)
+	}
 	b.ResetTimer()
 
 	var buf = new(bytes.Buffer)
@@ -204,11 +210,11 @@ func BenchmarkExecuteFeatures(b *testing.B) {
 			// 	continue
 			// }
 			buf.Reset()
-			tmpl, ok := tofu.Template("soy.examples.features." + test.name)
-			if !ok {
+			tmpl := tofu.Template("soy.examples.features." + test.name)
+			if tmpl == nil {
 				b.Errorf("couldn't find template for test: %s", test.name)
 			}
-			err := tmpl.Execute(buf, data.New(test.data))
+			err := tmpl.Render(buf, data.New(test.data).(data.Map))
 			if err != nil {
 				b.Error(err)
 			}
@@ -217,20 +223,26 @@ func BenchmarkExecuteFeatures(b *testing.B) {
 }
 
 func runFeatureTests(t *testing.T, tests []featureTest) {
-	var tofu = New()
-	mustParseGlobals(tofu, "testdata/FeaturesUsage_globals.txt")
-	mustParseFile(tofu, "testdata/simple.soy")
-	mustParseFile(tofu, "testdata/features.soy")
+	var features = mustReadFile("testdata/features.soy")
+	var tofu, err = NewBundle().
+		AddGlobalsFile("testdata/FeaturesUsage_globals.txt").
+		AddTemplateString(features, "").
+		AddTemplateFile("testdata/simple.soy").
+		CompileToTofu()
+	if err != nil {
+		t.Error(err)
+		return
+	}
 
 	b := new(bytes.Buffer)
 	for _, test := range tests {
 		b.Reset()
-		tmpl, ok := tofu.Template("soy.examples.features." + test.name)
-		if !ok {
+		tmpl := tofu.Template("soy.examples.features." + test.name)
+		if tmpl == nil {
 			t.Errorf("couldn't find template for test: %s", test.name)
 			continue
 		}
-		err := tmpl.Execute(b, data.New(test.data))
+		err := tmpl.Render(b, data.New(test.data).(data.Map))
 		if err != nil {
 			t.Error(err)
 			continue
@@ -251,22 +263,4 @@ func mustReadFile(filename string) string {
 		panic(err)
 	}
 	return string(content)
-}
-
-func mustParseFile(tofu Tofu, filename string) {
-	err := tofu.Parse(mustReadFile(filename))
-	if err != nil {
-		panic(err)
-	}
-}
-
-func mustParseGlobals(tofu Tofu, filename string) {
-	f, err := os.Open(filename)
-	if err != nil {
-		panic(err)
-	}
-	err = tofu.ParseGlobals(f)
-	if err != nil {
-		panic(err)
-	}
 }
