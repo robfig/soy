@@ -269,7 +269,7 @@ type lexer struct {
 	width       int       // width of last rune read from input.
 	items       chan item // channel of scanned items.
 	doubleDelim bool      // flag for tags starting with double braces.
-	lastEmit    itemType  // type of most recent item emitted
+	lastEmit    item      // type of most recent item emitted
 }
 
 // nextItem returns the next item from the input.
@@ -337,9 +337,9 @@ func (l *lexer) emit(t itemType) {
 	if l.pos > Pos(len(l.input)) {
 		l.pos = Pos(len(l.input))
 	}
-	l.items <- item{t, l.pos, l.input[l.start:l.pos]}
+	l.lastEmit = item{t, l.pos, l.input[l.start:l.pos]}
+	l.items <- l.lastEmit
 	l.start = l.pos
-	l.lastEmit = t
 }
 
 // ignore skips over the pending input before this point.
@@ -415,9 +415,15 @@ func lexText(l *lexer) stateFn {
 			case '/':
 				// '//' only begins a comment if the previous character is whitespace,
 				// or if we are the start of input.
-				if isSpace(lastChar) || isEndOfLine(lastChar) || (lastChar == 0 && l.lastEmit == 0) {
+				var lastCharEmitted = lastChar
+				if lastChar == 0 && l.lastEmit.val != "" {
+					lastCharEmitted = rune(l.lastEmit.val[len(l.lastEmit.val)-1])
+				}
+				if lastCharEmitted == 0 || isSpaceEOL(lastCharEmitted) {
 					maybeEmitText(l, 3)
-					l.start++ // ignore the required space
+					if lastChar != 0 {
+						l.start++ // ignore the preceeding space, if present.
+					}
 					return lexLineComment(l)
 				}
 			case '*':
@@ -501,7 +507,7 @@ func lexBeginTag(l *lexer) stateFn {
 // itemLeftDelim has just been emitted.
 func lexInsideTag(l *lexer) stateFn {
 	switch r := l.next(); {
-	case isSpace(r) || isEndOfLine(r):
+	case isSpaceEOL(r):
 		l.ignore()
 	case r == '/' && l.peek() == '}':
 		return lexRightDelimEnd
@@ -573,7 +579,7 @@ func lexNegative(l *lexer) stateFn {
 
 	// is it unary or binary op?
 	// unary if it starts a group ('{' or '(') or an op came just before.
-	if l.lastEmit.isOp() || l.lastEmit == itemLeftDelim || l.lastEmit == itemLeftParen {
+	if l.lastEmit.typ.isOp() || l.lastEmit.typ == itemLeftDelim || l.lastEmit.typ == itemLeftParen {
 		l.emit(itemNegate)
 	} else {
 		l.emit(itemSub)
@@ -602,7 +608,7 @@ func lexSoyDoc(l *lexer) stateFn {
 		}
 		if startOfLine {
 			// ignore any space or asterisks at the beginning of lines
-			if isEndOfLine(ch) || isSpace(ch) {
+			if isSpaceEOL(ch) {
 				continue
 			}
 			if ch == '*' {
@@ -656,7 +662,7 @@ func lexSoyDocParam(l *lexer) {
 	// extract the param
 	for {
 		var r = l.next()
-		if isSpace(r) || isEndOfLine(r) || r == eof {
+		if isSpaceEOL(r) || r == eof {
 			l.pos--
 			l.emit(itemIdent)
 			// don't skip newlines. the outer routine needs to know about it
@@ -944,6 +950,11 @@ func isSpace(r rune) bool {
 // isEndOfLine reports whether r is an end-of-line character.
 func isEndOfLine(r rune) bool {
 	return r == '\r' || r == '\n'
+}
+
+// isSpaceEOL returns true if r is space or end of line.
+func isSpaceEOL(r rune) bool {
+	return isSpace(r) || isEndOfLine(r)
 }
 
 func isLetterOrUnderscore(r rune) bool {
