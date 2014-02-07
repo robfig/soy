@@ -36,7 +36,7 @@ func (s *state) at(node parse.Node) {
 
 // errorf formats the error and terminates processing.
 func (s *state) errorf(format string, args ...interface{}) {
-	format = fmt.Sprintf("template: %s:%s %s", s.tmpl.Name, s.node, format)
+	format = fmt.Sprintf("template %s (%s): %s", s.tmpl.Name, s.node, format)
 	panic(fmt.Errorf(format, args...))
 }
 
@@ -45,7 +45,7 @@ func (s *state) errorf(format string, args ...interface{}) {
 func (s *state) errRecover(errp *error) {
 	e := recover()
 	if e != nil {
-		*errp = fmt.Errorf("%#v: %v", s.node, e)
+		*errp = fmt.Errorf("%v", e)
 	}
 }
 
@@ -96,7 +96,8 @@ func (s *state) walk(node parse.Node) {
 	case *parse.ForNode:
 		var list, ok = s.eval(node.List).(data.List)
 		if !ok {
-			s.errorf("expected list type to iterate, got %v", s.eval(node.List))
+			s.errorf("In for loop %q, %q does not resolve to a list.",
+				node.String(), node.List.String())
 		}
 		if len(list) == 0 {
 			if node.IfEmpty != nil {
@@ -171,7 +172,7 @@ func (s *state) walk(node parse.Node) {
 		case data.Float:
 			s.val = data.Float(-arg)
 		default:
-			s.errorf("can not negate non-number: %v", arg)
+			s.errorf("can not negate non-number: %q", arg.String())
 		}
 	case *parse.AddNode:
 		var arg1, arg2 = s.eval2(node.Arg1, node.Arg2)
@@ -264,19 +265,22 @@ func toFloat(v data.Value) float64 {
 	case data.Float:
 		return float64(v)
 	default:
-		panic(fmt.Errorf("not a number: %v", v))
+		panic(fmt.Errorf("not a number: %q", v))
 		return 0
 	}
 }
 
 func (s *state) evalPrint(node *parse.PrintNode) {
 	s.walk(node.Arg)
+	if _, ok := s.val.(data.Undefined); ok {
+		s.errorf("In 'print' tag, expression %q evaluates to undefined.", node.Arg.String())
+	}
 	var escapeHtml = s.autoescape == parse.AutoescapeOn
 	var result = s.val
 	for _, directiveNode := range node.Directives {
 		var directive, ok = PrintDirectives[directiveNode.Name]
 		if !ok {
-			s.errorf("print directive %q does not exist", directiveNode.Name)
+			s.errorf("Print directive %q does not exist", directiveNode.Name)
 		}
 		// TODO: validate # args
 		var args []data.Value
@@ -317,7 +321,8 @@ func (s *state) evalCall(node *parse.CallNode) {
 	} else if node.Data != nil {
 		result, ok := s.eval(node.Data).(data.Map)
 		if !ok {
-			s.errorf("In 'call' command %s, the data reference does not resolve to a map.", node)
+			s.errorf("In 'call' command %q, the data reference %q does not resolve to a map.",
+				node.String(), node.Data.String())
 		}
 		callData = scope{result}
 	} else {
@@ -369,7 +374,7 @@ func (s *state) evalFunc(node *parse.FunctionNode) data.Value {
 			}
 		}
 		if !valid {
-			s.errorf("call to %v with %v args, expected %v",
+			s.errorf("Function %q called with %v args, expected one of: %v",
 				node.Name, len(node.Args), fn.ValidArgLengths)
 		}
 
@@ -391,7 +396,7 @@ func (s *state) evalDataRef(node *parse.DataRefNode) data.Value {
 	}
 
 	// handle the accesses
-	for _, accessNode := range node.Access {
+	for i, accessNode := range node.Access {
 		// resolve the index or key to look up.
 		var (
 			index int = -1
@@ -419,20 +424,23 @@ func (s *state) evalDataRef(node *parse.DataRefNode) data.Value {
 			if isNullSafeAccess(accessNode) {
 				return data.Null{}
 			}
-			s.errorf("%v: access failed due to null/undefined reference", accessNode)
+			s.errorf("%q is null or undefined",
+				(&parse.DataRefNode{node.Pos, node.Key, node.Access[:i]}).String())
 		case data.List:
 			if index == -1 {
-				s.errorf("%v: access list with non-integer index failed.", accessNode)
+				s.errorf("%q is a list, but was accessed with a non-integer index",
+					(&parse.DataRefNode{node.Pos, node.Key, node.Access[:i]}).String())
 			}
 			ref = obj.Index(index)
 		case data.Map:
 			if key == "" {
-				s.errorf("%v: access to map requires a string key.", accessNode)
+				s.errorf("%q is a map, and requires a string key to access",
+					(&parse.DataRefNode{node.Pos, node.Key, node.Access[:i]}).String())
 			}
 			ref = obj.Key(key)
 		default:
-			s.errorf("While evaluating \"%s\", encountered non-collection"+
-				" just before accessing \"%s\".", node, accessNode)
+			s.errorf("While evaluating \"%v\", encountered non-collection"+
+				" just before accessing \"%v\".", node, accessNode)
 		}
 	}
 
