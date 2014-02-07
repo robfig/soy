@@ -1,8 +1,5 @@
 Now:
-- move exec into own package.  apply the parsepasses from soy.
-- implement user provided functions
 - content "kind": text, html, uri, js (code), js (str chars), html attributes
-- {alias}
 - attributes for all the commands
 - Source location / error messages
 - TODO sweep
@@ -20,6 +17,3 @@ Now:
 - Message extractor (placeholders/phname)
 - CSS renaming
 - Go code generation
-
-Ideas:
-- if foreach on undefined or null thing, what happens?
