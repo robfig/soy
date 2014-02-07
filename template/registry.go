@@ -6,20 +6,20 @@ import (
 	"github.com/robfig/soy/parse"
 )
 
+// Registry provides convenient access to a collection of parsed Soy templates.
 type Registry struct {
 	SoyFileNodes []*parse.ListNode
 	Templates    []Template
 }
 
+// Template is a Soy template's parse tree, including its preceeding soydoc.
 type Template struct {
 	*parse.SoyDocNode   // this template's SoyDoc
 	*parse.TemplateNode // this template's node
 }
 
 // Add the given list node (representing a soy file) to the registry.
-// The following rules are enforced:
-// - Every soyfile must begin with a {namespace} (except for leading SoyDoc)
-// - Every template must be preceeded by SoyDoc
+// Every soyfile must begin with a {namespace} (except for leading SoyDoc)
 func (r *Registry) Add(soyfile *parse.ListNode) error {
 	for _, node := range soyfile.Nodes {
 		switch node := node.(type) {
