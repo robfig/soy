@@ -274,7 +274,7 @@ func (s *state) evalPrint(node *parse.PrintNode) {
 	var escapeHtml = s.autoescape == parse.AutoescapeOn
 	var result = s.val
 	for _, directiveNode := range node.Directives {
-		var directive, ok = printDirectiveByName[directiveNode.Name]
+		var directive, ok = PrintDirectives[directiveNode.Name]
 		if !ok {
 			s.errorf("print directive %q does not exist", directiveNode.Name)
 		}
@@ -361,7 +361,7 @@ func (s *state) evalFunc(node *parse.FunctionNode) data.Value {
 	if fn, ok := loopFuncs[node.Name]; ok {
 		return fn(s, node.Args[0].(*parse.DataRefNode).Key)
 	}
-	if fn, ok := soyFuncs[node.Name]; ok {
+	if fn, ok := Funcs[node.Name]; ok {
 		var valid = false
 		for _, length := range fn.ValidArgLengths {
 			if len(node.Args) == length {
@@ -377,7 +377,7 @@ func (s *state) evalFunc(node *parse.FunctionNode) data.Value {
 		for _, arg := range node.Args {
 			args = append(args, s.eval(arg))
 		}
-		return fn.Func(args)
+		return fn.Apply(args)
 	}
 	s.errorf("unrecognized function name: %s", node.Name)
 	return nil

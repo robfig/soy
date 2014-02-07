@@ -11,37 +11,23 @@ import (
 	"github.com/robfig/soy/data"
 )
 
+// PrintDirective represents a transformation applied when printing a value.
 type PrintDirective struct {
-	Name             string
-	ValidArgSizes    []int
+	Apply            func(value data.Value, args []data.Value) data.Value
+	ValidArgLengths  []int
 	CancelAutoescape bool
-	Apply            PrintDirectiveFunc
 }
 
-type PrintDirectiveFunc func(value data.Value, args []data.Value) data.Value
-
-var printDirectives = []*PrintDirective{
-	{"insertWordBreaks", []int{1}, true, directiveInsertWordBreaks},
-	{"changeNewlineToBr", []int{0}, true, directiveChangeNewlineToBr},
-	{"truncate", []int{1, 2}, false, directiveTruncate},
-	{"id", []int{0}, true, directiveNoAutoescape},
-	{"noAutoescape", []int{0}, true, directiveNoAutoescape},
-	{"escapeHtml", []int{0}, true, directiveEscapeHtml},
-	{"escapeUri", []int{0}, true, directiveEscapeUri},
-	{"escapeJsString", []int{0}, true, directiveEscapeJsString},
-}
-
-var printDirectiveByName = make(map[string]*PrintDirective)
-
-func RegisterPrintDirective(dir *PrintDirective) {
-	printDirectives = append(printDirectives, dir)
-	printDirectiveByName[dir.Name] = dir
-}
-
-func init() {
-	for _, directive := range printDirectives {
-		printDirectiveByName[directive.Name] = directive
-	}
+// PrintDirectives are the builtin print directives.
+var PrintDirectives = map[string]PrintDirective{
+	"insertWordBreaks":  {directiveInsertWordBreaks, []int{1}, true},
+	"changeNewlineToBr": {directiveChangeNewlineToBr, []int{0}, true},
+	"truncate":          {directiveTruncate, []int{1, 2}, false},
+	"id":                {directiveNoAutoescape, []int{0}, true},
+	"noAutoescape":      {directiveNoAutoescape, []int{0}, true},
+	"escapeHtml":        {directiveEscapeHtml, []int{0}, true},
+	"escapeUri":         {directiveEscapeUri, []int{0}, true},
+	"escapeJsString":    {directiveEscapeJsString, []int{0}, true},
 }
 
 func directiveInsertWordBreaks(value data.Value, args []data.Value) data.Value {

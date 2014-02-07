@@ -29,12 +29,15 @@ func funcIsLast(s *state, key string) data.Value {
 		s.context.lookup(key+"__index").(data.Int) == s.context.lookup(key+"__lastIndex").(data.Int))
 }
 
-type soyFunc struct {
-	Func            func([]data.Value) data.Value
+// Func represents a soy function that may invoked within a template.
+type Func struct {
+	Apply           func([]data.Value) data.Value
 	ValidArgLengths []int
 }
 
-var soyFuncs = map[string]soyFunc{
+// Funcs contains the builtin soy functions.
+// Callers may add funcs at any point prior to parsing templates that use them.
+var Funcs = map[string]Func{
 	"isNonnull":   {funcIsNonnull, []int{1}},
 	"length":      {funcLength, []int{1}},
 	"keys":        {funcKeys, []int{1}},
