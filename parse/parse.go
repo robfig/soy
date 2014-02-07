@@ -119,11 +119,6 @@ func (t *Tree) textOrTag(token item, until []itemType) (node Node, halt bool) {
 	return nil, false
 }
 
-func (t *Tree) parseSoydoc() Node {
-	t.errorf("not implemented")
-	return nil
-}
-
 var specialChars = map[itemType]string{
 	itemNil:            "",
 	itemSpace:          " ",
@@ -215,7 +210,7 @@ func (t *Tree) parsePrint(token item) Node {
 				break
 			}
 		default:
-			t.errorf("print: expected directive or close delimiter, got %v", tok.val)
+			t.unexpected(tok, "print. (expected '|' or '}')")
 		}
 	}
 }
@@ -235,7 +230,7 @@ func (t *Tree) parseAlias(token item) {
 			t.aliases[lastSegment] = name
 			return
 		default:
-			t.errorf("alias: expected close delimiter, got %v", next.val)
+			t.unexpected(next, "alias. (expected '}')")
 		}
 	}
 }
@@ -253,7 +248,7 @@ func (t *Tree) parseLet(token item) Node {
 		t.expect(itemRightDelim, "let")
 		return node
 	default:
-		t.errorf("unexpected token parsing {let}: %v", next.val)
+		t.unexpected(next, "{let}")
 	}
 	panic("unreachable")
 }
@@ -359,12 +354,12 @@ func (t *Tree) parseCallParams() []Node {
 			// see if anything is left after running it through rawtext()
 			var text = rawtext(initial.val, true, true)
 			if len(text) != 0 {
-				t.unexpected(initial, "{call} found orphan content outside of params: "+string(text))
+				t.unexpected(initial, "{call}, in between {param}'s (orphan content)")
 			}
 			initial = t.nextNonComment()
 		}
 		if initial.typ != itemLeftDelim {
-			t.unexpected(initial, "expected { when scanning param")
+			t.unexpected(initial, "param list (expected '{')")
 		}
 
 		var cmd = t.next()
@@ -396,14 +391,14 @@ func (t *Tree) parseCallParams() []Node {
 		case itemEquals:
 			t.backup2(firstIdent)
 		default:
-			t.errorf("expected :, }, or = in param, got %q", tok)
+			t.unexpected(tok, "param. (expected ':', '}', or '=')")
 		}
 
 		attrs := t.parseAttrs("key", "value", "kind")
 		var ok bool
 		if key == "" {
 			if key, ok = attrs["key"]; !ok {
-				t.errorf("param key not found")
+				t.errorf("param key not found.  (attrs: %v)", attrs)
 			}
 		}
 		var valueStr string
@@ -435,7 +430,7 @@ func (t *Tree) parseSwitch(token item) Node {
 			if allSpace(tok.val) {
 				continue
 			}
-			t.errorf("unexpected text between switch cases: %v", tok.val)
+			t.unexpected(tok, "between switch cases")
 		case itemCase, itemDefault:
 			cases = append(cases, t.parseCase(tok))
 		case itemSwitchEnd:
@@ -460,7 +455,7 @@ func (t *Tree) parseCase(token item) *SwitchCaseNode {
 			t.backup()
 			return &SwitchCaseNode{token.pos, values, body}
 		default:
-			t.errorf("unexpected item when parsing case: %v", tok)
+			t.unexpected(tok, "switch case")
 		}
 	}
 }
@@ -474,7 +469,7 @@ func (t *Tree) parseFor(token item) Node {
 	var vartoken = t.expect(itemDollarIdent, ctx)
 	var intoken = t.expect(itemIdent, ctx)
 	if intoken.val != "in" {
-		t.errorf("expected 'in' in for")
+		t.unexpected(intoken, "for loop (expected 'in')")
 	}
 
 	// get the collection to iterate through and enforce the requirements
@@ -545,7 +540,7 @@ func (t *Tree) parseSoyDoc(token item) Node {
 		case itemSoyDocEnd:
 			return &SoyDocNode{token.pos, params}
 		default:
-			t.errorf("unexpected item while parsing soydoc: %q", next.val)
+			t.unexpected(next, "soydoc")
 		}
 	}
 }
@@ -565,7 +560,7 @@ func (t *Tree) parseAttrs(allowedNames ...string) map[string]string {
 		switch tok := t.next(); tok.typ {
 		case itemIdent:
 			if !inStringSlice(tok.val, allowedNames) {
-				t.errorf("unexpected attribute: %s", tok.val)
+				t.unexpected(tok, fmt.Sprintf("attributes. allowed: %v", allowedNames))
 			}
 			t.expect(itemEquals, "attribute")
 			var attrval = t.expect(itemString, "attribute")
@@ -578,7 +573,7 @@ func (t *Tree) parseAttrs(allowedNames ...string) map[string]string {
 			t.backup()
 			return result
 		default:
-			t.errorf("unexpected item parsing attributes: %v", tok)
+			t.unexpected(tok, "attributes")
 		}
 	}
 }
@@ -610,7 +605,7 @@ func (t *Tree) parseNamespace(token item) Node {
 			t.namespace = name
 			return newNamespace(token.pos, name)
 		default:
-			t.errorf("unexpected token parsing namespace: %v", part)
+			t.unexpected(part, "namespace")
 		}
 	}
 }
@@ -662,7 +657,7 @@ func (t *Tree) boolAttr(attrs map[string]string, key string, defaultValue bool) 
 	case str == "false":
 		return false
 	default:
-		t.errorf("expected bool value, got %q", str)
+		t.errorf("expected 'true' or 'false', got %q", str)
 	}
 	panic("")
 }
@@ -728,12 +723,12 @@ func (t *Tree) parseExprFirstTerm() Node {
 		return newUnaryOpNode(tok, t.parseExpr(precedence[tok.typ]))
 	case tok.typ == itemLeftParen:
 		n := t.parseExpr(0)
-		t.expect(itemRightParen, "expression")
+		t.expect(itemRightParen, "soy expression")
 		return n
 	case isValue(tok):
 		return t.newValueNode(tok)
 	default:
-		t.errorf("unexpected token %v", tok)
+		t.unexpected(tok, "soy expression")
 	}
 	return nil
 }
@@ -1019,7 +1014,7 @@ func (t *Tree) newFunctionNode(tok item) Node {
 		case eof:
 			t.errorf("unexpected eof reading function params")
 		default:
-			t.errorf("unexpected %v reading function params", tok)
+			t.unexpected(tok, "reading function params")
 		}
 	}
 }
@@ -1110,20 +1105,24 @@ func (t *Tree) recover(errp *error) {
 func (t *Tree) expect(expected itemType, context string) item {
 	token := t.next()
 	if token.typ != expected {
-		t.unexpected(token, context)
+		t.unexpected(token, fmt.Sprintf("%v (expected %v)", context, expected.String()))
 	}
 	return token
 }
 
 // unexpected complains about the token and terminates processing.
 func (t *Tree) unexpected(token item, context string) {
-	t.errorf("unexpected %#v in %s", token, context)
+	if token.typ == itemError {
+		t.errorf("lexical error: %v", token)
+	}
+	t.errorf("unexpected %v in %s", token, context)
 }
 
 // errorf formats the error and terminates processing.
 func (t *Tree) errorf(format string, args ...interface{}) {
 	t.Root = nil
-	format = fmt.Sprintf("template: %s:%d: %s", t.Name, t.lex.lineNumber(), format)
+	format = fmt.Sprintf("template %s:%d:%d: %s", t.Name,
+		t.lex.lineNumber(), t.lex.columnNumber(), format)
 	panic(fmt.Errorf(format, args...))
 }
 

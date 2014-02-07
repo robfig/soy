@@ -242,6 +242,43 @@ func (t itemType) isCommandEnd() bool {
 	return t > itemCommandEnd
 }
 
+// String converts the itemType into its source string.
+// It is fantastically inefficient and should only be used for error messages.
+func (t itemType) String() string {
+	for k, v := range builtinIdents {
+		if v == t {
+			return k
+		}
+	}
+	for k, v := range arithmeticItemsBySymbol {
+		if v == t {
+			return k
+		}
+	}
+	var r, ok = map[itemType]string{
+		itemEOF:              "<eof>",
+		itemEquals:           "=",
+		itemError:            "<error>",
+		itemText:             "<text>",
+		itemLeftDelim:        "{",
+		itemRightDelim:       "}",
+		itemRightDelimEnd:    "/}",
+		itemIdent:            "<ident>",
+		itemDollarIdent:      "<$ident>",
+		itemDotIdent:         "<.ident>",
+		itemQuestionDotIdent: "<?.ident>",
+		itemDotIndex:         "<.N>",
+		itemQuestionDotIndex: "<?.N>",
+		itemLeftBracket:      "[",
+		itemRightBracket:     "]",
+		itemQuestionKey:      "?[",
+	}[t]
+	if ok {
+		return r
+	}
+	return fmt.Sprintf("item(%d)", t)
+}
+
 // Lexer ----------------------------------------------------------------------
 
 const (
@@ -380,7 +417,7 @@ func (l *lexer) columnNumber() int {
 	return int(l.pos) - n
 }
 
-// error returns an error item and terminates the scan by passing
+// errorf returns an error item and terminates the scan by passing
 // back a nil pointer that will be the next state, terminating l.nextItem.
 func (l *lexer) errorf(format string, args ...interface{}) stateFn {
 	l.items <- item{itemError, l.pos, fmt.Sprintf(format, args...)}
