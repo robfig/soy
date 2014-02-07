@@ -98,7 +98,7 @@ func (b *Bundle) CompileToTofu() (*tofu.Tofu, error) {
 		if err != nil {
 			return nil, err
 		}
-		if err = registry.Add(tree.Root); err != nil {
+		if err = registry.Add(tree); err != nil {
 			return nil, err
 		}
 	}

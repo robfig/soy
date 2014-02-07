@@ -666,7 +666,7 @@ func runNsExecTests(t *testing.T, tests []nsExecTest) {
 				t.Errorf("%s: parse error: %s", test.name, err)
 				continue
 			}
-			registry.Add(tree.Root)
+			registry.Add(tree)
 		}
 		var tofu = Tofu{registry}
 

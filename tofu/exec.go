@@ -20,7 +20,7 @@ var Logger *log.Logger
 // can execute in parallel.
 type state struct {
 	namespace  string
-	tmpl       *parse.TemplateNode
+	tmpl       soyt.Template
 	wr         io.Writer
 	node       parse.Node           // current node, for errors
 	registry   soyt.Registry        // the entire bundle of templates
@@ -36,7 +36,8 @@ func (s *state) at(node parse.Node) {
 
 // errorf formats the error and terminates processing.
 func (s *state) errorf(format string, args ...interface{}) {
-	format = fmt.Sprintf("template %s (%s): %s", s.tmpl.Name, s.node, format)
+	format = fmt.Sprintf("template %s:%d: %s", s.tmpl.Name,
+		s.registry.LineNumber(s.tmpl.Name, s.node), format)
 	panic(fmt.Errorf(format, args...))
 }
 
@@ -342,13 +343,13 @@ func (s *state) evalCall(node *parse.CallNode) {
 	}
 
 	state := &state{
-		tmpl:      calledTmpl.TemplateNode,
+		tmpl:      *calledTmpl,
 		registry:  s.registry,
 		namespace: namespace(fqTemplateName),
 		wr:        s.wr,
 		context:   callData,
 	}
-	state.walk(state.tmpl)
+	state.walk(state.tmpl.TemplateNode)
 }
 
 // renderBlock is a helper that renders the given node to a temporary output

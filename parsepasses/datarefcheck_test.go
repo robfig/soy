@@ -348,7 +348,7 @@ func runCheckerTests(t *testing.T, tests []checkerTest) {
 				continue
 			}
 
-			if err := reg.Add(tree.Root); err != nil {
+			if err := reg.Add(tree); err != nil {
 				t.Error(err)
 				continue
 			}

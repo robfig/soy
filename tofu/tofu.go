@@ -35,7 +35,7 @@ func (t Renderer) Render(wr io.Writer, obj data.Map) (err error) {
 		return errors.New("no template found")
 	}
 	state := &state{
-		tmpl:      t.Template.TemplateNode,
+		tmpl:      t.Template,
 		registry:  t.tofu.Registry,
 		namespace: namespace(t.TemplateNode.Name),
 		wr:        wr,

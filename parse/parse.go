@@ -15,13 +15,13 @@ import (
 type Tree struct {
 	Name string
 	Root *ListNode // top-level root of the tree.
+	Text string    // the full text of the soy file
 
 	// Parsing only; cleared after parse.
 	funcs     []map[string]interface{}
 	lex       *lexer
 	token     [3]item // three-token lookahead for parser.
 	peekCount int
-	text      string                // the full text of the soy file
 	namespace string                // the namespace found in the soy file being parsed.
 	aliases   map[string]string     // map from alias to namespace e.g. {"c": "a.b.c"}
 	globals   map[string]data.Value // global (compile-time constants) values by name
@@ -40,7 +40,7 @@ func New(name string, globals map[string]data.Value) *Tree {
 func (t *Tree) Parse(text string, funcs ...map[string]interface{}) (tree *Tree, err error) {
 	defer t.recover(&err)
 	t.startParse(funcs, lex(t.Name, text))
-	t.text = text
+	t.Text = text
 	t.parse()
 	t.stopParse()
 	return t, nil

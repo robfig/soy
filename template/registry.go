@@ -2,26 +2,28 @@ package template
 
 import (
 	"fmt"
+	"log"
+	"strings"
 
 	"github.com/robfig/soy/parse"
 )
 
 // Registry provides convenient access to a collection of parsed Soy templates.
 type Registry struct {
-	SoyFileNodes []*parse.ListNode
-	Templates    []Template
-}
+	SoyFiles  []*parse.Tree
+	Templates []Template
 
-// Template is a Soy template's parse tree, including its preceeding soydoc.
-type Template struct {
-	*parse.SoyDocNode   // this template's SoyDoc
-	*parse.TemplateNode // this template's node
+	// sourceByTemplateName maps FQ template name to the input source it came from.
+	sourceByTemplateName map[string]string
 }
 
 // Add the given list node (representing a soy file) to the registry.
 // Every soyfile must begin with a {namespace} (except for leading SoyDoc)
-func (r *Registry) Add(soyfile *parse.ListNode) error {
-	for _, node := range soyfile.Nodes {
+func (r *Registry) Add(soyfile *parse.Tree) error {
+	if r.sourceByTemplateName == nil {
+		r.sourceByTemplateName = make(map[string]string)
+	}
+	for _, node := range soyfile.Root.Nodes {
 		switch node := node.(type) {
 		case *parse.SoyDocNode:
 			continue
@@ -32,9 +34,9 @@ func (r *Registry) Add(soyfile *parse.ListNode) error {
 		break
 	}
 
-	r.SoyFileNodes = append(r.SoyFileNodes, soyfile)
-	for i := 0; i < len(soyfile.Nodes); i++ {
-		var tn, ok = soyfile.Nodes[i].(*parse.TemplateNode)
+	r.SoyFiles = append(r.SoyFiles, soyfile)
+	for i := 0; i < len(soyfile.Root.Nodes); i++ {
+		var tn, ok = soyfile.Root.Nodes[i].(*parse.TemplateNode)
 		if !ok {
 			continue
 		}
@@ -43,11 +45,12 @@ func (r *Registry) Add(soyfile *parse.ListNode) error {
 		// soydoc just to get a template to compile is just stupid.  (There is a
 		// separate data ref check to ensure any variables used are declared as
 		// params, anyway).
-		sdn, ok := soyfile.Nodes[i-1].(*parse.SoyDocNode)
+		sdn, ok := soyfile.Root.Nodes[i-1].(*parse.SoyDocNode)
 		if !ok {
 			sdn = &parse.SoyDocNode{tn.Pos, nil}
 		}
 		r.Templates = append(r.Templates, Template{sdn, tn})
+		r.sourceByTemplateName[tn.Name] = soyfile.Text
 	}
 	return nil
 }
@@ -62,11 +65,13 @@ func (r *Registry) Template(name string) *Template {
 	return nil
 }
 
-// ParamNames returns the names of all params declared by the template's SoyDoc.
-func (t Template) ParamNames() []string {
-	var names []string
-	for _, p := range t.Params {
-		names = append(names, p.Name)
+// LineNumber computes the line number in the input source for the given node
+// within the given template.
+func (r *Registry) LineNumber(templateName string, node parse.Node) int {
+	var src, ok = r.sourceByTemplateName[templateName]
+	if !ok {
+		log.Println("template not found:", templateName)
+		return 0
 	}
-	return names
+	return 1 + strings.Count(src[:node.Position()], "\n")
 }
