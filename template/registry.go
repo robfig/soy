@@ -23,13 +23,15 @@ func (r *Registry) Add(soyfile *parse.Tree) error {
 	if r.sourceByTemplateName == nil {
 		r.sourceByTemplateName = make(map[string]string)
 	}
+	var ns *parse.NamespaceNode
 	for _, node := range soyfile.Root.Nodes {
 		switch node := node.(type) {
 		case *parse.SoyDocNode:
 			continue
 		case *parse.NamespaceNode:
+			ns = node
 		default:
-			return fmt.Errorf("expected namespace, found %#v", node)
+			return fmt.Errorf("expected namespace, found %v", node)
 		}
 		break
 	}
@@ -49,7 +51,7 @@ func (r *Registry) Add(soyfile *parse.Tree) error {
 		if !ok {
 			sdn = &parse.SoyDocNode{tn.Pos, nil}
 		}
-		r.Templates = append(r.Templates, Template{sdn, tn})
+		r.Templates = append(r.Templates, Template{sdn, tn, ns})
 		r.sourceByTemplateName[tn.Name] = soyfile.Text
 	}
 	return nil

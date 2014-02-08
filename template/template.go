@@ -6,4 +6,6 @@ import "github.com/robfig/soy/parse"
 type Template struct {
 	*parse.SoyDocNode   // this template's SoyDoc
 	*parse.TemplateNode // this template's node
+
+	Namespace *parse.NamespaceNode // this template's namespace
 }

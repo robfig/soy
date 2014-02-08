@@ -1,6 +1,5 @@
 Now:
 - content "kind": text, html, uri, js (code), js (str chars), html attributes
-- attributes for all the commands
 - TODO sweep
 - test coverage
 - Contextual autoescape
@@ -16,3 +15,4 @@ Now:
 - Message extractor (placeholders/phname)
 - CSS renaming
 - Go code generation
+- "private" templates (and optimizations)

@@ -1,12 +1,12 @@
-// Package tofu provides operations for working with a compiled set of Soy.
+// Package tofu renders a compiled set of Soy to HTML.
 package tofu
 
 import (
 	"errors"
 	"io"
-	"strings"
 
 	"github.com/robfig/soy/data"
+	"github.com/robfig/soy/parse"
 	"github.com/robfig/soy/template"
 )
 
@@ -34,18 +34,19 @@ func (t Renderer) Render(wr io.Writer, obj data.Map) (err error) {
 	if t.TemplateNode == nil {
 		return errors.New("no template found")
 	}
+	var autoescapeMode = t.Template.Namespace.Autoescape
+	if autoescapeMode == parse.AutoescapeUnspecified {
+		autoescapeMode = parse.AutoescapeOn // TODO: Contextual
+	}
 	state := &state{
-		tmpl:      t.Template,
-		registry:  t.tofu.Registry,
-		namespace: namespace(t.TemplateNode.Name),
-		wr:        wr,
-		context:   scope{obj},
+		tmpl:       t.Template,
+		registry:   t.tofu.Registry,
+		namespace:  t.Namespace.Name,
+		autoescape: autoescapeMode,
+		wr:         wr,
+		context:    scope{obj},
 	}
 	defer state.errRecover(&err)
 	state.walk(t.TemplateNode)
 	return
-}
-
-func namespace(fqTemplateName string) string {
-	return fqTemplateName[:strings.LastIndex(fqTemplateName, ".")]
 }

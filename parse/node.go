@@ -70,12 +70,8 @@ func (t *RawTextNode) String() string {
 // NamespaceNode registers the namespace of the soy file.
 type NamespaceNode struct {
 	Pos
-	Name string
-	// TODO: attributes
-}
-
-func newNamespace(pos Pos, name string) *NamespaceNode {
-	return &NamespaceNode{Pos: pos, Name: name}
+	Name       string
+	Autoescape AutoescapeType
 }
 
 func (c *NamespaceNode) String() string {
@@ -85,7 +81,8 @@ func (c *NamespaceNode) String() string {
 type AutoescapeType int
 
 const (
-	AutoescapeOn AutoescapeType = iota
+	AutoescapeUnspecified AutoescapeType = iota
+	AutoescapeOn
 	AutoescapeOff
 	AutoescapeContextual
 )

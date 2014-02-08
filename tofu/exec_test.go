@@ -454,6 +454,28 @@ func TestAutoescapeModes(t *testing.T) {
 			d{"foo": "<b>hello</b>"},
 			true,
 		},
+
+		{"namespace sets default", "test.name", `
+{namespace test autoescape="false"}
+
+{template .name}
+  {$foo}
+{/template}`,
+			"<b>hello</b>",
+			d{"foo": "<b>hello</b>"},
+			true,
+		},
+
+		{"template overrides namespace", "test.name", `
+{namespace test autoescape="false"}
+
+{template .name autoescape="true"}
+  {$foo}
+{/template}`,
+			"&lt;b&gt;hello&lt;/b&gt;",
+			d{"foo": "<b>hello</b>"},
+			true,
+		},
 	})
 }
 

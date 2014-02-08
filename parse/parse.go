@@ -601,30 +601,39 @@ func (t *Tree) parseNamespace(token item) Node {
 		switch part := t.next(); part.typ {
 		case itemDotIdent:
 			name += part.val
-		case itemRightDelim:
-			t.namespace = name
-			return newNamespace(token.pos, name)
 		default:
-			t.unexpected(part, "namespace")
+			t.backup()
+			var autoescape = t.parseAutoescape(t.parseAttrs("autoescape"))
+			t.expect(itemRightDelim, "namespace")
+			t.namespace = name
+			return &NamespaceNode{token.pos, name, autoescape}
 		}
 	}
 }
 
+// parseAutoescape returns the specified autoescape selection, or
+// AutoescapeContextual by default.
+func (t *Tree) parseAutoescape(attrs map[string]string) AutoescapeType {
+	switch val := attrs["autoescape"]; val {
+	case "":
+		return AutoescapeUnspecified
+	case "contextual":
+		return AutoescapeContextual
+	case "true":
+		return AutoescapeOn
+	case "false":
+		return AutoescapeOff
+	default:
+		t.errorf(`expected "true", "false", or "contextual" for autoescape, got %q`, val)
+	}
+	panic("unreachable")
+}
+
 func (t *Tree) parseTemplate(token item) Node {
-	const ctx = "template"
+	const ctx = "template tag"
 	var id = t.expect(itemDotIdent, ctx)
 	var attrs = t.parseAttrs("autoescape", "private")
-	var autoescape = AutoescapeOn
-	switch str, ok := attrs["autoescape"]; {
-	case !ok:
-	case str == "true":
-	case str == "false":
-		autoescape = AutoescapeOff
-	case str == "contextual":
-		autoescape = AutoescapeContextual
-	default:
-		t.errorf(`expected "true", "false", or "contextual" for autoescape, got %v`, str)
-	}
+	var autoescape = t.parseAutoescape(attrs)
 	var private = t.boolAttr(attrs, "private", false)
 	t.expect(itemRightDelim, ctx)
 	tmpl := &TemplateNode{
@@ -634,7 +643,7 @@ func (t *Tree) parseTemplate(token item) Node {
 		autoescape,
 		private,
 	}
-	t.expect(itemRightDelim, "template tag")
+	t.expect(itemRightDelim, ctx)
 	return tmpl
 }
 

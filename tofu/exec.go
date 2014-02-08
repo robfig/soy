@@ -57,7 +57,9 @@ func (s *state) walk(node parse.Node) {
 	s.at(node)
 	switch node := node.(type) {
 	case *parse.TemplateNode:
-		s.autoescape = node.Autoescape
+		if node.Autoescape != parse.AutoescapeUnspecified {
+			s.autoescape = node.Autoescape
+		}
 		s.walk(node.Body)
 	case *parse.ListNode:
 		for _, node := range node.Nodes {
@@ -276,7 +278,7 @@ func (s *state) evalPrint(node *parse.PrintNode) {
 	if _, ok := s.val.(data.Undefined); ok {
 		s.errorf("In 'print' tag, expression %q evaluates to undefined.", node.Arg.String())
 	}
-	var escapeHtml = s.autoescape == parse.AutoescapeOn
+	var escapeHtml = s.autoescape != parse.AutoescapeOff
 	var result = s.val
 	for _, directiveNode := range node.Directives {
 		var directive, ok = PrintDirectives[directiveNode.Name]
@@ -343,11 +345,12 @@ func (s *state) evalCall(node *parse.CallNode) {
 	}
 
 	state := &state{
-		tmpl:      *calledTmpl,
-		registry:  s.registry,
-		namespace: namespace(fqTemplateName),
-		wr:        s.wr,
-		context:   callData,
+		tmpl:       *calledTmpl,
+		registry:   s.registry,
+		namespace:  calledTmpl.Namespace.Name,
+		autoescape: calledTmpl.Namespace.Autoescape,
+		wr:         s.wr,
+		context:    callData,
 	}
 	state.walk(state.tmpl.TemplateNode)
 }

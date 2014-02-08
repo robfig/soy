@@ -39,7 +39,7 @@ func bin(n1, n2 Node) binaryOpNode {
 
 var parseTests = []parseTest{
 	{"empty", "", tList()},
-	{"namespace", "{namespace soy.example}", tList(newNamespace(0, "soy.example"))},
+	{"namespace", "{namespace soy.example}", tList(&NamespaceNode{0, "soy.example", 0})},
 	{"empty template", "{template .name}{/template}", tList(tTemplate(".name"))},
 	{"text template", "{template .name}\nHello world!\n{/template}",
 		tList(tTemplate(".name", newText(0, "Hello world!")))},
