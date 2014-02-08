@@ -369,8 +369,7 @@ func TestPrintDirectives(t *testing.T) {
 		// |id == |noAutoescape (it's deprecated)
 		exprtest("id", "{'<a>'|id}", "<a>"),
 
-		// TODO: no way to disable html escaping yet.
-		// exprtest("escapeHtml", "{'<a>'|escapeHtml}", "&lt;a&gt;"),
+		exprtest("escapeHtml", "{'<a>'|escapeHtml}", "&lt;a&gt;"),
 
 		exprtest("escapeUri1", "{''|escapeUri}", ""),
 		exprtest("escapeUri2", "{'a%b > c'|escapeUri}", "a%25b+%3E+c"),
@@ -417,8 +416,6 @@ func TestInjectedData(t *testing.T) {
 		exprtest("ij", `{$ij.foo}`, `abc`),
 	})
 }
-
-// TODO: Test parsing globals file
 
 func TestAutoescapeModes(t *testing.T) {
 	runExecTests(t, []execTest{

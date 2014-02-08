@@ -82,13 +82,16 @@ func funcAugmentMap(v []data.Value) data.Value {
 	return result
 }
 
-// TODO: return a value of type data.Int if digitsAfterPt == 0
 func funcRound(v []data.Value) data.Value {
 	var digitsAfterPt = 0
 	if len(v) == 2 {
 		digitsAfterPt = int(v[1].(data.Int))
 	}
-	return data.Float(round(toFloat(v[0]), digitsAfterPt))
+	var result = round(toFloat(v[0]), digitsAfterPt)
+	if digitsAfterPt <= 0 {
+		return data.Int(result)
+	}
+	return data.Float(result)
 }
 
 func round(x float64, prec int) float64 {

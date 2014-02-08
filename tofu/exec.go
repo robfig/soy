@@ -286,7 +286,12 @@ func (s *state) evalPrint(node *parse.PrintNode) {
 		if !ok {
 			s.errorf("Print directive %q does not exist", directiveNode.Name)
 		}
-		// TODO: validate # args
+
+		if !checkNumArgs(directive.ValidArgLengths, len(directiveNode.Args)) {
+			s.errorf("Print directive %q called with %v args, expected one of: %v",
+				directiveNode.Name, len(directiveNode.Args), directive.ValidArgLengths)
+		}
+
 		var args []data.Value
 		for _, arg := range directiveNode.Args {
 			args = append(args, s.eval(arg))
@@ -367,18 +372,21 @@ func (s *state) renderBlock(node parse.Node) []byte {
 	return buf.Bytes()
 }
 
+func checkNumArgs(allowedNumArgs []int, numArgs int) bool {
+	for _, length := range allowedNumArgs {
+		if numArgs == length {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *state) evalFunc(node *parse.FunctionNode) data.Value {
 	if fn, ok := loopFuncs[node.Name]; ok {
 		return fn(s, node.Args[0].(*parse.DataRefNode).Key)
 	}
 	if fn, ok := Funcs[node.Name]; ok {
-		var valid = false
-		for _, length := range fn.ValidArgLengths {
-			if len(node.Args) == length {
-				valid = true
-			}
-		}
-		if !valid {
+		if !checkNumArgs(fn.ValidArgLengths, len(node.Args)) {
 			s.errorf("Function %q called with %v args, expected one of: %v",
 				node.Name, len(node.Args), fn.ValidArgLengths)
 		}
