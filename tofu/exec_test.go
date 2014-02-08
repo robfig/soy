@@ -411,6 +411,13 @@ func TestGlobals(t *testing.T) {
 	})
 }
 
+func TestInjectedData(t *testing.T) {
+	ij["foo"] = data.String("abc")
+	runExecTests(t, []execTest{
+		exprtest("ij", `{$ij.foo}`, `abc`),
+	})
+}
+
 // TODO: Test parsing globals file
 
 func TestAutoescapeModes(t *testing.T) {
@@ -612,6 +619,7 @@ Hello world
 // helpers
 
 var globals = make(data.Map)
+var ij = make(data.Map)
 
 func (t execTest) fails() execTest {
 	t.ok = false
@@ -702,7 +710,7 @@ func runNsExecTests(t *testing.T, tests []nsExecTest) {
 		if test.data != nil {
 			datamap = data.New(test.data).(data.Map)
 		}
-		err := tmpl.Render(b, datamap)
+		err := tmpl.InjectData(ij).Render(b, datamap)
 		switch {
 		case !test.ok && err == nil:
 			t.Errorf("%s: expected error; got none", test.name)

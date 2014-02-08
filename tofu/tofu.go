@@ -20,12 +20,19 @@ func (t Tofu) Template(name string) *Renderer {
 	if tmpl == nil {
 		return nil
 	}
-	return &Renderer{t, *tmpl}
+	return &Renderer{*tmpl, t, nil}
 }
 
 type Renderer struct {
-	tofu Tofu
 	template.Template
+	tofu Tofu
+	ij   data.Map
+}
+
+// InjectData sets the '$ij' data map that is injected into all templates.
+func (t *Renderer) InjectData(ij data.Map) *Renderer {
+	t.ij = ij
+	return t
 }
 
 // Render applies a parsed template to the specified data object,
@@ -36,7 +43,7 @@ func (t Renderer) Render(wr io.Writer, obj data.Map) (err error) {
 	}
 	var autoescapeMode = t.Template.Namespace.Autoescape
 	if autoescapeMode == parse.AutoescapeUnspecified {
-		autoescapeMode = parse.AutoescapeOn // TODO: Contextual
+		autoescapeMode = parse.AutoescapeOn
 	}
 	state := &state{
 		tmpl:       t.Template,
@@ -45,6 +52,7 @@ func (t Renderer) Render(wr io.Writer, obj data.Map) (err error) {
 		autoescape: autoescapeMode,
 		wr:         wr,
 		context:    scope{obj},
+		ij:         t.ij,
 	}
 	defer state.errRecover(&err)
 	state.walk(t.TemplateNode)

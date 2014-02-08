@@ -323,6 +323,31 @@ func TestCrossNamespace(t *testing.T) {
 	})
 }
 
+// Test: {let} variables are not named $ij
+func TestLetVariablesNotNamedIJ(t *testing.T) {
+	runSimpleCheckerTests(t, []simpleCheckerTest{
+		{`
+/** */
+{template .noCollideIJ}
+{let $ij}hello{/let}
+Hello {$ij}
+{/template}
+`, false},
+	})
+}
+
+// Test: $ij named variables are allowed without declaration
+func TestIJVarsAllowed(t *testing.T) {
+	runSimpleCheckerTests(t, []simpleCheckerTest{
+		{`
+/** */
+{template .IJAllowed}
+{$ij.foo}
+{/template}
+`, true},
+	})
+}
+
 func runSimpleCheckerTests(t *testing.T, tests []simpleCheckerTest) {
 	var result []checkerTest
 	for _, simpleTest := range tests {

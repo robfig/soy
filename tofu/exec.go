@@ -27,6 +27,7 @@ type state struct {
 	val        data.Value           // temp value for expression being computed
 	context    scope                // variable scope
 	autoescape parse.AutoescapeType // escaping mode
+	ij         data.Map             // injected data available to all templates.
 }
 
 // at marks the state to be on node n, for error reporting.
@@ -394,7 +395,15 @@ func (s *state) evalFunc(node *parse.FunctionNode) data.Value {
 
 func (s *state) evalDataRef(node *parse.DataRefNode) data.Value {
 	// get the initial value
-	var ref = s.context.lookup(node.Key)
+	var ref data.Value
+	if node.Key == "ij" {
+		if s.ij == nil {
+			s.errorf("Injected data not provided, yet referenced: %q", node.String())
+		}
+		ref = s.ij
+	} else {
+		ref = s.context.lookup(node.Key)
+	}
 	if len(node.Access) == 0 {
 		return ref
 	}

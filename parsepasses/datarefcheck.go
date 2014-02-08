@@ -8,12 +8,13 @@ import (
 )
 
 // CheckDataRefs validates that:
-//  1. all data references are provided by @param declarations or {let} nodes
+//  1. all data refs are provided by @params or {let} nodes (except $ij)
 //  2. any data declared as a @param is used by the template (or passed via {call})
 //  3. all {call} params are declared as @params in the called template soydoc.
 //  4. a {call}'ed template is passed all required @params, or a data="$var"
 //  5. {call}'d templates actually exist in the registry.
 //  6. any variable created by {let} is used somewhere
+//  7. {let} variable names are valid.  ('ij' is not allowed.)
 func CheckDataRefs(reg template.Registry) (err error) {
 	var currentTemplate string
 	defer func() {
@@ -56,8 +57,10 @@ func newTemplateChecker(reg template.Registry, params []*parse.SoyDocParamNode) 
 func (tc *templateChecker) checkTemplate(node parse.Node) {
 	switch node := node.(type) {
 	case *parse.LetValueNode:
+		tc.checkLet(node.Name)
 		tc.letVars = append(tc.letVars, node.Name)
 	case *parse.LetContentNode:
+		tc.checkLet(node.Name)
 		tc.letVars = append(tc.letVars, node.Name)
 	case *parse.CallNode:
 		tc.checkCall(node)
@@ -69,6 +72,13 @@ func (tc *templateChecker) checkTemplate(node parse.Node) {
 	}
 	if parent, ok := node.(parse.ParentNode); ok {
 		tc.recurse(parent)
+	}
+}
+
+// checkLet ensures that the let variable has an allowed name.
+func (tc *templateChecker) checkLet(varName string) {
+	if varName == "ij" {
+		panic("Invalid variable name in 'let' command text: '$ij'")
 	}
 }
 
@@ -181,6 +191,9 @@ func (tc *templateChecker) visitKey(key string) {
 
 // checkKey returns true if the given key exists as a param or {let} variable.
 func (tc *templateChecker) checkKey(key string) bool {
+	if key == "ij" {
+		return true
+	}
 	for _, param := range tc.params {
 		if param == key {
 			return true
