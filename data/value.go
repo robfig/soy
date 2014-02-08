@@ -41,13 +41,13 @@ type (
 
 // New converts the given data into a soy data value.
 func New(value interface{}) Value {
-	if value == nil || value == (Null{}) {
-		return Null{}
+	// quick return if we're passed an existing data.Value
+	if val, ok := value.(Value); ok {
+		return val
 	}
 
-	// quick return if we're passed an existing data.Map.
-	if value, ok := value.(Map); ok {
-		return value
+	if value == nil {
+		return Null{}
 	}
 
 	// drill through pointers and interfaces to the underlying type

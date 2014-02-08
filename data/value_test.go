@@ -51,7 +51,7 @@ func TestNew(t *testing.T) {
 			L  List
 			PI *int
 		}{Int(5), List{}, pInt(2)},
-			Map{"a": Int(5), "l": List(nil), "pI": Int(2)}},
+			Map{"a": Int(5), "l": List{}, "pI": Int(2)}},
 		{[]*struct {
 			PI *AInt
 		}{{nil}},
