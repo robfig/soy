@@ -110,3 +110,165 @@ func TestRound(t *testing.T) {
 		}
 	}
 }
+
+func TestFloor(t *testing.T) {
+	var tests = []struct {
+		input    interface{}
+		expected interface{}
+	}{
+		{0, 0},
+		{1, 1},
+		{1.1, 1},
+		{1.5, 1},
+		{1.99, 1},
+		{-1, -1},
+		{-1.1, -2},
+		{-1.9, -2},
+	}
+
+	for _, test := range tests {
+		var actual = funcFloor([]data.Value{data.New(test.input)})
+		if actual != data.New(test.expected) {
+			t.Errorf("floor(%v) => %v, expected %v", test.input, actual, test.expected)
+		}
+	}
+}
+
+func TestCeil(t *testing.T) {
+	var tests = []struct {
+		input    interface{}
+		expected interface{}
+	}{
+		{0, 0},
+		{1, 1},
+		{1.1, 2},
+		{1.5, 2},
+		{1.99, 2},
+		{-1, -1},
+		{-1.1, -1},
+		{-1.9, -1},
+	}
+
+	for _, test := range tests {
+		var actual = funcCeiling([]data.Value{data.New(test.input)})
+		if actual != data.New(test.expected) {
+			t.Errorf("ceiling(%v) => %v, expected %v", test.input, actual, test.expected)
+		}
+	}
+}
+
+func TestMin(t *testing.T) {
+	type i []interface{}
+	var tests = []struct {
+		input    []interface{}
+		expected interface{}
+	}{
+		{i{0, 0}, 0},
+		{i{1, 2}, 1},
+		{i{1.1, 2}, 1.1},
+		{i{-1.9, -1.8}, -1.9},
+	}
+
+	for _, test := range tests {
+		var actual = funcMin(data.New(test.input).(data.List))
+		if actual != data.New(test.expected) {
+			t.Errorf("min(%v) => %v, expected %v", test.input, actual, test.expected)
+		}
+	}
+}
+
+func TestMax(t *testing.T) {
+	type i []interface{}
+	var tests = []struct {
+		input    []interface{}
+		expected interface{}
+	}{
+		{i{0, 0}, 0},
+		{i{1, 2}, 2},
+		{i{1.1, 2}, 2.0}, // only returns int if both are ints.
+		{i{-1.9, -1.8}, -1.8},
+	}
+
+	for _, test := range tests {
+		var actual = funcMax(data.New(test.input).(data.List))
+		if actual != data.New(test.expected) {
+			t.Errorf("max(%v) => %v, expected %v", test.input, actual, test.expected)
+		}
+	}
+}
+
+func TestIsnonnull(t *testing.T) {
+	var tests = []struct {
+		input    data.Value
+		expected bool
+	}{
+		{data.Null{}, false},
+		{data.Undefined{}, false},
+		{data.Bool(false), true},
+		{data.Int(0), true},
+		{data.Float(0), true},
+		{data.String(""), true},
+		{data.List{}, true},
+		{data.Map{}, true},
+	}
+
+	for _, test := range tests {
+		var actual = funcIsNonnull([]data.Value{test.input}).(data.Bool)
+		if bool(actual) != test.expected {
+			t.Errorf("isNonnull(%v) => %v, expected %v", test.input, actual, test.expected)
+		}
+	}
+}
+
+func TestAugmentMap(t *testing.T) {
+	type m map[string]interface{}
+	var tests = []struct {
+		arg1, arg2 map[string]interface{}
+		expected   map[string]interface{}
+	}{
+		{m{}, m{}, m{}},
+		{m{"a": 0}, m{}, m{"a": 0}},
+		{m{}, m{"a": 0}, m{"a": 0}},
+		{m{"a": 0}, m{"a": 1}, m{"a": 1}},
+		{m{"a": 0}, m{"b": 1}, m{"a": 0, "b": 1}},
+	}
+
+	for _, test := range tests {
+		var actual = funcAugmentMap([]data.Value{data.New(test.arg1), data.New(test.arg2)}).(data.Map)
+
+		if len(actual) != len(test.expected) {
+			t.Errorf("augmentMap(%v, %v) => %v, expected %v",
+				test.arg1, test.arg2, actual, test.expected)
+		}
+		for k, v := range actual {
+			if v != data.New(test.expected[k]) {
+				t.Errorf("augmentMap(%v, %v) => %v, expected %v",
+					test.arg1, test.arg2, actual, test.expected)
+			}
+		}
+	}
+}
+
+func TestKeys(t *testing.T) {
+	type m map[string]interface{}
+	type i []interface{}
+	var tests = []struct {
+		input    map[string]interface{}
+		expected []interface{}
+	}{
+		{m{}, i{}},
+		{m{"a": 0}, i{"a"}},
+	}
+
+	for _, test := range tests {
+		var actual = funcKeys([]data.Value{data.New(test.input)}).(data.List)
+		if len(actual) != len(test.expected) {
+			t.Errorf("keys(%v) => %v, expected %v", test.input, actual, test.expected)
+		}
+		for i, v := range actual {
+			if v != data.New(test.expected[i]) {
+				t.Errorf("keys(%v) => %v, expected %v", test.input, actual, test.expected)
+			}
+		}
+	}
+}

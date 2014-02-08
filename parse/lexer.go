@@ -608,15 +608,19 @@ func lexInsideTag(l *lexer) stateFn {
 }
 
 func lexNegative(l *lexer) stateFn {
-	// is it a negative number?
-	if l.peek() >= '0' && l.peek() <= '9' {
-		l.backup()
-		return lexNumber
-	}
-
 	// is it unary or binary op?
 	// unary if it starts a group ('{' or '(') or an op came just before.
-	if l.lastEmit.typ.isOp() || l.lastEmit.typ == itemLeftDelim || l.lastEmit.typ == itemLeftParen {
+	var lastType = l.lastEmit.typ
+	if lastType.isOp() ||
+		lastType == itemLeftDelim ||
+		lastType == itemCase ||
+		lastType == itemComma ||
+		lastType == itemLeftParen {
+		// is it a negative number?
+		if l.peek() >= '0' && l.peek() <= '9' {
+			l.backup()
+			return lexNumber
+		}
 		l.emit(itemNegate)
 	} else {
 		l.emit(itemSub)

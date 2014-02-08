@@ -183,6 +183,11 @@ var parseTests = []parseTest{
 				&NullNode{0},
 				&BoolNode{0, true})})})}, nil})},
 
+	{"sub", `{1.0-0.5}`, tList(&PrintNode{0, &SubNode{bin(
+		&FloatNode{0, 1.0},
+		&FloatNode{0, 0.5},
+	)}, nil})},
+
 	{"function", `{hasData()}`, tList(&PrintNode{0, &FunctionNode{0, "hasData", nil}, nil})},
 
 	{"empty list", `{[]}`, tList(&PrintNode{0, &ListLiteralNode{0, nil}, nil})},
@@ -233,7 +238,7 @@ var parseTests = []parseTest{
 {switch $boo} {case 0}Blah
   {case $foo.goo}
     Bleh
-  {case -1, 1, $moo}
+  {case -1, 1+1, $moo}
     Bluh
   {default}
     Bloh
@@ -244,7 +249,7 @@ var parseTests = []parseTest{
 				tList(newText(0, "Bleh"))},
 			&SwitchCaseNode{0, []Node{
 				&IntNode{0, -1},
-				&IntNode{0, 1},
+				&AddNode{bin(&IntNode{0, 1}, &IntNode{0, 1})},
 				&DataRefNode{0, "moo", nil}}, tList(newText(0, "Bluh"))},
 			&SwitchCaseNode{0, nil, tList(newText(0, "Bloh"))},
 		}},

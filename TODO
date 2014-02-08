@@ -1,6 +1,5 @@
 Now:
-- TODO sweep
-- test coverage
+- flexible struct conversion into data.Value
 - content "kind": text, html, uri, js (code), js (str chars), html attributes
 - Contextual autoescape
 - {msg}

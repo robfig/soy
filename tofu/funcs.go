@@ -121,7 +121,7 @@ func funcCeiling(v []data.Value) data.Value {
 
 func funcMin(v []data.Value) data.Value {
 	if isInt(v[0]) && isInt(v[1]) {
-		if v[0].(data.Int) > v[1].(data.Int) {
+		if v[0].(data.Int) < v[1].(data.Int) {
 			return v[0]
 		}
 		return v[1]

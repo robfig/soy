@@ -313,13 +313,9 @@ func (s *state) evalPrint(node *parse.PrintNode) {
 
 func (s *state) evalCall(node *parse.CallNode) {
 	// get template node we're calling
-	var fqTemplateName = node.Name
-	if node.Name[0] == '.' {
-		fqTemplateName = s.namespace + node.Name
-	}
-	calledTmpl := s.registry.Template(fqTemplateName)
+	var calledTmpl = s.registry.Template(node.Name)
 	if calledTmpl == nil {
-		s.errorf("failed to find template: %s", fqTemplateName)
+		s.errorf("failed to find template: %s", node.Name)
 	}
 
 	// sort out the data to pass

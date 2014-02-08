@@ -73,6 +73,7 @@ func TestBasicExec(t *testing.T) {
 func TestExpressions(t *testing.T) {
 	runExecTests(t, []execTest{
 		exprtest("arithmetic", "{2*(1+1)/(2%4)}", "2"),
+		exprtest("arithmetic2", "{2.0-1.5}", "0.5"),
 		exprtest("bools", "{not false and (2 > 5.0 or (null ?: true))}", "true"),
 		exprtest("bools2", "{2*(1.5+1) < 3 ? 'nope' : (2 >= 2) == (5.5<6) != true }", "false"),
 		exprtest("bools3", "{null or 0.0 or ([:] and [])}", "true"), // map/list is truthy
@@ -88,6 +89,7 @@ func TestExpressions(t *testing.T) {
 		exprtest("elvis3", `{0?:'hello'}`, "0"),         // 0 is non-null
 		exprtest("elvis4", `{false?:'hello'}`, "false"), // false is non-null
 		exprtest("negate", `{-(1+1)}`, "-2"),
+		exprtest("negate float", `{-(1+1.5)}`, "-2.5"),
 
 		// short-circuiting
 		exprtest("shortcircuit precondition undef key fails", "{$undef.key}", "").fails(),
