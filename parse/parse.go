@@ -1120,9 +1120,14 @@ func (t *Tree) unexpected(token item, context string) {
 
 // errorf formats the error and terminates processing.
 func (t *Tree) errorf(format string, args ...interface{}) {
+	// get current token (taking account of backups)
+	var tok = t.token[0]
+	if t.peekCount > 0 {
+		tok = t.token[t.peekCount-1]
+	}
 	t.Root = nil
 	format = fmt.Sprintf("template %s:%d:%d: %s", t.Name,
-		t.lex.lineNumber(), t.lex.columnNumber(), format)
+		t.lex.lineNumber(tok.pos), t.lex.columnNumber(tok.pos), format)
 	panic(fmt.Errorf(format, args...))
 }
 

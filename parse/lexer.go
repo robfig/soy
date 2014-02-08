@@ -404,17 +404,17 @@ func (l *lexer) acceptRun(valid string) bool {
 
 // lineNumber reports which line we're on. Doing it this way
 // means we don't have to worry about peek double counting.
-func (l *lexer) lineNumber() int {
-	return 1 + strings.Count(l.input[:l.pos], "\n")
+func (l *lexer) lineNumber(pos Pos) int {
+	return 1 + strings.Count(l.input[:pos], "\n")
 }
 
 // columnNumber reports which column in the current line we're on.
-func (l *lexer) columnNumber() int {
-	n := strings.LastIndex(l.input[:l.pos], "\n")
+func (l *lexer) columnNumber(pos Pos) int {
+	n := strings.LastIndex(l.input[:pos], "\n")
 	if n == -1 {
 		n = 0
 	}
-	return int(l.pos) - n
+	return int(pos) - n
 }
 
 // errorf returns an error item and terminates the scan by passing

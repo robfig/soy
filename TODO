@@ -1,7 +1,6 @@
 Now:
 - content "kind": text, html, uri, js (code), js (str chars), html attributes
 - attributes for all the commands
-- Source location / error messages
 - TODO sweep
 - test coverage
 - Contextual autoescape
