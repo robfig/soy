@@ -379,10 +379,6 @@ var parseTests = []parseTest{
 	)},
 }
 
-var builtins = map[string]interface{}{
-	"printf": fmt.Sprintf,
-}
-
 var globals = data.Map{
 	"GLOBAL_STR": data.String("a"),
 	"app.GLOBAL": data.String("b"),
@@ -392,7 +388,7 @@ func TestParse(t *testing.T) {
 	textFormat = "%q"
 	defer func() { textFormat = "%s" }()
 	for _, test := range parseTests {
-		tmpl, err := New(test.name, globals).Parse(test.input, builtins)
+		tmpl, err := New(test.name, globals).Parse(test.input)
 
 		switch {
 		// case err == nil && !test.ok:
@@ -797,14 +793,14 @@ func TestRecognizeComments(t *testing.T) {
 }
 
 func works(t *testing.T, body string) {
-	_, err := New(body, nil).Parse(body, nil)
+	_, err := New(body, nil).Parse(body)
 	if err != nil {
 		t.Error(err)
 	}
 }
 
 func fails(t *testing.T, body string) {
-	_, err := New(body, nil).Parse(body, nil)
+	_, err := New(body, nil).Parse(body)
 	if err == nil {
 		t.Errorf("should fail: %s", body)
 	}

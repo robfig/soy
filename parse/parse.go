@@ -18,7 +18,6 @@ type Tree struct {
 	Text string    // the full text of the soy file
 
 	// Parsing only; cleared after parse.
-	funcs     []map[string]interface{}
 	lex       *lexer
 	token     [3]item // three-token lookahead for parser.
 	peekCount int
@@ -37,9 +36,9 @@ func New(name string, globals map[string]data.Value) *Tree {
 	}
 }
 
-func (t *Tree) Parse(text string, funcs ...map[string]interface{}) (tree *Tree, err error) {
+func (t *Tree) Parse(text string) (tree *Tree, err error) {
 	defer t.recover(&err)
-	t.startParse(funcs, lex(t.Name, text))
+	t.startParse(lex(t.Name, text))
 	t.Text = text
 	t.parse()
 	t.stopParse()
@@ -675,8 +674,7 @@ func (t *Tree) boolAttr(attrs map[string]string, key string, defaultValue bool) 
 // string as a standalone expression.
 func (t *Tree) parseQuotedExpr(str string) Node {
 	return (&Tree{
-		lex:   lexExpr("", str),
-		funcs: t.funcs,
+		lex: lexExpr("", str),
 	}).parseExpr(0)
 }
 
@@ -967,7 +965,7 @@ func (t *Tree) newValueNode(tok item) Node {
 		}
 		return &IntNode{tok.pos, value}
 	case itemFloat:
-		// todo: support scientific notation e.g. 6.02e23
+		// TODO: support scientific notation e.g. 6.02e23
 		value, err := strconv.ParseFloat(tok.val, 64)
 		if err != nil {
 			t.error(err)
@@ -1031,16 +1029,14 @@ func (t *Tree) newFunctionNode(tok item) Node {
 // Helpers ----------
 
 // startParse initializes the parser, using the lexer.
-func (t *Tree) startParse(funcs []map[string]interface{}, lex *lexer) {
+func (t *Tree) startParse(lex *lexer) {
 	t.Root = nil
 	t.lex = lex
-	t.funcs = funcs
 }
 
 // stopParse terminates parsing.
 func (t *Tree) stopParse() {
 	t.lex = nil
-	t.funcs = nil
 }
 
 // next returns the next token.

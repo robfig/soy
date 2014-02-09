@@ -15,9 +15,7 @@ import (
 // Logger collects output from {log} commands.
 var Logger *log.Logger
 
-// state represents the state of an execution. It's not part of the
-// template so that multiple executions of the same template
-// can execute in parallel.
+// state represents the state of an execution.
 type state struct {
 	namespace  string
 	tmpl       soyt.Template
