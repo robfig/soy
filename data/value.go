@@ -1,13 +1,10 @@
 package data
 
 import (
-	"fmt"
 	"math"
 	"reflect"
 	"strconv"
 	"strings"
-	"unicode"
-	"unicode/utf8"
 )
 
 // Value represents a Soy data value, which may be one of the enumerated types.
@@ -38,70 +35,6 @@ type (
 	List      []Value
 	Map       map[string]Value
 )
-
-// New converts the given data into a soy data value.
-func New(value interface{}) Value {
-	// quick return if we're passed an existing data.Value
-	if val, ok := value.(Value); ok {
-		return val
-	}
-
-	if value == nil {
-		return Null{}
-	}
-
-	// drill through pointers and interfaces to the underlying type
-	var v = reflect.ValueOf(value)
-	for v.Kind() == reflect.Interface || v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
-	if !v.IsValid() {
-		return Null{}
-	}
-
-	switch v.Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return Int(v.Int())
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return Int(v.Uint())
-	case reflect.Float32, reflect.Float64:
-		return Float(v.Float())
-	case reflect.Bool:
-		return Bool(v.Bool())
-	case reflect.String:
-		return String(v.String())
-	case reflect.Slice:
-		var slice []Value
-		for i := 0; i < v.Len(); i++ {
-			slice = append(slice, New(v.Index(i).Interface()))
-		}
-		return List(slice)
-	case reflect.Map:
-		var m = make(map[string]Value)
-		for _, key := range v.MapKeys() {
-			if key.Kind() != reflect.String {
-				panic("map keys must be strings")
-			}
-			m[key.String()] = New(v.MapIndex(key).Interface())
-		}
-		return Map(m)
-	case reflect.Struct:
-		var m = make(map[string]Value)
-		var valType = v.Type()
-		for i := 0; i < valType.NumField(); i++ {
-			if !v.Field(i).CanInterface() {
-				continue
-			}
-			var fieldName = valType.Field(i).Name
-			var firstRune, size = utf8.DecodeRuneInString(fieldName)
-			var key = string(unicode.ToLower(firstRune)) + fieldName[size:]
-			m[key] = New(v.Field(i).Interface())
-		}
-		return Map(m)
-	default:
-		panic(fmt.Errorf("unexpected data type: %T (%v)", value, value))
-	}
-}
 
 // Index retrieves a value from this list, or Undefined if out of bounds.
 func (v List) Index(i int) Value {

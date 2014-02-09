@@ -17,55 +17,6 @@ var (
 	_ Value = Map{}
 )
 
-type AInt struct{ A int }
-
-func TestNew(t *testing.T) {
-	tests := []struct{ input, expected interface{} }{
-		// basic types
-		{nil, Null{}},
-		{true, Bool(true)},
-		{int(0), Int(0)},
-		{int64(0), Int(0)},
-		{uint32(0), Int(0)},
-		{float32(0), Float(0)},
-		{"", String("")},
-		{[]string{"a"}, List{String("a")}},
-		{[]interface{}{"a"}, List{String("a")}},
-		{map[string]string{}, Map{}},
-		{map[string]string{"a": "b"}, Map{"a": String("b")}},
-		{map[string]interface{}{"a": nil}, Map{"a": Null{}}},
-		{map[string]interface{}{"a": []int{1}}, Map{"a": List{Int(1)}}},
-
-		// type aliases
-		{[]Int{5}, List{Int(5)}},
-		{map[string]Value{"a": List{Int(1)}}, Map{"a": List{Int(1)}}},
-		{Map{"foo": Null{}}, Map{"foo": Null{}}},
-
-		// pointers
-		{pInt(5), Int(5)},
-
-		// structs with all of the above
-		// also, structs have their fields lower cased
-		{struct {
-			A  Int
-			L  List
-			PI *int
-		}{Int(5), List{}, pInt(2)},
-			Map{"a": Int(5), "l": List{}, "pI": Int(2)}},
-		{[]*struct {
-			PI *AInt
-		}{{nil}},
-			List{Map{"pI": Null{}}}},
-	}
-
-	for _, test := range tests {
-		output := New(test.input)
-		if !reflect.DeepEqual(test.expected, output) {
-			t.Errorf("%v => %#v, expected %#v", test.input, output, test.expected)
-		}
-	}
-}
-
 func TestKey(t *testing.T) {
 	tests := []struct {
 		input    interface{}
@@ -100,8 +51,4 @@ func TestIndex(t *testing.T) {
 			t.Errorf("%v => %#v, expected %#v", test.input, actual, test.expected)
 		}
 	}
-}
-
-func pInt(i int) *int {
-	return &i
 }
