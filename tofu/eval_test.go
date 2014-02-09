@@ -18,13 +18,13 @@ func TestEvalExpr(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		var tree, err = parse.New("", nil).Parse("{" + test.input + "}")
+		var tree, err = parse.Soy("", "{"+test.input+"}", nil)
 		if err != nil {
 			t.Error(err)
 			return
 		}
 
-		actual, err := EvalExpr(tree.Root)
+		actual, err := EvalExpr(tree)
 		if err != nil {
 			t.Error(err)
 			continue

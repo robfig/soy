@@ -10,7 +10,7 @@ import (
 
 // Registry provides convenient access to a collection of parsed Soy templates.
 type Registry struct {
-	SoyFiles  []*parse.Tree
+	SoyFiles  []*parse.SoyFileNode
 	Templates []Template
 
 	// sourceByTemplateName maps FQ template name to the input source it came from.
@@ -19,12 +19,12 @@ type Registry struct {
 
 // Add the given list node (representing a soy file) to the registry.
 // Every soyfile must begin with a {namespace} (except for leading SoyDoc)
-func (r *Registry) Add(soyfile *parse.Tree) error {
+func (r *Registry) Add(soyfile *parse.SoyFileNode) error {
 	if r.sourceByTemplateName == nil {
 		r.sourceByTemplateName = make(map[string]string)
 	}
 	var ns *parse.NamespaceNode
-	for _, node := range soyfile.Root.Nodes {
+	for _, node := range soyfile.Body {
 		switch node := node.(type) {
 		case *parse.SoyDocNode:
 			continue
@@ -37,8 +37,8 @@ func (r *Registry) Add(soyfile *parse.Tree) error {
 	}
 
 	r.SoyFiles = append(r.SoyFiles, soyfile)
-	for i := 0; i < len(soyfile.Root.Nodes); i++ {
-		var tn, ok = soyfile.Root.Nodes[i].(*parse.TemplateNode)
+	for i := 0; i < len(soyfile.Body); i++ {
+		var tn, ok = soyfile.Body[i].(*parse.TemplateNode)
 		if !ok {
 			continue
 		}
@@ -47,7 +47,7 @@ func (r *Registry) Add(soyfile *parse.Tree) error {
 		// soydoc just to get a template to compile is just stupid.  (There is a
 		// separate data ref check to ensure any variables used are declared as
 		// params, anyway).
-		sdn, ok := soyfile.Root.Nodes[i-1].(*parse.SoyDocNode)
+		sdn, ok := soyfile.Body[i-1].(*parse.SoyDocNode)
 		if !ok {
 			sdn = &parse.SoyDocNode{tn.Pos, nil}
 		}

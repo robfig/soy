@@ -28,6 +28,29 @@ type ParentNode interface {
 	Children() []Node
 }
 
+// SoyFileNode represents a soy file.
+type SoyFileNode struct {
+	Name string
+	Text string
+	Body []Node
+}
+
+func (n SoyFileNode) Position() Pos {
+	return 0
+}
+
+func (n SoyFileNode) Children() []Node {
+	return n.Body
+}
+
+func (n SoyFileNode) String() string {
+	var b bytes.Buffer
+	for _, n := range n.Body {
+		fmt.Fprint(&b, n)
+	}
+	return b.String()
+}
+
 // ListNode holds a sequence of nodes.
 type ListNode struct {
 	Pos

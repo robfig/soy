@@ -11,50 +11,43 @@ import (
 	"github.com/robfig/soy/data"
 )
 
-// Tree is the parsed representation of a single soy file.
-type Tree struct {
-	Name string
-	Root *ListNode // top-level root of the tree.
-	Text string    // the full text of the soy file
-
-	// Parsing only; cleared after parse.
-	lex       *lexer
-	token     [3]item // three-token lookahead for parser.
-	peekCount int
-	namespace string                // the namespace found in the soy file being parsed.
+// tree is the parsed representation of a single soy file.
+type tree struct {
+	name      string                // name provided for the input
+	root      *ListNode             // top-level root of the tree
+	text      string                // the full input text
+	lex       *lexer                // lexer provides a sequence of tokens
+	token     [2]item               // two-token lookahead
+	peekCount int                   // how many tokens have we backed up?
+	namespace string                // the current namespace, for fully-qualifying template.
 	aliases   map[string]string     // map from alias to namespace e.g. {"c": "a.b.c"}
 	globals   map[string]data.Value // global (compile-time constants) values by name
 }
 
-// New allocates a new parse tree with the given name.
-// Any globals used in the soy files must be provided ahead of time.
-func New(name string, globals map[string]data.Value) *Tree {
-	return &Tree{
-		Name:    name,
+// Soy parses the input into a SoyFileNode (the AST).
+// The result may be used as input to a soy backend to generate HTML or JS.
+func Soy(name, text string, globals data.Map) (node *SoyFileNode, err error) {
+	var t = &tree{
+		name:    name,
+		text:    text,
 		aliases: make(map[string]string),
 		globals: globals,
+		lex:     lex(name, text),
 	}
-}
-
-func (t *Tree) Parse(text string) (tree *Tree, err error) {
 	defer t.recover(&err)
-	t.startParse(lex(t.Name, text))
-	t.Text = text
-	t.parse()
-	t.stopParse()
-	return t, nil
-}
-
-// parse parses the soy template.
-// At the top level, only Namespace, SoyDoc, and Template nodes are allowed
-func (t *Tree) parse() {
-	t.Root = t.itemList(itemEOF)
+	t.root = t.itemList(itemEOF)
+	t.lex = nil
+	return &SoyFileNode{
+		Name: t.name,
+		Text: t.text,
+		Body: t.root.Nodes,
+	}, nil
 }
 
 // itemList:
 //	textOrTag*
 // Terminates when it comes across the given end tag.
-func (t *Tree) itemList(until ...itemType) *ListNode {
+func (t *tree) itemList(until ...itemType) *ListNode {
 	var list *ListNode
 	for {
 		var token = t.next()
@@ -72,7 +65,7 @@ func (t *Tree) itemList(until ...itemType) *ListNode {
 }
 
 // textOrTag reads raw text or recognizes the start of tags until the end tag.
-func (t *Tree) textOrTag(token item, until []itemType) (node Node, halt bool) {
+func (t *tree) textOrTag(token item, until []itemType) (node Node, halt bool) {
 	var seenComment = token.typ == itemComment
 	for token.typ == itemComment {
 		token = t.next() // skip any comments
@@ -131,7 +124,7 @@ var specialChars = map[itemType]string{
 // beginTag parses the contents of delimiters (within a template)
 // The contents could be a command, variable, function call, expression, etc.
 // { already read.
-func (t *Tree) beginTag() Node {
+func (t *tree) beginTag() Node {
 	switch token := t.next(); token.typ {
 	case itemNamespace:
 		return t.parseNamespace(token)
@@ -186,7 +179,7 @@ func (t *Tree) beginTag() Node {
 }
 
 // print has just been read (or inferred)
-func (t *Tree) parsePrint(token item) Node {
+func (t *tree) parsePrint(token item) Node {
 	var expr = t.parseExpr(0)
 	var directives []*PrintDirectiveNode
 	for {
@@ -214,10 +207,10 @@ func (t *Tree) parsePrint(token item) Node {
 	}
 }
 
-// parseAlias updates the Tree with the given alias.
+// parseAlias updates the tree with the given alias.
 // Aliases are applied at immediately (at parse time) to new nodes.
 // "alias" has just been read.
-func (t *Tree) parseAlias(token item) {
+func (t *tree) parseAlias(token item) {
 	var name = t.expect(itemIdent, "alias").val
 	var lastSegment = name
 	for {
@@ -235,7 +228,7 @@ func (t *Tree) parseAlias(token item) {
 }
 
 // "let" has just been read.
-func (t *Tree) parseLet(token item) Node {
+func (t *tree) parseLet(token item) Node {
 	var name = t.expect(itemDollarIdent, "let")
 	switch next := t.next(); next.typ {
 	case itemColon:
@@ -253,7 +246,7 @@ func (t *Tree) parseLet(token item) Node {
 }
 
 // "css" has just been read.
-func (t *Tree) parseCss(token item) Node {
+func (t *tree) parseCss(token item) Node {
 	var cmdText = t.expect(itemText, "css")
 	t.expect(itemRightDelim, "css")
 	var lastComma = strings.LastIndex(cmdText.val, ",")
@@ -269,7 +262,7 @@ func (t *Tree) parseCss(token item) Node {
 }
 
 // "call" has just been read.
-func (t *Tree) parseCall(token item) Node {
+func (t *tree) parseCall(token item) Node {
 	var templateName string
 	switch tok := t.next(); tok.typ {
 	case itemDotIdent:
@@ -339,7 +332,7 @@ func (t *Tree) parseCall(token item) Node {
 // {param key="a" value="'expr'"/}
 // {param key="a"}expr{/param}
 // The closing delimiter of the {call} has just been read.
-func (t *Tree) parseCallParams() []Node {
+func (t *tree) parseCallParams() []Node {
 	var params []Node
 	for {
 		var (
@@ -416,7 +409,7 @@ func (t *Tree) parseCallParams() []Node {
 }
 
 // "switch" has just been read.
-func (t *Tree) parseSwitch(token item) Node {
+func (t *tree) parseSwitch(token item) Node {
 	const ctx = "switch"
 	var switchValue = t.parseExpr(0)
 	t.expect(itemRightDelim, ctx)
@@ -440,7 +433,7 @@ func (t *Tree) parseSwitch(token item) Node {
 }
 
 // "case" has just been read.
-func (t *Tree) parseCase(token item) *SwitchCaseNode {
+func (t *tree) parseCase(token item) *SwitchCaseNode {
 	var values []Node
 	for {
 		if token.typ != itemDefault {
@@ -460,7 +453,7 @@ func (t *Tree) parseCase(token item) *SwitchCaseNode {
 }
 
 // "for" or "foreach" has just been read.
-func (t *Tree) parseFor(token item) Node {
+func (t *tree) parseFor(token item) Node {
 	var ctx = token.val
 	// for and foreach have the same syntax, differing only in the requirement they impose:
 	// - for requires the collection to be a function call to "range"
@@ -498,7 +491,7 @@ func (t *Tree) parseFor(token item) Node {
 }
 
 // "if" has just been read.
-func (t *Tree) parseIf(token item) Node {
+func (t *tree) parseIf(token item) Node {
 	var conds []*IfCondNode
 	var isElse = false
 	for {
@@ -522,8 +515,7 @@ func (t *Tree) parseIf(token item) Node {
 	}
 }
 
-func (t *Tree) parseSoyDoc(token item) Node {
-	const ctx = "soydoc"
+func (t *tree) parseSoyDoc(token item) Node {
 	var params []*SoyDocParamNode
 	for {
 		var optional = false
@@ -553,7 +545,7 @@ func inStringSlice(item string, group []string) bool {
 	return false
 }
 
-func (t *Tree) parseAttrs(allowedNames ...string) map[string]string {
+func (t *tree) parseAttrs(allowedNames ...string) map[string]string {
 	var result = make(map[string]string)
 	for {
 		switch tok := t.next(); tok.typ {
@@ -578,7 +570,7 @@ func (t *Tree) parseAttrs(allowedNames ...string) map[string]string {
 }
 
 // "msg" has just been read.
-func (t *Tree) parseMsg(token item) Node {
+func (t *tree) parseMsg(token item) Node {
 	const ctx = "msg"
 	var attrs = t.parseAttrs("desc", "meaning", "hidden")
 	if _, ok := attrs["desc"]; !ok {
@@ -590,7 +582,7 @@ func (t *Tree) parseMsg(token item) Node {
 	return node
 }
 
-func (t *Tree) parseNamespace(token item) Node {
+func (t *tree) parseNamespace(token item) Node {
 	if t.namespace != "" {
 		t.errorf("file may have only one namespace declaration")
 	}
@@ -603,7 +595,7 @@ func (t *Tree) parseNamespace(token item) Node {
 		default:
 			t.backup()
 			var autoescape = t.parseAutoescape(t.parseAttrs("autoescape"))
-			t.expect(itemRightDelim, "namespace")
+			t.expect(itemRightDelim, ctx)
 			t.namespace = name
 			return &NamespaceNode{token.pos, name, autoescape}
 		}
@@ -612,7 +604,7 @@ func (t *Tree) parseNamespace(token item) Node {
 
 // parseAutoescape returns the specified autoescape selection, or
 // AutoescapeContextual by default.
-func (t *Tree) parseAutoescape(attrs map[string]string) AutoescapeType {
+func (t *tree) parseAutoescape(attrs map[string]string) AutoescapeType {
 	switch val := attrs["autoescape"]; val {
 	case "":
 		return AutoescapeUnspecified
@@ -628,7 +620,7 @@ func (t *Tree) parseAutoescape(attrs map[string]string) AutoescapeType {
 	panic("unreachable")
 }
 
-func (t *Tree) parseTemplate(token item) Node {
+func (t *tree) parseTemplate(token item) Node {
 	const ctx = "template tag"
 	var id = t.expect(itemDotIdent, ctx)
 	var attrs = t.parseAttrs("autoescape", "private")
@@ -649,14 +641,14 @@ func (t *Tree) parseTemplate(token item) Node {
 // Expressions ----------
 
 func ParseExpr(str string) (node Node, err error) {
-	var t = &Tree{lex: lexExpr("", str)}
+	var t = &tree{lex: lexExpr("", str)}
 	defer t.recover(&err)
 	node = t.parseExpr(0)
 	return
 }
 
 // boolAttr returns a boolean value from the given attribute map.
-func (t *Tree) boolAttr(attrs map[string]string, key string, defaultValue bool) bool {
+func (t *tree) boolAttr(attrs map[string]string, key string, defaultValue bool) bool {
 	switch str, ok := attrs[key]; {
 	case !ok:
 		return defaultValue
@@ -672,8 +664,8 @@ func (t *Tree) boolAttr(attrs map[string]string, key string, defaultValue bool) 
 
 // parseQuotedExpr ignores the current lex/parse state and parses the given
 // string as a standalone expression.
-func (t *Tree) parseQuotedExpr(str string) Node {
-	return (&Tree{
+func (t *tree) parseQuotedExpr(str string) Node {
+	return (&tree{
 		lex: lexExpr("", str),
 	}).parseExpr(0)
 }
@@ -702,7 +694,7 @@ var precedence = map[itemType]int{
 //
 // For handling binary operators, we use the Precedence Climbing algorithm described in:
 //   http://www.engr.mun.ca/~theo/Misc/exp_parsing.htm
-func (t *Tree) parseExpr(prec int) Node {
+func (t *tree) parseExpr(prec int) Node {
 	n := t.parseExprFirstTerm()
 	var tok item
 	for {
@@ -724,7 +716,7 @@ func (t *Tree) parseExpr(prec int) Node {
 // Primary ->   "(" Expr ")"
 //            | u=UnaryOp PrecExpr(prec(u))
 //            | FunctionCall | DataRef | Global | ListLiteral | MapLiteral | Primitive
-func (t *Tree) parseExprFirstTerm() Node {
+func (t *tree) parseExprFirstTerm() Node {
 	switch tok := t.next(); {
 	case isUnaryOp(tok):
 		return newUnaryOpNode(tok, t.parseExpr(precedence[tok.typ]))
@@ -744,7 +736,7 @@ func (t *Tree) parseExprFirstTerm() Node {
 //             (   DotIdent | QuestionDotIdent | DotIndex | QuestionDotIndex
 //               | "[" Expr "]" | "?[" Expr "]" )*
 // TODO: Injected data
-func (t *Tree) parseDataRef(tok item) Node {
+func (t *tree) parseDataRef(tok item) Node {
 	var ref = &DataRefNode{tok.pos, tok.val[1:], nil}
 	for {
 		var accessNode Node
@@ -779,7 +771,7 @@ func (t *Tree) parseDataRef(tok item) Node {
 }
 
 // "[" has just been read
-func (t *Tree) parseListOrMap(token item) Node {
+func (t *tree) parseListOrMap(token item) Node {
 	// check if it's empty
 	switch t.next().typ {
 	case itemColon:
@@ -808,7 +800,7 @@ func (t *Tree) parseListOrMap(token item) Node {
 // the first item in the list is provided.
 // "," has just been read.
 //  ListLiteral -> "[" [ Expr ( "," Expr )* [ "," ] ] "]"
-func (t *Tree) parseListLiteral(first item, expr Node) Node {
+func (t *tree) parseListLiteral(first item, expr Node) Node {
 	var items []Node
 	items = append(items, expr)
 	for {
@@ -826,7 +818,7 @@ func (t *Tree) parseListLiteral(first item, expr Node) Node {
 // the first key in the map is provided
 // ":" has just been read.
 // MapLiteral -> "[" ( ":" | Expr ":" Expr ( "," Expr ":" Expr )* [ "," ] ) "]"
-func (t *Tree) parseMapLiteral(first item, expr Node) Node {
+func (t *tree) parseMapLiteral(first item, expr Node) Node {
 	firstKey, ok := expr.(*StringNode)
 	if !ok {
 		t.errorf("expected a string as map key, got: %T", expr)
@@ -855,7 +847,7 @@ func (t *Tree) parseMapLiteral(first item, expr Node) Node {
 
 // parseTernary parses the ternary operator within an expression.
 // itemTernIf has already been read, and the condition is provided.
-func (t *Tree) parseTernary(cond Node) Node {
+func (t *tree) parseTernary(cond Node) Node {
 	n1 := t.parseExpr(0)
 	t.expect(itemColon, "ternary")
 	n2 := t.parseExpr(0)
@@ -948,7 +940,7 @@ func newUnaryOpNode(t item, n1 Node) Node {
 	panic("unreachable")
 }
 
-func (t *Tree) newValueNode(tok item) Node {
+func (t *tree) newValueNode(tok item) Node {
 	switch tok.typ {
 	case itemNull:
 		return &NullNode{tok.pos}
@@ -991,7 +983,7 @@ func (t *Tree) newValueNode(tok item) Node {
 	panic("unreachable")
 }
 
-func (t *Tree) newGlobalNode(tok, next item) Node {
+func (t *tree) newGlobalNode(tok, next item) Node {
 	var name = tok.val
 	for next.typ == itemDotIdent {
 		name += next.val
@@ -1005,7 +997,7 @@ func (t *Tree) newGlobalNode(tok, next item) Node {
 	return nil
 }
 
-func (t *Tree) newFunctionNode(tok item) Node {
+func (t *tree) newFunctionNode(tok item) Node {
 	node := &FunctionNode{tok.pos, tok.val, nil}
 	if t.peek().typ == itemRightParen {
 		t.next()
@@ -1028,19 +1020,8 @@ func (t *Tree) newFunctionNode(tok item) Node {
 
 // Helpers ----------
 
-// startParse initializes the parser, using the lexer.
-func (t *Tree) startParse(lex *lexer) {
-	t.Root = nil
-	t.lex = lex
-}
-
-// stopParse terminates parsing.
-func (t *Tree) stopParse() {
-	t.lex = nil
-}
-
 // next returns the next token.
-func (t *Tree) next() item {
+func (t *tree) next() item {
 	if t.peekCount > 0 {
 		t.peekCount--
 	} else {
@@ -1049,7 +1030,7 @@ func (t *Tree) next() item {
 	return t.token[t.peekCount]
 }
 
-func (t *Tree) nextNonComment() item {
+func (t *tree) nextNonComment() item {
 	for {
 		if tok := t.next(); tok.typ != itemComment {
 			return tok
@@ -1058,27 +1039,19 @@ func (t *Tree) nextNonComment() item {
 }
 
 // backup backs the input stream up one token.
-func (t *Tree) backup() {
+func (t *tree) backup() {
 	t.peekCount++
 }
 
 // backup2 backs the input stream up two tokens.
 // The zeroth token is already there.
-func (t *Tree) backup2(t1 item) {
+func (t *tree) backup2(t1 item) {
 	t.token[1] = t1
 	t.peekCount = 2
 }
 
-// backup3 backs the input stream up three tokens
-// The zeroth token is already there.
-func (t *Tree) backup3(t2, t1 item) { // Reverse order: we're pushing back.
-	t.token[1] = t1
-	t.token[2] = t2
-	t.peekCount = 3
-}
-
 // peek returns but does not consume the next token.
-func (t *Tree) peek() item {
+func (t *tree) peek() item {
 	if t.peekCount > 0 {
 		return t.token[t.peekCount-1]
 	}
@@ -1088,26 +1061,24 @@ func (t *Tree) peek() item {
 }
 
 // recover is the handler that turns panics into returns from the top level of Parse.
-func (t *Tree) recover(errp *error) {
+func (t *tree) recover(errp *error) {
 	e := recover()
-	if e != nil {
-		if _, ok := e.(runtime.Error); ok {
-			panic(e)
-		}
-		if t != nil {
-			t.stopParse()
-		}
-		if str, ok := e.(string); ok {
-			*errp = errors.New(str)
-			return
-		}
+	if e == nil {
+		return
+	}
+	if _, ok := e.(runtime.Error); ok {
+		panic(e)
+	}
+	t.lex = nil
+	if str, ok := e.(string); ok {
+		*errp = errors.New(str)
+	} else {
 		*errp = e.(error)
 	}
-	return
 }
 
 // expect consumes the next token and guarantees it has the required type.
-func (t *Tree) expect(expected itemType, context string) item {
+func (t *tree) expect(expected itemType, context string) item {
 	token := t.next()
 	if token.typ != expected {
 		t.unexpected(token, fmt.Sprintf("%v (expected %v)", context, expected.String()))
@@ -1116,7 +1087,7 @@ func (t *Tree) expect(expected itemType, context string) item {
 }
 
 // unexpected complains about the token and terminates processing.
-func (t *Tree) unexpected(token item, context string) {
+func (t *tree) unexpected(token item, context string) {
 	if token.typ == itemError {
 		t.errorf("lexical error: %v", token)
 	}
@@ -1124,20 +1095,20 @@ func (t *Tree) unexpected(token item, context string) {
 }
 
 // errorf formats the error and terminates processing.
-func (t *Tree) errorf(format string, args ...interface{}) {
+func (t *tree) errorf(format string, args ...interface{}) {
 	// get current token (taking account of backups)
 	var tok = t.token[0]
 	if t.peekCount > 0 {
 		tok = t.token[t.peekCount-1]
 	}
-	t.Root = nil
-	format = fmt.Sprintf("template %s:%d:%d: %s", t.Name,
+	t.root = nil
+	format = fmt.Sprintf("template %s:%d:%d: %s", t.name,
 		t.lex.lineNumber(tok.pos), t.lex.columnNumber(tok.pos), format)
 	panic(fmt.Errorf(format, args...))
 }
 
 // error terminates processing.
-func (t *Tree) error(err error) {
+func (t *tree) error(err error) {
 	t.errorf("%s", err)
 }
 

@@ -690,7 +690,7 @@ func runNsExecTests(t *testing.T, tests []nsExecTest) {
 	for _, test := range tests {
 		var registry = template.Registry{}
 		for _, input := range test.input {
-			var tree, err = parse.New("", globals).Parse(input)
+			var tree, err = parse.Soy("", input, globals)
 			if err != nil {
 				t.Errorf("%s: parse error: %s", test.name, err)
 				continue

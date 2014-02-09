@@ -1,9 +1,8 @@
-Now:
+- js code generation
 - content "kind": text, html, uri, js (code), js (str chars), html attributes
 - Contextual autoescape
 - {msg}
 - Delegates (delpackage, delcall, deltemplate)
-- js code generation
 - parsepasses (optimizations) (Simplify, CombineConsecutiveRawText, Prerender)
 - Bidi
 - use xliff message bundles

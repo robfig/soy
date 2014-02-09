@@ -55,6 +55,10 @@ func (s *state) walk(node parse.Node) {
 	s.val = data.Undefined{}
 	s.at(node)
 	switch node := node.(type) {
+	case *parse.SoyFileNode:
+		for _, node := range node.Body {
+			s.walk(node)
+		}
 	case *parse.TemplateNode:
 		if node.Autoescape != parse.AutoescapeUnspecified {
 			s.autoescape = node.Autoescape

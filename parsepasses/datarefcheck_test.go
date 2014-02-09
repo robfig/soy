@@ -363,11 +363,11 @@ func runCheckerTests(t *testing.T, tests []checkerTest) {
 	for _, test := range tests {
 		var (
 			reg  template.Registry
-			tree *parse.Tree
+			tree *parse.SoyFileNode
 			err  error
 		)
 		for _, body := range test.body {
-			tree, err = parse.New("", nil).Parse(body)
+			tree, err = parse.Soy("", body, nil)
 			if err != nil {
 				t.Error(err)
 				continue
