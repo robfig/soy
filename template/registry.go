@@ -17,7 +17,7 @@ type Registry struct {
 	sourceByTemplateName map[string]string
 }
 
-// Add the given list node (representing a soy file) to the registry.
+// Add the given soy file node to the registry.
 // Every soyfile must begin with a {namespace} (except for leading SoyDoc)
 func (r *Registry) Add(soyfile *parse.SoyFileNode) error {
 	if r.sourceByTemplateName == nil {

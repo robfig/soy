@@ -179,8 +179,8 @@ func BenchmarkLexParseFeatures(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		var _, err = NewBundle().
 			AddGlobalsFile("testdata/FeaturesUsage_globals.txt").
-			AddTemplateString(features, "").
-			AddTemplateString(simple, "").
+			AddTemplateString("", features).
+			AddTemplateString("", simple).
 			CompileToTofu()
 		if err != nil {
 			b.Error(err)
@@ -195,8 +195,8 @@ func BenchmarkExecuteFeatures(b *testing.B) {
 	)
 	var tofu, err = NewBundle().
 		AddGlobalsFile("testdata/FeaturesUsage_globals.txt").
-		AddTemplateString(features, "").
-		AddTemplateString(simple, "").
+		AddTemplateString("", features).
+		AddTemplateString("", simple).
 		CompileToTofu()
 	if err != nil {
 		panic(err)
@@ -226,7 +226,7 @@ func runFeatureTests(t *testing.T, tests []featureTest) {
 	var features = mustReadFile("testdata/features.soy")
 	var tofu, err = NewBundle().
 		AddGlobalsFile("testdata/FeaturesUsage_globals.txt").
-		AddTemplateString(features, "").
+		AddTemplateString("", features).
 		AddTemplateFile("testdata/simple.soy").
 		CompileToTofu()
 	if err != nil {

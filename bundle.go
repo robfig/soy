@@ -14,7 +14,7 @@ import (
 	"github.com/robfig/soy/tofu"
 )
 
-type soyFile struct{ content, name string }
+type soyFile struct{ name, content string }
 
 // Bundle is a collection of soy content (templates and globals).  It acts as
 // input for the soy parser.
@@ -54,11 +54,11 @@ func (b *Bundle) AddTemplateFile(filename string) *Bundle {
 	if err != nil {
 		b.err = err
 	}
-	return b.AddTemplateString(string(content), filename)
+	return b.AddTemplateString(filename, string(content))
 }
 
-func (b *Bundle) AddTemplateString(soyfile, filename string) *Bundle {
-	b.files = append(b.files, soyFile{soyfile, filename})
+func (b *Bundle) AddTemplateString(filename, soyfile string) *Bundle {
+	b.files = append(b.files, soyFile{filename, soyfile})
 	return b
 }
 
