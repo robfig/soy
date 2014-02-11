@@ -35,6 +35,9 @@ func (r *Registry) Add(soyfile *parse.SoyFileNode) error {
 		}
 		break
 	}
+	if ns == nil {
+		return fmt.Errorf("namespace required")
+	}
 
 	r.SoyFiles = append(r.SoyFiles, soyfile)
 	for i := 0; i < len(soyfile.Body); i++ {

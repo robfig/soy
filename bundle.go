@@ -31,20 +31,22 @@ func NewBundle() *Bundle {
 // AddTemplateDir adds all *.soy files found within the given directory
 // (including sub-directories) to the bundle.
 func (b *Bundle) AddTemplateDir(root string) *Bundle {
-	b.err = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+	var err = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 		if info.IsDir() {
 			return nil
 		}
-		var filename = info.Name()
-		if !strings.HasSuffix(filename, ".soy") {
+		if !strings.HasSuffix(path, ".soy") {
 			return nil
 		}
-		b.AddTemplateFile(filename)
+		b.AddTemplateFile(path)
 		return nil
 	})
+	if err != nil {
+		b.err = err
+	}
 	return b
 }
 

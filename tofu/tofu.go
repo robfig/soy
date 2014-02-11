@@ -41,7 +41,7 @@ func (t Renderer) Render(wr io.Writer, obj data.Map) (err error) {
 	if t.TemplateNode == nil {
 		return errors.New("no template found")
 	}
-	var autoescapeMode = t.Template.Namespace.Autoescape
+	var autoescapeMode = t.Namespace.Autoescape
 	if autoescapeMode == parse.AutoescapeUnspecified {
 		autoescapeMode = parse.AutoescapeOn
 	}
