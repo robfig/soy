@@ -68,7 +68,6 @@ func (tc *templateChecker) checkTemplate(node parse.Node) {
 		tc.forVars = append(tc.forVars, node.Var)
 	case *parse.DataRefNode:
 		tc.visitKey(node.Key)
-		return
 	}
 	if parent, ok := node.(parse.ParentNode); ok {
 		tc.recurse(parent)

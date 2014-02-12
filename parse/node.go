@@ -494,7 +494,13 @@ func (n *ForNode) String() string {
 }
 
 func (n *ForNode) Children() []Node {
-	return []Node{n.List, n.Body, n.IfEmpty}
+	var children = make([]Node, 2, 3)
+	children[0] = n.List
+	children[1] = n.Body
+	if n.IfEmpty != nil {
+		children = append(children, n.IfEmpty)
+	}
+	return children
 }
 
 // Values ----------
@@ -669,6 +675,10 @@ func (n *DataRefExprNode) String() string {
 		expr = "?" + expr
 	}
 	return expr + n.Arg.String() + "]"
+}
+
+func (n *DataRefExprNode) Children() []Node {
+	return []Node{n.Arg}
 }
 
 type DataRefKeyNode struct {

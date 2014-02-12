@@ -1,9 +1,10 @@
 package parsepasses
 
 import (
+	"testing"
+
 	"github.com/robfig/soy/parse"
 	"github.com/robfig/soy/template"
-	"testing"
 )
 
 type checkerTest struct {
@@ -83,6 +84,14 @@ Hello {$param}
 {/if}
 Hello {$param}
 {/template}`, false},
+
+		{`
+/** @param foo (within expression) */
+{template .for}
+{foreach $x in $foo[$bar]}
+  Hello {$x}
+{/for}
+{/template}`, false},
 	})
 
 }
@@ -115,6 +124,17 @@ func TestAllParamsAreUsed(t *testing.T) {
 /** @param param */
 {template .Other}
   Hello {$param}
+{/template}`, true},
+
+		{`
+/**
+ * @param foo
+ * @param bar
+ */
+{template .for}
+{foreach $x in $foo[$bar]}
+  Hello {$x}
+{/for}
 {/template}`, true},
 
 		// Check fails
