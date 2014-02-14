@@ -67,6 +67,8 @@ func (s *state) walk(node parse.Node) {
 		s.visitSoyFile(node)
 	case *parse.NamespaceNode:
 		s.visitNamespace(node)
+	case *parse.SoyDocNode:
+		return
 	case *parse.TemplateNode:
 		s.visitTemplate(node)
 	case *parse.ListNode:
@@ -95,34 +97,24 @@ func (s *state) walk(node parse.Node) {
 	// case *parse.LogNode:
 	// 	s.jsln(fmt.Sprintf("console.log(%q);\n", s.renderBlock(node.Body)))
 
-	// 	// Control flow ----------
-	// case *parse.IfNode:
-	// 	for _, cond := range node.Conds {
-	// 		if cond.Cond == nil || s.eval(cond.Cond).Truthy() {
-	// 			s.walk(cond.Body)
-	// 			break
-	// 		}
-	// 	}
-	// case *parse.ForNode:
-	// 	var list, ok = s.eval(node.List).(data.List)
-	// 	if !ok {
-	// 		s.errorf("In for loop %q, %q does not resolve to a list.",
-	// 			node.String(), node.List.String())
-	// 	}
-	// 	if len(list) == 0 {
-	// 		if node.IfEmpty != nil {
-	// 			s.walk(node.IfEmpty)
-	// 		}
-	// 		break
-	// 	}
-	// 	s.context.push()
-	// 	for i, item := range list {
-	// 		s.context.set(node.Var, item)
-	// 		s.context.set(node.Var+"__index", data.Int(i))
-	// 		s.context.set(node.Var+"__lastIndex", data.Int(len(list)-1))
-	// 		s.walk(node.Body)
-	// 	}
-	// 	s.context.pop()
+	// Control flow ----------
+	case *parse.IfNode:
+		s.indent()
+		for i, branch := range node.Conds {
+			if i > 0 {
+				s.js("else ")
+			}
+			if branch.Cond != nil {
+				s.js("if (")
+				s.walk(branch.Cond)
+			}
+			s.indentLevels++
+			s.indentLevels--
+			s.js(") {\n")
+		}
+
+	case *parse.ForNode:
+		s.visitFor(node)
 	// case *parse.SwitchNode:
 	// 	var switchValue = s.eval(node.Value)
 	// 	for _, caseNode := range node.Cases {
@@ -137,8 +129,9 @@ func (s *state) walk(node parse.Node) {
 	// 			return
 	// 		}
 	// 	}
-	// case *parse.CallNode:
-	// 	s.evalCall(node)
+
+	case *parse.CallNode:
+		s.visitCall(node)
 	// case *parse.LetValueNode:
 	// 	s.newln()
 	// 	s.js("var ", node.Name, " = ")
@@ -308,6 +301,60 @@ func (s *state) visitDataRef(node *parse.DataRefNode) {
 			s.js("]")
 		}
 	}
+}
+
+func (s *state) visitCall(node *parse.CallNode) {
+	var dataExpr = "opt_data"
+	if node.Data != nil {
+		dataExpr = s.str(node.Data)
+	}
+	if len(node.Params) > 0 {
+		dataExpr = "soy.$$augmentMap(" + dataExpr + ", {"
+		for _, param := range node.Params {
+			switch param := param.(type) {
+			case *parse.CallParamValueNode:
+				// TODO: Reference to data item.
+				dataExpr += param.Key + ": "
+				s.walk()
+			case *parse.CallParamContentNode:
+				t.errorf("unimplemented")
+			}
+		}
+	}
+	s.jsln("output += ", node.Name, "(", dataExpr, ", undefined, opt_ijData);")
+}
+
+func (s *state) visitFor(node *parse.ForNode) {
+	var foreachList, isForeach = node.List.(*parse.DataRefNode)
+	if !isForeach {
+		s.errorf("for range() unimplemented")
+	}
+
+	// TODO: uniquify the variable names
+	var (
+		itemList    = node.Var + "List"
+		itemListLen = node.Var + "Len"
+		itemData    = node.Var + "Data"
+		itemIndex   = node.Var + "Index"
+	)
+	s.indent()
+	s.js("var ", itemList, " = ")
+	s.walk(foreachList)
+	s.js(";\n")
+	s.jsln("var ", itemListLen, " = ", itemList, ".length;")
+	s.jsln("if (", itemListLen, " > 0) {")
+	s.indentLevels++
+	s.jsln("for (var ", itemIndex, " = 0; ", itemIndex, " < ", itemListLen, "; ", itemIndex, "++) {")
+	s.indentLevels++
+	s.jsln("var ", itemData, " = ", itemList, "[", itemIndex, "];")
+	s.walk(node.Body)
+	s.jsln("}")
+	s.jsln("} else {")
+	// TODO: Omit the if/else if there is no {ifempty}
+	if node.IfEmpty != nil {
+		s.walk(node.IfEmpty)
+	}
+	s.jsln("}")
 }
 
 func (s *state) op(symbol string, node parse.ParentNode) {
