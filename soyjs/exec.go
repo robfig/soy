@@ -90,8 +90,8 @@ func (s *state) walk(node parse.Node) {
 	// 		prefix = s.eval(node.Expr).String() + "-"
 	// 	}
 	// 	s.wr.Write([]byte(prefix + node.Suffix))
-	// case *parse.DebuggerNode:
-	// 	s.jsln("debugger;\n")
+	case *parse.DebuggerNode:
+		s.jsln("debugger;")
 	// case *parse.LogNode:
 	// 	s.jsln(fmt.Sprintf("console.log(%q);\n", s.renderBlock(node.Body)))
 
@@ -158,22 +158,38 @@ func (s *state) walk(node parse.Node) {
 		s.js(node.String())
 	case *parse.BoolNode:
 		s.js(node.String())
-	// case *parse.GlobalNode:
-	// 	s.val = node.Value
-	// case *parse.ListLiteralNode:
-	// 	var items = make(data.List, len(node.Items))
-	// 	for i, item := range node.Items {
-	// 		items[i] = s.eval(item)
-	// 	}
-	// 	s.val = data.List(items)
-	// case *parse.MapLiteralNode:
-	// 	var items = make(data.Map, len(node.Items))
-	// 	for k, v := range node.Items {
-	// 		items[k] = s.eval(v)
-	// 	}
-	// 	s.val = data.Map(items)
-	// case *parse.FunctionNode:
-	// 	s.val = s.evalFunc(node)
+	case *parse.GlobalNode:
+		s.js(node.Name)
+	case *parse.ListLiteralNode:
+		s.js("[")
+		for i, item := range node.Items {
+			if i != 0 {
+				s.js(",")
+			}
+			s.walk(item)
+		}
+		s.js("]")
+	case *parse.MapLiteralNode:
+		s.js("{")
+		var first = true
+		for k, v := range node.Items {
+			if !first {
+				s.js(",")
+			}
+			first = false
+			s.js(k, ":")
+			s.walk(v)
+		}
+		s.js("}")
+	case *parse.FunctionNode:
+		s.js(node.Name, "(")
+		for i, arg := range node.Args {
+			if i != 0 {
+				s.js(",")
+			}
+			s.walk(arg)
+		}
+		s.js(")")
 	case *parse.DataRefNode:
 		s.visitDataRef(node)
 
@@ -275,7 +291,11 @@ func (s *state) visitTemplate(node *parse.TemplateNode) {
 }
 
 func (s *state) visitDataRef(node *parse.DataRefNode) {
-	s.js("opt_data.", node.Key)
+	if node.Key == "ij" {
+		s.js("opt_ijData")
+	} else {
+		s.js("opt_data.", node.Key)
+	}
 	for _, accessNode := range node.Access {
 		switch node := accessNode.(type) {
 		case *parse.DataRefIndexNode:

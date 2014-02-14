@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/robfig/soy/data"
 	"github.com/robfig/soy/parse"
 )
 
@@ -116,15 +117,161 @@ func TestSpecialChars(t *testing.T) {
 	})
 }
 
+func TestGlobals(t *testing.T) {
+	globals["app.global_str"] = data.New("abc")
+	globals["GLOBAL_INT"] = data.New(5)
+	globals["global.nil"] = data.New(nil)
+	runExecTests(t, []execTest{
+		exprtest("global", `{app.global_str} {GLOBAL_INT + 2} {global.nil?:'hi'}`, `abc 7 hi`),
+	})
+}
+
+func TestInjectedData(t *testing.T) {
+	ij["foo"] = data.String("abc")
+	runExecTests(t, []execTest{
+		exprtest("ij", `{$ij.foo}`, `abc`),
+	})
+}
+
+func TestLiteral(t *testing.T) {
+	runExecTests(t, []execTest{
+		exprtest("literal",
+			`{literal} {/call}\n {sp} // comment {/literal}`,
+			` {/call}\n {sp} // comment `),
+	})
+}
+
+func TestCss(t *testing.T) {
+	runExecTests(t, []execTest{
+		exprtestwdata("css",
+			`<div class="{css my-css-class}"></div> <a class="{css $component, a-class}">link</a>`,
+			`<div class="my-css-class"></div> <a class="page-a-class">link</a>`,
+			d{"component": "page"}),
+	})
+}
+
+func TestLog(t *testing.T) {
+	// Get console.logs somehow
+	var buf bytes.Buffer
+	runExecTests(t, []execTest{
+		exprtestwdata("log", "{log} Hello {$name} // comment\n{/log}", ``, d{"name": "Rob"}),
+	})
+	if strings.TrimSpace(buf.String()) != "Hello Rob" {
+		t.Errorf("logger didn't match: %q", buf.String())
+	}
+}
+
+func TestDebugger(t *testing.T) {
+	runExecTests(t, []execTest{
+		exprtest("debugger", `{debugger}`, ``),
+	})
+}
+
+var helloWorldTemplate = `{namespace examples.simple}
+/**
+ * Says hello to the world.
+ */
+{template .helloWorld}
+  Hello world!
+{/template}
+
+/**
+ * Greets a person using "Hello" by default.
+ * @param name The name of the person.
+ * @param? greetingWord Optional greeting word to use instead of "Hello".
+ */
+{template .helloName}
+  {if not $greetingWord}
+    Hello {$name}!
+  {else}
+    {$greetingWord} {$name}!
+  {/if}
+{/template}
+
+/**
+ * Greets a person and optionally a list of other people.
+ * @param name The name of the person.
+ * @param additionalNames The additional names to greet. May be an empty list.
+ */
+{template .helloNames}
+  // Greet the person.
+  {call .helloName data="all" /}<br>
+  // Greet the additional people.
+  {foreach $additionalName in $additionalNames}
+    {call .helloName}
+      {param name: $additionalName /}
+    {/call}
+    {if not isLast($additionalName)}
+      <br>  // break after every line except the last
+    {/if}
+  {ifempty}
+    No additional people to greet.
+  {/foreach}
+{/template}`
+
+// TestHelloWorld executes the Hello World tutorial on the Soy Templates site.
+func TestHelloWorld(t *testing.T) {
+	runExecTests(t, []execTest{
+		{"no data", "examples.simple.helloWorld", helloWorldTemplate,
+			"Hello world!",
+			d{},
+			true,
+		},
+
+		{"1 name", "examples.simple.helloName", helloWorldTemplate,
+			"Hello Ana!",
+			d{"name": "Ana"},
+			true,
+		},
+
+		{"additional names", "examples.simple.helloNames", helloWorldTemplate,
+			"Hello Ana!<br>Hello Bob!<br>Hello Cid!<br>Hello Dee!",
+			d{"name": "Ana", "additionalNames": []string{"Bob", "Cid", "Dee"}},
+			true,
+		},
+	})
+}
+
+func TestLet(t *testing.T) {
+	runExecTests(t, []execTest{
+		exprtestwdata("let", `
+{let $alpha: $boo.foo /}
+{let $beta}Boo!{/let}
+{let $gamma}
+  {for $i in range($alpha)}
+    {$i}{$beta}
+  {/for}
+{/let}
+{$gamma}`,
+			"0Boo!1Boo!2Boo!",
+			d{"boo": d{"foo": 3}}),
+	})
+}
+
+// Helpers
+
+var globals = make(data.Map)
+var ij = make(data.Map)
+
 func (t execTest) fails() execTest {
 	t.ok = false
 	return t
 }
 
+func exprtestwdata(name, expr, result string, data map[string]interface{}) execTest {
+	return execTest{name, "test." + strings.Replace(name, " ", "_", -1),
+		"{namespace test}{template ." + strings.Replace(name, " ", "_", -1) + "}" + expr + "{/template}",
+		result, data, true}
+}
+
+func exprtest(name, expr, result string) execTest {
+	return exprtestwdata(name, expr, result, nil)
+}
+
 // TODO: run the javascript functions.
 func runExecTests(t *testing.T, tests []execTest) {
 	for _, test := range tests {
-		soyfile, err := parse.Soy(test.name, test.input, nil)
+		soyfile, err := parse.Soy(test.name, test.input, globals)
 		if err != nil {
 			t.Error(err)
 			continue
@@ -142,14 +289,4 @@ func runExecTests(t *testing.T, tests []execTest) {
 		}
 	}
 
-}
-
-func exprtestwdata(name, expr, result string, data map[string]interface{}) execTest {
-	return execTest{name, "test." + strings.Replace(name, " ", "_", -1),
-		"{namespace test}{template ." + strings.Replace(name, " ", "_", -1) + "}" + expr + "{/template}",
-		result, data, true}
-}
-
-func exprtest(name, expr, result string) execTest {
-	return exprtestwdata(name, expr, result, nil)
 }
