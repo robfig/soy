@@ -1,6 +1,7 @@
 package soyjs
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"strconv"
@@ -102,41 +103,34 @@ func (s *state) walk(node parse.Node) {
 		s.indent()
 		for i, branch := range node.Conds {
 			if i > 0 {
-				s.js("else ")
+				s.js(" else ")
 			}
 			if branch.Cond != nil {
 				s.js("if (")
 				s.walk(branch.Cond)
+				s.js(") ")
 			}
+			s.js("{\n")
 			s.indentLevels++
+			s.walk(branch.Body)
 			s.indentLevels--
-			s.js(") {\n")
+			s.indent()
+			s.js("}")
 		}
+		s.js("\n")
 
 	case *parse.ForNode:
 		s.visitFor(node)
-	// case *parse.SwitchNode:
-	// 	var switchValue = s.eval(node.Value)
-	// 	for _, caseNode := range node.Cases {
-	// 		for _, caseValueNode := range caseNode.Values {
-	// 			if switchValue.Equals(s.eval(caseValueNode)) {
-	// 				s.walk(caseNode.Body)
-	// 				return
-	// 			}
-	// 		}
-	// 		if len(caseNode.Values) == 0 { // default/last case
-	// 			s.walk(caseNode.Body)
-	// 			return
-	// 		}
-	// 	}
+	case *parse.SwitchNode:
+		s.visitSwitch(node)
 
 	case *parse.CallNode:
 		s.visitCall(node)
-	// case *parse.LetValueNode:
-	// 	s.newln()
-	// 	s.js("var ", node.Name, " = ")
-	// 	s.walk(node.Expr)
-	// 	s.js(";\n")
+	case *parse.LetValueNode:
+		s.indent()
+		s.js("var ", node.Name, " = ")
+		s.walk(node.Expr)
+		s.js(";\n")
 	// case *parse.LetContentNode:
 	// 	s.context.set(node.Name, data.String(s.renderBlock(node.Body)))
 
@@ -175,14 +169,7 @@ func (s *state) walk(node parse.Node) {
 		}
 		s.js("}")
 	case *parse.FunctionNode:
-		s.js(node.Name, "(")
-		for i, arg := range node.Args {
-			if i != 0 {
-				s.js(",")
-			}
-			s.walk(arg)
-		}
-		s.js(")")
+		s.visitFunction(node)
 	case *parse.DataRefNode:
 		s.visitDataRef(node)
 
@@ -260,14 +247,16 @@ func (s *state) visitNamespace(node *parse.NamespaceNode) {
 	// iterate through the dot segments.
 	var i = 0
 	for i < len(node.Name) {
-		prev := i + 1
+		var decl = "var "
+		var prev = i + 1
 		i = strings.Index(node.Name[prev:], ".")
 		if i == -1 {
 			i = len(node.Name)
+			decl = ""
 		} else {
 			i += prev
 		}
-		s.jsln("if (typeof ", node.Name[:i], " == 'undefined') { var ", node.Name[:i], " = {}; }")
+		s.jsln("if (typeof ", node.Name[:i], " == 'undefined') { ", decl, node.Name[:i], " = {}; }")
 	}
 }
 
@@ -281,6 +270,17 @@ func (s *state) visitTemplate(node *parse.TemplateNode) {
 	s.jsln("return output;")
 	s.indentLevels--
 	s.jsln("};")
+}
+
+func (s *state) visitFunction(node *parse.FunctionNode) {
+	s.js("soy.", node.Name, "(")
+	for i, arg := range node.Args {
+		if i != 0 {
+			s.js(",")
+		}
+		s.walk(arg)
+	}
+	s.js(")")
 }
 
 func (s *state) visitDataRef(node *parse.DataRefNode) {
@@ -306,22 +306,33 @@ func (s *state) visitDataRef(node *parse.DataRefNode) {
 func (s *state) visitCall(node *parse.CallNode) {
 	var dataExpr = "opt_data"
 	if node.Data != nil {
-		dataExpr = s.str(node.Data)
+		var buf bytes.Buffer
+		if err := Write(&buf, node.Data); err != nil {
+			s.errorf("%v", err)
+		}
+		dataExpr = buf.String()
 	}
 	if len(node.Params) > 0 {
 		dataExpr = "soy.$$augmentMap(" + dataExpr + ", {"
-		for _, param := range node.Params {
+		for i, param := range node.Params {
+			if i > 0 {
+				dataExpr += ", "
+			}
 			switch param := param.(type) {
 			case *parse.CallParamValueNode:
 				// TODO: Reference to data item.
-				dataExpr += param.Key + ": "
-				s.walk()
+				var buf bytes.Buffer
+				if err := Write(&buf, param.Value); err != nil {
+					s.errorf("%v", err)
+				}
+				dataExpr += param.Key + ": " + buf.String()
 			case *parse.CallParamContentNode:
-				t.errorf("unimplemented")
+				s.errorf("unimplemented")
 			}
 		}
+		dataExpr += "})"
 	}
-	s.jsln("output += ", node.Name, "(", dataExpr, ", undefined, opt_ijData);")
+	s.jsln("output += ", node.Name, "(", dataExpr, ", opt_sb, opt_ijData);")
 }
 
 func (s *state) visitFor(node *parse.ForNode) {
@@ -348,12 +359,41 @@ func (s *state) visitFor(node *parse.ForNode) {
 	s.indentLevels++
 	s.jsln("var ", itemData, " = ", itemList, "[", itemIndex, "];")
 	s.walk(node.Body)
+	s.indentLevels--
 	s.jsln("}")
+	s.indentLevels--
 	s.jsln("} else {")
 	// TODO: Omit the if/else if there is no {ifempty}
 	if node.IfEmpty != nil {
+		s.indentLevels++
 		s.walk(node.IfEmpty)
+		s.indentLevels--
 	}
+	s.jsln("}")
+}
+
+func (s *state) visitSwitch(node *parse.SwitchNode) {
+	s.indent()
+	s.js(" (")
+	s.walk(node.Value)
+	s.js(") {\n")
+	s.indentLevels++
+	for _, switchCase := range node.Cases {
+		s.indent()
+		for _, switchCaseValue := range switchCase.Values {
+			s.js("case ")
+			s.walk(switchCaseValue)
+			s.js(":\n")
+		}
+		if len(switchCase.Values) == 0 {
+			s.js("default:\n")
+		}
+		s.indentLevels++
+		s.walk(switchCase.Body)
+		s.jsln("break;")
+		s.indentLevels--
+	}
+	s.indentLevels--
 	s.jsln("}")
 }
 

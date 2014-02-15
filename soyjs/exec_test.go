@@ -1,9 +1,11 @@
 package soyjs
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"strings"
 	"testing"
@@ -16,6 +18,8 @@ import (
 // This is the same test suite as tofu/exec_test, verifying that the JS versions
 // get the same result.
 
+/** BEGIN COPIED TESTS */
+
 type d map[string]interface{}
 
 type execTest struct {
@@ -25,6 +29,53 @@ type execTest struct {
 	output       string
 	data         interface{}
 	ok           bool
+}
+
+func TestBasicExec(t *testing.T) {
+	runExecTests(t, []execTest{
+		// Namespace + static template
+		exprtest("empty", "", ""),
+		exprtest("sayHello", "Hello world!", "Hello world!"),
+		{"hello world w/ soydoc", "test.sayHello",
+			"{namespace test}\n/** Says hello */\n{template .sayHello}Hello world!{/template}",
+			"Hello world!",
+			nil, true},
+
+		// Line joining
+		exprtest("helloLineJoin", "\n  Hello\n\n  world!\n", "Hello world!"),
+
+		// Variables
+		{"hello world w/ variable", "test.sayHello",
+			`{namespace test}
+
+	/** @param name */
+	{template .sayHello}
+	Hello {$name}!
+	{/template}`,
+			"Hello Rob!",
+			d{"name": "Rob"}, true},
+
+		// {"call w/ line join", "test.callLine",
+		// 	`{namespace test}
+
+		// {template .callLine}
+		// Hello <a>{call .guy/}</a>!
+		// {/template}
+
+		// {template .guy}
+		//   Rob
+		// {/template}
+		// `,
+		// 	" Hello <a>Rob</a>! ",
+		// 	nil, true},
+
+		// // Invalid
+		// {"missing namespace", ".sayHello",
+		// 	"{template .sayHello}Hello world!{/template}",
+		// 	"",
+		// 	nil, false},
+
+	})
 }
 
 func TestExpressions(t *testing.T) {
@@ -52,6 +103,167 @@ func TestExpressions(t *testing.T) {
 		exprtest("shortcircuit precondition undef key fails", "{$undef.key}", "").fails(),
 		exprtest("shortcircuit and", "{$undef and $undef.key}", "false"),
 		exprtest("shortcircuit or", "{'yay' or $undef.key}", "true"),
+	})
+}
+
+func TestIf(t *testing.T) {
+	runExecTests(t, multidatatest("if", `
+{if $zoo}{$zoo}{/if}
+{if $boo}
+  X
+{elseif $foo.goo > 2}
+  {$boo}
+{else}
+  Y {$moo?:''}
+{/if}`, []datatest{
+		{d{"foo": d{"goo": 0}}, "Y "},
+		{d{"zoo": "abc", "foo": d{"goo": 0}}, "abcY "},
+		{d{"zoo": "", "boo": 1}, "X"},
+		{d{"zoo": 0, "boo": true}, "X"},
+		{d{"boo": "abc"}, "X"},
+		{d{"boo": "", "foo": d{"goo": 2}}, "Y "},
+		{d{"boo": 0, "foo": d{"goo": 3}}, "0"},
+		{d{"boo": 0, "foo": d{"goo": 3.0}}, "0"},
+		{d{"zoo": "zoo", "foo": d{"goo": 0}, "moo": 3}, "zooY 3"},
+	}, []errortest{
+		{nil},
+		{d{"foo": nil}},             // $foo.goo fails
+		{d{"foo": "str"}},           // $foo.goo must be number
+		{d{"foo": true}},            // $foo.goo must be number
+		{d{"foo": d{}}},             // $foo.goo must be number
+		{d{"foo": []interface{}{}}}, // $foo.goo must be number
+	}))
+}
+
+func TestForeach(t *testing.T) {
+	runExecTests(t, multidatatest("foreach", `
+{foreach $goo in $goose}
+  {$goo.numKids} goslings.{\n}
+{/foreach}
+{foreach $boo in $foo.booze}
+  {if isFirst($boo)}->{\n}{/if}
+  {index($boo)}: Scary drink {$boo.name}!
+  {if not isLast($boo)}{\n}{/if}
+{ifempty}
+  Sorry, no booze.
+{/foreach}`, []datatest{
+		{d{
+			"goose": []interface{}{},
+			"foo":   d{"booze": []interface{}{}},
+		}, "Sorry, no booze."},
+		{d{
+			"goose": []interface{}{},
+			"foo":   d{"booze": []interface{}{d{"name": "boo"}}},
+		}, "->\n0: Scary drink boo!"},
+		{d{
+			"goose": []interface{}{},
+			"foo":   d{"booze": []interface{}{d{"name": "a"}, d{"name": "b"}}},
+		}, "->\n0: Scary drink a!\n1: Scary drink b!"},
+		{d{
+			"goose": []interface{}{d{"numKids": 1}, d{"numKids": 2}},
+			"foo":   d{"booze": []interface{}{}},
+		}, "1 goslings.\n2 goslings.\nSorry, no booze."},
+	}, []errortest{
+		{nil},                           // non-null-safe eval of $foo.booze fails
+		{d{"foo": nil}},                 // ditto
+		{d{"foo": d{}}},                 // $foo.booze must be a list
+		{d{"foo": d{"booze": "str"}}},   // $foo.booze must be list
+		{d{"foo": d{"booze": 5}}},       // $foo.booze must be list
+		{d{"foo": d{"booze": d{}}}},     // $foo.booze must be list
+		{d{"foo": d{"booze": true}}},    // $foo.booze must be list
+		{d{"foo": d{"booze": []d{{}}}}}, // $boo.name fails
+	}))
+}
+
+func TestFor(t *testing.T) {
+	runExecTests(t, multidatatest("for", `
+{for $i in range(1, length($items) + 1)}
+  {msg desc="Numbered item."}
+    {$i}: {$items[$i - 1]}{\n}
+  {/msg}
+{/for}`, []datatest{
+		{d{"items": []interface{}{}}, ""},
+		{d{"items": []interface{}{"car"}}, "1: car\n"},
+		{d{"items": []interface{}{"car", "boat"}}, "1: car\n2: boat\n"},
+	}, []errortest{
+		{d{}},             // undefined is not a valid slice
+		{d{"items": nil}}, // null is not a valid slice
+		{d{"items": "a"}}, // string is not a valid slice
+	}))
+}
+
+func TestSwitch(t *testing.T) {
+	runExecTests(t, multidatatest("switch", `
+{switch $boo} {case 0}A
+  {case $foo.goo}
+    B
+  {case -1, 1, $moo}
+    C
+  {default}
+    D
+{/switch}`, []datatest{
+		{d{
+			"boo": 0,
+		}, "A"},
+		{d{
+			"boo": 1,
+			"foo": d{"goo": 1},
+		}, "B"},
+		{d{
+			"boo": -1,
+			"foo": d{"goo": 5},
+		}, "C"},
+		{d{
+			"boo": 1,
+			"foo": d{"goo": 5},
+		}, "C"},
+		{d{
+			"boo": 2,
+			"foo": d{"goo": 5},
+		}, "D"},
+		{d{
+			"boo": 2,
+			"foo": d{"goo": 5},
+			"moo": 2,
+		}, "C"},
+	}, []errortest{}),
+	)
+}
+
+func TestCall(t *testing.T) {
+	runExecTests(t, []execTest{
+		{"call", "test.call", `{namespace test}
+
+{template .call}
+{call .boo_ /}{sp}
+{call .boo_ data="all"/}{sp}
+{call .zoo data="$animals"}
+      // Note that the {param} blocks for the message and listItems parameter are declared to have
+      // content of kind HTML. This instructs the contextual autoescaper to process the content of
+      // these blocks as HTML, and to wrap the the value of the parameter as a soydata.SanitizedHtml
+      // object.
+  {param yoo: round($too) /}
+  {param woo}poo{/param}
+  {param zoo: 0 /}
+  {param doo kind="html"}doopoo{/param}
+{/call}
+{/template}
+
+{template .boo_}
+  {if $animals}
+    Yay!
+  {else}
+    Boo!
+  {/if}
+{/template}
+
+{template .zoo}
+ {$zoo} {$animal} {$woo}!
+{/template}`,
+			"Boo! Yay! 0 roos poo!",
+			d{"animals": d{"animal": "roos"}, "too": 2.4},
+			true,
+		},
 	})
 }
 
@@ -120,22 +332,6 @@ func TestSpecialChars(t *testing.T) {
 	})
 }
 
-func TestGlobals(t *testing.T) {
-	globals["app.global_str"] = data.New("abc")
-	globals["GLOBAL_INT"] = data.New(5)
-	globals["global.nil"] = data.New(nil)
-	runExecTests(t, []execTest{
-		exprtest("global", `{app.global_str} {GLOBAL_INT + 2} {global.nil?:'hi'}`, `abc 7 hi`),
-	})
-}
-
-func TestInjectedData(t *testing.T) {
-	ij["foo"] = data.String("abc")
-	runExecTests(t, []execTest{
-		exprtest("ij", `{$ij.foo}`, `abc`),
-	})
-}
-
 func TestLiteral(t *testing.T) {
 	runExecTests(t, []execTest{
 		exprtest("literal",
@@ -167,6 +363,130 @@ func TestCss(t *testing.T) {
 func TestDebugger(t *testing.T) {
 	runExecTests(t, []execTest{
 		exprtest("debugger", `{debugger}`, ``),
+	})
+}
+
+func TestPrintDirectives(t *testing.T) {
+	runExecTests(t, []execTest{
+		exprtest("sanitized html", "{'<a>'}", "&lt;a&gt;"),
+		exprtest("noAutoescape", "{'<a>'|noAutoescape}", "<a>"),
+		exprtestwdata("sanitized var", "{$var}", "&lt;a&gt;", d{"var": "<a>"}),
+		exprtestwdata("noAutoescape var", "{$var |noAutoescape}", "<a>", d{"var": "<a>"}),
+
+		// |id == |noAutoescape (it's deprecated)
+		exprtest("id", "{'<a>'|id}", "<a>"),
+
+		exprtest("escapeHtml", "{'<a>'|escapeHtml}", "&lt;a&gt;"),
+
+		exprtest("escapeUri1", "{''|escapeUri}", ""),
+		exprtest("escapeUri2", "{'a%b > c'|escapeUri}", "a%25b+%3E+c"),
+		// TODO: test it escapes kind=HTML content
+		// TODO: test it does not escape kind=URI content
+
+		exprtestwdata("ejs1", "{$var|escapeJsString}", ``, d{"var": ""}),
+		exprtestwdata("ejs2", "{$var|escapeJsString}", `foo`, d{"var": "foo"}),
+		exprtestwdata("ejs3", "{$var|escapeJsString}", `foo\\bar`, d{"var": "foo\\bar"}),
+		// TODO: test it even escapes "kind=HTML" content
+		// TODO: test it does not escape "kind=JS_STR" content
+		exprtestwdata("ejs4", "{$var|escapeJsString}", `\\`, d{"var": "\\"}),
+		exprtestwdata("ejs5", "{$var|escapeJsString}", `\'\'`, d{"var": "''"}),
+		exprtestwdata("ejs5", "{$var|escapeJsString}", `\"foo\"`, d{"var": `"foo"`}),
+		exprtestwdata("ejs5", "{$var|escapeJsString}", `42`, d{"var": 42}),
+
+		exprtest("truncate", "{'Lorem Ipsum' |truncate:8}", "Lorem..."),
+		exprtest("truncate w arg", "{'Lorem Ipsum' |truncate:8,false}", "Lorem Ip"),
+		exprtest("truncate w expr", "{'Lorem Ipsum' |truncate:5+3,not true}", "Lorem Ip"),
+
+		exprtest("insertWordBreaks", "{'1234567890'|insertWordBreaks:3}", "123<wbr>456<wbr>789<wbr>0"),
+		exprtest("insertWordBreaks2", "{'123456789'|insertWordBreaks:3}", "123<wbr>456<wbr>789"),
+		exprtest("insertWordBreaks3", "{'123456789'|insertWordBreaks:30}", "123456789"),
+		exprtest("insertWordBreaks4", "{'12 345 6789'|insertWordBreaks:3}", "12 345 678<wbr>9"),
+		exprtest("insertWordBreaks5", "{''|insertWordBreaks:3}", ""),
+
+		exprtestwdata("nl2br", "{$var|changeNewlineToBr}", "<br>1<br>2<br>3<br><br>4<br><br>",
+			d{"var": "\r1\n2\r3\r\n\n4\n\n"}),
+	})
+}
+
+func TestGlobals(t *testing.T) {
+	globals["app.global_str"] = data.New("abc")
+	globals["GLOBAL_INT"] = data.New(5)
+	globals["global.nil"] = data.New(nil)
+	runExecTests(t, []execTest{
+		exprtest("global", `{app.global_str} {GLOBAL_INT + 2} {global.nil?:'hi'}`, `abc 7 hi`),
+	})
+}
+
+func TestInjectedData(t *testing.T) {
+	ij["foo"] = data.String("abc")
+	runExecTests(t, []execTest{
+		exprtest("ij", `{$ij.foo}`, `abc`),
+	})
+}
+
+func TestAutoescapeModes(t *testing.T) {
+	runExecTests(t, []execTest{
+		{"template autoescape=false", "test.autoescapeoff", `{namespace test}
+
+{template .autoescapeoff autoescape="false"}
+  {$foo} {$foo|escapeHtml}
+{/template}`,
+			"<b>hello</b> &lt;b&gt;hello&lt;/b&gt;",
+			d{"foo": "<b>hello</b>"},
+			true,
+		},
+
+		{"autoescape mode w/ call", "test.autowcall", `{namespace test}
+
+{template .autowcall}
+  {call .called data="all"/}
+{/template}
+
+{template .called autoescape="false"}
+  {$foo}
+{/template}
+`,
+			"<b>hello</b>",
+			d{"foo": "<b>hello</b>"},
+			true,
+		},
+
+		{"autoescape mode w/ call2", "test.autowcall", `{namespace test}
+
+{template .autowcall autoescape="false"}
+  {call .called data="all"/}
+{/template}
+
+{template .called}
+  {$foo}
+{/template}
+`,
+			"&lt;b&gt;hello&lt;/b&gt;",
+			d{"foo": "<b>hello</b>"},
+			true,
+		},
+
+		{"namespace sets default", "test.name", `
+{namespace test autoescape="false"}
+
+{template .name}
+  {$foo}
+{/template}`,
+			"<b>hello</b>",
+			d{"foo": "<b>hello</b>"},
+			true,
+		},
+
+		{"template overrides namespace", "test.name", `
+{namespace test autoescape="false"}
+
+{template .name autoescape="true"}
+  {$foo}
+{/template}`,
+			"&lt;b&gt;hello&lt;/b&gt;",
+			d{"foo": "<b>hello</b>"},
+			true,
+		},
 	})
 }
 
@@ -235,6 +555,25 @@ func TestHelloWorld(t *testing.T) {
 	})
 }
 
+func TestStructData(t *testing.T) {
+	runExecTests(t, []execTest{
+		{"1 name", "examples.simple.helloName", helloWorldTemplate,
+			"Hello Ana!",
+			struct{ Name string }{"Ana"},
+			true,
+		},
+
+		{"additional names", "examples.simple.helloNames", helloWorldTemplate,
+			"Hello Ana!<br>Hello Bob!<br>Hello Cid!<br>Hello Dee!",
+			struct {
+				Name            string
+				AdditionalNames []string
+			}{"Ana", []string{"Bob", "Cid", "Dee"}},
+			true,
+		},
+	})
+}
+
 func TestLet(t *testing.T) {
 	runExecTests(t, []execTest{
 		exprtestwdata("let", `
@@ -248,6 +587,36 @@ func TestLet(t *testing.T) {
 {$gamma}`,
 			"0Boo!1Boo!2Boo!",
 			d{"boo": d{"foo": 3}}),
+	})
+}
+
+// testing cross namespace stuff requires multiple file bodies
+type nsExecTest struct {
+	name         string
+	templateName string
+	input        []string
+	output       string
+	data         interface{}
+	ok           bool
+}
+
+func TestAlias(t *testing.T) {
+	runNsExecTests(t, []nsExecTest{
+		{"alias", "test.alias",
+			[]string{`
+{namespace test}
+{alias foo.bar.baz}
+
+{template .alias}
+{call baz.hello/}
+{/template}
+`, `
+{namespace foo.bar.baz}
+
+{template .hello}
+Hello world
+{/template}`},
+			"Hello world", nil, true},
 	})
 }
 
@@ -271,33 +640,93 @@ func exprtest(name, expr, result string) execTest {
 	return exprtestwdata(name, expr, result, nil)
 }
 
+type datatest struct {
+	data   map[string]interface{}
+	result string
+}
+
+type errortest struct {
+	data map[string]interface{}
+}
+
+// multidata tests execute a single, more complicated template multiple times
+// with different data.
+func multidatatest(name, body string, successes []datatest, failures []errortest) []execTest {
+	var execTests []execTest
+	for i, t := range successes {
+		execTests = append(execTests, execTest{
+			fmt.Sprintf("%s (success %d) (%v)", name, i, t.data),
+			"test." + name,
+			"{namespace test}{template ." + name + "}" + body + "{/template}",
+			t.result,
+			t.data,
+			true,
+		})
+	}
+	for i, t := range failures {
+		execTests = append(execTests, execTest{
+			fmt.Sprintf("%s (fail %d) (%v)", name, i, t.data),
+			"test." + name,
+			"{namespace test}{template ." + name + "}" + body + "{/template}",
+			"",
+			t.data,
+			false,
+		})
+	}
+	return execTests
+}
+
+/** END COPY PASTA */
+
 func runExecTests(t *testing.T, tests []execTest) {
+	var nstest []nsExecTest
 	for _, test := range tests {
-		soyfile, err := parse.Soy(test.name, test.input, globals)
-		if err != nil {
-			t.Error(err)
-			continue
+		nstest = append(nstest, nsExecTest{
+			test.name,
+			test.templateName,
+			[]string{test.input},
+			test.output,
+			test.data,
+			test.ok,
+		})
+	}
+	runNsExecTests(t, nstest)
+}
+
+func runNsExecTests(t *testing.T, tests []nsExecTest) {
+	for _, test := range tests {
+		var js = initJs(t)
+
+		// Parse the templates, generate and run the compiled javascript.
+		var source bytes.Buffer
+		for _, input := range test.input {
+			soyfile, err := parse.Soy(test.name, input, globals)
+			if err != nil {
+				t.Error(err)
+				continue
+			}
+
+			var buf bytes.Buffer
+			err = Write(&buf, soyfile)
+			if err != nil {
+				t.Error(err)
+				continue
+			}
+
+			_, err = js.Run(buf.String())
+			if err != nil {
+				t.Errorf("compile error: %v\n%v", err, buf.String())
+				continue
+			}
+			source.Write(buf.Bytes())
 		}
 
-		var buf bytes.Buffer
-		err = Write(&buf, soyfile)
-		if err != nil {
-			t.Error(err)
-			continue
-		}
-
-		var otto = otto.New()
-		_, err = otto.Run(buf.String())
-		if err != nil {
-			t.Errorf("compile error: %v\n%v", err, buf.String())
-			continue
-		}
-
+		// Convert test data to JSON and invoke the template.
 		var jsonData, _ = json.Marshal(test.data)
-		var renderStatement = fmt.Sprintf("%s(%s);", test.templateName, string(jsonData))
-		actual, err := otto.Run(renderStatement)
+		var renderStatement = fmt.Sprintf("%s(JSON.parse('%s'));", test.templateName, string(jsonData))
+		actual, err := js.Run(renderStatement)
 		if err != nil {
-			t.Errorf("render error: %v\n%v\n%v", err, buf.String(), renderStatement)
+			t.Errorf("render error: %v\n%v\n%v", err, source.String(), renderStatement)
 			continue
 		}
 
@@ -305,4 +734,36 @@ func runExecTests(t *testing.T, tests []execTest) {
 			t.Errorf("expected:\n%v\n\nactual:\n%v\n%v", test.output, actual.String(), renderStatement)
 		}
 	}
+}
+
+func initJs(t *testing.T) *otto.Otto {
+	var otto = otto.New()
+	soyutilsFile, err := os.Open("lib/soyutils.js")
+	if err != nil {
+		panic(err)
+	}
+	// remove any non-otto compatible regular expressions
+	var soyutilsBuf bytes.Buffer
+	var scanner = bufio.NewScanner(soyutilsFile)
+	var i = 1
+	for scanner.Scan() {
+		switch i {
+		case 2565, 2579, 2586:
+			// skip these regexes
+			// soy.esc.$$FILTER_FOR_FILTER_CSS_VALUE_
+			// soy.esc.$$FILTER_FOR_FILTER_HTML_ATTRIBUTES_
+			// soy.esc.$$FILTER_FOR_FILTER_HTML_ELEMENT_NAME_
+		default:
+			soyutilsBuf.Write(scanner.Bytes())
+			soyutilsBuf.Write([]byte("\n"))
+		}
+		i++
+	}
+	// load the soyutils library
+	_, err = otto.Run(soyutilsBuf.String())
+	if err != nil {
+		t.Errorf("soyutils error: %v", err)
+		panic(err)
+	}
+	return otto
 }
