@@ -448,18 +448,19 @@ func (s *state) visitForeach(node *parse.ForNode) {
 
 func (s *state) visitSwitch(node *parse.SwitchNode) {
 	s.indent()
-	s.js(" (")
+	s.js("switch (")
 	s.walk(node.Value)
 	s.js(") {\n")
 	s.indentLevels++
 	for _, switchCase := range node.Cases {
-		s.indent()
 		for _, switchCaseValue := range switchCase.Values {
+			s.indent()
 			s.js("case ")
 			s.walk(switchCaseValue)
 			s.js(":\n")
 		}
 		if len(switchCase.Values) == 0 {
+			s.indent()
 			s.js("default:\n")
 		}
 		s.indentLevels++
