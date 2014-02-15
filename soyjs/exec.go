@@ -32,6 +32,7 @@ type state struct {
 	node         parse.Node // current node, for errors
 	indentLevels int
 	namespace    string
+	bufferName   string
 }
 
 func Write(out io.Writer, node parse.Node) (err error) {
@@ -77,11 +78,11 @@ func (s *state) walk(node parse.Node) {
 
 		// Output nodes ----------
 	case *parse.RawTextNode:
-		s.jsln("output += ", strconv.Quote(string(node.Text)), ";")
+		s.jsln(s.bufferName, " += ", strconv.Quote(string(node.Text)), ";")
 	case *parse.PrintNode:
 		// TODO: Directives
 		s.indent()
-		s.js("output += ")
+		s.js(s.bufferName, " += ")
 		s.visitChildren(node)
 		s.js(";\n")
 
@@ -95,30 +96,16 @@ func (s *state) walk(node parse.Node) {
 	// 	s.wr.Write([]byte(prefix + node.Suffix))
 	case *parse.DebuggerNode:
 		s.jsln("debugger;")
-	// case *parse.LogNode:
-	// 	s.jsln(fmt.Sprintf("console.log(%q);\n", s.renderBlock(node.Body)))
+	case *parse.LogNode:
+		s.bufferName += "_"
+		s.jsln("var ", s.bufferName, " = '';")
+		s.walk(node.Body)
+		s.jsln("console.log(", s.bufferName, ");")
+		s.bufferName = s.bufferName[:len(s.bufferName)-1]
 
 	// Control flow ----------
 	case *parse.IfNode:
-		s.indent()
-		for i, branch := range node.Conds {
-			if i > 0 {
-				s.js(" else ")
-			}
-			if branch.Cond != nil {
-				s.js("if (")
-				s.walk(branch.Cond)
-				s.js(") ")
-			}
-			s.js("{\n")
-			s.indentLevels++
-			s.walk(branch.Body)
-			s.indentLevels--
-			s.indent()
-			s.js("}")
-		}
-		s.js("\n")
-
+		s.visitIf(node)
 	case *parse.ForNode:
 		s.visitFor(node)
 	case *parse.SwitchNode:
@@ -266,6 +253,7 @@ func (s *state) visitTemplate(node *parse.TemplateNode) {
 	s.jsln(node.Name, " = function(opt_data, opt_sb, opt_ijData) {")
 	s.indentLevels++
 	s.jsln("var output = '';")
+	s.bufferName = "output"
 	s.walk(node.Body)
 	s.jsln("return output;")
 	s.indentLevels--
@@ -332,7 +320,28 @@ func (s *state) visitCall(node *parse.CallNode) {
 		}
 		dataExpr += "})"
 	}
-	s.jsln("output += ", node.Name, "(", dataExpr, ", opt_sb, opt_ijData);")
+	s.jsln(s.bufferName, " += ", node.Name, "(", dataExpr, ", opt_sb, opt_ijData);")
+}
+
+func (s *state) visitIf(node *parse.IfNode) {
+	s.indent()
+	for i, branch := range node.Conds {
+		if i > 0 {
+			s.js(" else ")
+		}
+		if branch.Cond != nil {
+			s.js("if (")
+			s.walk(branch.Cond)
+			s.js(") ")
+		}
+		s.js("{\n")
+		s.indentLevels++
+		s.walk(branch.Body)
+		s.indentLevels--
+		s.indent()
+		s.js("}")
+	}
+	s.js("\n")
 }
 
 func (s *state) visitFor(node *parse.ForNode) {

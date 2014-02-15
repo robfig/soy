@@ -349,22 +349,8 @@ func TestCss(t *testing.T) {
 	})
 }
 
-// func TestLog(t *testing.T) {
-// 	// Get console.logs somehow
-// 	var buf bytes.Buffer
-// 	runExecTests(t, []execTest{
-// 		exprtestwdata("log", "{log} Hello {$name} // comment\n{/log}", ``, d{"name": "Rob"}),
-// 	})
-// 	if strings.TrimSpace(buf.String()) != "Hello Rob" {
-// 		t.Errorf("logger didn't match: %q", buf.String())
-// 	}
-// }
-
-func TestDebugger(t *testing.T) {
-	runExecTests(t, []execTest{
-		exprtest("debugger", `{debugger}`, ``),
-	})
-}
+/** TestLog */
+/** TestDebugger */
 
 func TestPrintDirectives(t *testing.T) {
 	runExecTests(t, []execTest{
@@ -555,24 +541,7 @@ func TestHelloWorld(t *testing.T) {
 	})
 }
 
-func TestStructData(t *testing.T) {
-	runExecTests(t, []execTest{
-		{"1 name", "examples.simple.helloName", helloWorldTemplate,
-			"Hello Ana!",
-			struct{ Name string }{"Ana"},
-			true,
-		},
-
-		{"additional names", "examples.simple.helloNames", helloWorldTemplate,
-			"Hello Ana!<br>Hello Bob!<br>Hello Cid!<br>Hello Dee!",
-			struct {
-				Name            string
-				AdditionalNames []string
-			}{"Ana", []string{"Bob", "Cid", "Dee"}},
-			true,
-		},
-	})
-}
+/** TestStructData */
 
 func TestLet(t *testing.T) {
 	runExecTests(t, []execTest{
@@ -677,6 +646,54 @@ func multidatatest(name, body string, successes []datatest, failures []errortest
 }
 
 /** END COPY PASTA */
+
+func TestLog(t *testing.T) {
+	var otto = otto.New()
+	_, err := otto.Run(`
+var console_output = '';
+var console = {};
+console.log = function(arg) { console_output += arg; }
+`)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	soyfile, err := parse.Soy("", `
+{namespace test}
+{template .log}
+{log}Hello {$name}.{/log}
+{/template}`, nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	var buf bytes.Buffer
+	err = Write(&buf, soyfile)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	_, err = otto.Run(buf.String())
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	_, err = otto.Run(`test.log({name: "Rob"});`)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	val, _ := otto.Get("console_output")
+	if val.String() != "Hello Rob." {
+		t.Errorf("got %q", val.String())
+	}
+}
+
+// func TestDebugger(t *testing.T) {
+// 	runExecTests(t, []execTest{
+// 		exprtest("debugger", `{debugger}`, ``),
+// 	})
+// }
 
 func runExecTests(t *testing.T, tests []execTest) {
 	var nstest []nsExecTest
