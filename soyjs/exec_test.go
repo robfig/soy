@@ -744,7 +744,9 @@ func runNsExecTests(t *testing.T, tests []nsExecTest) {
 
 		// Convert test data to JSON and invoke the template.
 		var jsonData, _ = json.Marshal(test.data)
-		var renderStatement = fmt.Sprintf("%s(JSON.parse(%q));", test.templateName, string(jsonData))
+		var ijJson, _ = json.Marshal(ij)
+		var renderStatement = fmt.Sprintf("%s(JSON.parse(%q), undefined, JSON.parse(%q));",
+			test.templateName, string(jsonData), string(ijJson))
 		switch actual, err := js.Run(renderStatement); {
 		case err != nil && test.ok:
 			t.Errorf("render error: %v\n%v\n%v", err, numberLines(&source), renderStatement)
