@@ -41,7 +41,9 @@ type state struct {
 
 func Write(out io.Writer, node parse.Node) (err error) {
 	defer errRecover(&err)
-	(&state{wr: out}).walk(node)
+	var s = &state{wr: out}
+	s.scope.push()
+	s.walk(node)
 	return nil
 }
 
@@ -284,7 +286,13 @@ func (s *state) visitFunction(node *parse.FunctionNode) {
 	case "index":
 		s.js(s.scope.loopindex())
 		return
+	case "round":
+		s.js("Math.round(")
+		s.walk(node.Args[0])
+		s.js(")")
+		return
 	}
+	s.errorf("unimplemented function: %v", node.Name)
 	s.js("soy.", node.Name, "(")
 	for i, arg := range node.Args {
 		if i != 0 {
@@ -318,14 +326,17 @@ func (s *state) visitDataRef(node *parse.DataRefNode) {
 }
 
 func (s *state) visitCall(node *parse.CallNode) {
-	var dataExpr = "opt_data"
+	var dataExpr = "{}"
 	if node.Data != nil {
 		var buf bytes.Buffer
 		if err := Write(&buf, node.Data); err != nil {
 			s.errorf("%v", err)
 		}
 		dataExpr = buf.String()
+	} else if node.AllData {
+		dataExpr = "opt_data"
 	}
+
 	if len(node.Params) > 0 {
 		dataExpr = "soy.$$augmentMap(" + dataExpr + ", {"
 		for i, param := range node.Params {
@@ -341,7 +352,12 @@ func (s *state) visitCall(node *parse.CallNode) {
 				}
 				dataExpr += param.Key + ": " + buf.String()
 			case *parse.CallParamContentNode:
-				s.errorf("unimplemented")
+				var oldBufferName = s.bufferName
+				s.bufferName = s.scope.makevar("param")
+				s.jsln("var ", s.bufferName, " = '';")
+				s.walk(param.Content)
+				dataExpr += param.Key + ": " + s.bufferName
+				s.bufferName = oldBufferName
 			}
 		}
 		dataExpr += "})"
