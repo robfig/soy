@@ -19,7 +19,7 @@ import (
 // This is the same test suite as tofu/exec_test, verifying that the JS versions
 // get the same result.
 
-/** BEGIN COPIED TESTS */
+/** BEGIN COPIED TESTS (minus lines marked with DIFFERENCE) */
 
 type d map[string]interface{}
 
@@ -366,7 +366,8 @@ func TestPrintDirectives(t *testing.T) {
 		exprtest("escapeHtml", "{'<a>'|escapeHtml}", "&lt;a&gt;"),
 
 		exprtest("escapeUri1", "{''|escapeUri}", ""),
-		exprtest("escapeUri2", "{'a%b > c'|escapeUri}", "a%25b+%3E+c"),
+		// DIFFERENCE: Go results in +, JS in %20
+		exprtest("escapeUri2", "{'a%b > c'|escapeUri}", "a%25b%20%3E%20c"),
 		// TODO: test it escapes kind=HTML content
 		// TODO: test it does not escape kind=URI content
 
@@ -376,8 +377,10 @@ func TestPrintDirectives(t *testing.T) {
 		// TODO: test it even escapes "kind=HTML" content
 		// TODO: test it does not escape "kind=JS_STR" content
 		exprtestwdata("ejs4", "{$var|escapeJsString}", `\\`, d{"var": "\\"}),
-		exprtestwdata("ejs5", "{$var|escapeJsString}", `\'\'`, d{"var": "''"}),
-		exprtestwdata("ejs5", "{$var|escapeJsString}", `\"foo\"`, d{"var": `"foo"`}),
+		// DIFFERENCE: Go results in \'\', JS in \x27\x27
+		exprtestwdata("ejs5", "{$var|escapeJsString}", `\x27\x27`, d{"var": "''"}),
+		// DIFFERENCE: Go results in \"\", JS in \x22\x22
+		exprtestwdata("ejs5", "{$var|escapeJsString}", `\x22foo\x22`, d{"var": `"foo"`}),
 		exprtestwdata("ejs5", "{$var|escapeJsString}", `42`, d{"var": 42}),
 
 		exprtest("truncate", "{'Lorem Ipsum' |truncate:8}", "Lorem..."),
@@ -741,14 +744,14 @@ func runNsExecTests(t *testing.T, tests []nsExecTest) {
 
 		// Convert test data to JSON and invoke the template.
 		var jsonData, _ = json.Marshal(test.data)
-		var renderStatement = fmt.Sprintf("%s(JSON.parse('%s'));", test.templateName, string(jsonData))
+		var renderStatement = fmt.Sprintf("%s(JSON.parse(%q));", test.templateName, string(jsonData))
 		switch actual, err := js.Run(renderStatement); {
 		case err != nil && test.ok:
 			t.Errorf("render error: %v\n%v\n%v", err, numberLines(&source), renderStatement)
 		case err == nil && !test.ok:
 			t.Errorf("expected error, got none:\n%v\n%v", numberLines(&source), renderStatement)
 		case test.ok && test.output != actual.String():
-			t.Errorf("expected:\n%q\n\nactual:\n%q\n%v\n%v",
+			t.Errorf("expected:\n%v\n\nactual:\n%v\n%v\n%v",
 				test.output, actual.String(), numberLines(&source), renderStatement)
 		}
 	}

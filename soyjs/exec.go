@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/robfig/soy/parse"
+	"github.com/robfig/soy/tofu"
 )
 
 var reservedWords = []string{
@@ -37,6 +38,7 @@ type state struct {
 	bufferName   string
 	varnum       int
 	scope        scope
+	autoescape   parse.AutoescapeType
 }
 
 func Write(out io.Writer, node parse.Node) (err error) {
@@ -86,11 +88,7 @@ func (s *state) walk(node parse.Node) {
 	case *parse.RawTextNode:
 		s.jsln(s.bufferName, " += ", strconv.Quote(string(node.Text)), ";")
 	case *parse.PrintNode:
-		// TODO: Directives
-		s.indent()
-		s.js(s.bufferName, " += ")
-		s.visitChildren(node)
-		s.js(";\n")
+		s.visitPrint(node)
 
 	case *parse.MsgNode:
 		s.walk(node.Body)
@@ -240,6 +238,7 @@ func (s *state) visitChildren(parent parse.ParentNode) {
 
 func (s *state) visitNamespace(node *parse.NamespaceNode) {
 	s.namespace = node.Name
+	s.autoescape = node.Autoescape
 
 	// iterate through the dot segments.
 	var i = 0
@@ -258,7 +257,10 @@ func (s *state) visitNamespace(node *parse.NamespaceNode) {
 }
 
 func (s *state) visitTemplate(node *parse.TemplateNode) {
-	s.jsln("")
+	var oldAutoescape = s.autoescape
+	if node.Autoescape != parse.AutoescapeUnspecified {
+		s.autoescape = node.Autoescape
+	}
 	s.jsln("")
 	s.jsln(node.Name, " = function(opt_data, opt_sb, opt_ijData) {")
 	s.indentLevels++
@@ -268,6 +270,56 @@ func (s *state) visitTemplate(node *parse.TemplateNode) {
 	s.jsln("return output;")
 	s.indentLevels--
 	s.jsln("};")
+	s.autoescape = oldAutoescape
+}
+
+// TODO: unify print directives
+func (s *state) visitPrint(node *parse.PrintNode) {
+	var escape = s.autoescape
+	var explicitEscape = false
+	var directives []*parse.PrintDirectiveNode
+	for _, dir := range node.Directives {
+		var directive, ok = tofu.PrintDirectives[dir.Name]
+		if !ok {
+			s.errorf("Print directive %q not found", dir.Name)
+		}
+		if directive.CancelAutoescape {
+			escape = parse.AutoescapeOff
+		}
+		switch dir.Name {
+		case "id", "noAutoescape":
+			// no implementation, they just serve as a marker to cancel autoescape.
+		case "escapeHtml":
+			explicitEscape = true
+			fallthrough
+		default:
+			directives = append(directives, dir)
+		}
+	}
+	if escape != parse.AutoescapeOff && !explicitEscape {
+		directives = append([]*parse.PrintDirectiveNode{{0, "escapeHtml", nil}}, directives...)
+	}
+
+	s.indent()
+	s.js(s.bufferName, " += ")
+	for _, dir := range directives {
+		s.js("soy.$$", dir.Name, "(")
+	}
+	s.walk(node.Arg)
+	for i := range directives {
+		var dir = directives[len(directives)-1-i]
+		for _, arg := range dir.Args {
+			s.js(",")
+			s.walk(arg)
+		}
+		// soy specifies truncate adds ellipsis by default, so we have to pass
+		// doAddEllipsis = true to soy.$$truncate
+		if dir.Name == "truncate" && len(dir.Args) == 1 {
+			s.js(",true")
+		}
+		s.js(")")
+	}
+	s.js(";\n")
 }
 
 func (s *state) visitFunction(node *parse.FunctionNode) {
