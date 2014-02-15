@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 
 	"strings"
@@ -732,7 +733,7 @@ func runNsExecTests(t *testing.T, tests []nsExecTest) {
 
 			_, err = js.Run(buf.String())
 			if err != nil {
-				t.Errorf("compile error: %v\n%v", err, buf.String())
+				t.Errorf("compile error: %v\n%v", err, numberLines(&buf))
 				continue
 			}
 			source.Write(buf.Bytes())
@@ -741,14 +742,14 @@ func runNsExecTests(t *testing.T, tests []nsExecTest) {
 		// Convert test data to JSON and invoke the template.
 		var jsonData, _ = json.Marshal(test.data)
 		var renderStatement = fmt.Sprintf("%s(JSON.parse('%s'));", test.templateName, string(jsonData))
-		actual, err := js.Run(renderStatement)
-		if err != nil {
-			t.Errorf("render error: %v\n%v\n%v", err, source.String(), renderStatement)
-			continue
-		}
-
-		if test.output != actual.String() {
-			t.Errorf("expected:\n%v\n\nactual:\n%v\n%v", test.output, actual.String(), renderStatement)
+		switch actual, err := js.Run(renderStatement); {
+		case err != nil && test.ok:
+			t.Errorf("render error: %v\n%v\n%v", err, numberLines(&source), renderStatement)
+		case err == nil && !test.ok:
+			t.Errorf("expected error, got none:\n%v\n%v", numberLines(&source), renderStatement)
+		case test.ok && test.output != actual.String():
+			t.Errorf("expected:\n%q\n\nactual:\n%q\n%v\n%v",
+				test.output, actual.String(), numberLines(&source), renderStatement)
 		}
 	}
 }
@@ -783,4 +784,17 @@ func initJs(t *testing.T) *otto.Otto {
 		panic(err)
 	}
 	return otto
+}
+
+func numberLines(soyfile io.Reader) string {
+	var buf bytes.Buffer
+	var scanner = bufio.NewScanner(soyfile)
+	var i = 1
+	for scanner.Scan() {
+		buf.WriteString(fmt.Sprintf("%03d ", i))
+		buf.Write(scanner.Bytes())
+		buf.WriteString("\n")
+		i++
+	}
+	return buf.String()
 }

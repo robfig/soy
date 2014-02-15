@@ -27,12 +27,16 @@ func init() {
 	}
 }
 
+type loopVarSet struct{ i, limit string }
+
 type state struct {
 	wr           io.Writer
 	node         parse.Node // current node, for errors
 	indentLevels int
 	namespace    string
 	bufferName   string
+	varnum       int
+	scope        scope
 }
 
 func Write(out io.Writer, node parse.Node) (err error) {
@@ -86,8 +90,8 @@ func (s *state) walk(node parse.Node) {
 		s.visitChildren(node)
 		s.js(";\n")
 
-	// case *parse.MsgNode:
-	// 	s.walk(node.Body)
+	case *parse.MsgNode:
+		s.walk(node.Body)
 	// case *parse.CssNode:
 	// 	var prefix = ""
 	// 	if node.Expr != nil {
@@ -118,8 +122,12 @@ func (s *state) walk(node parse.Node) {
 		s.js("var ", node.Name, " = ")
 		s.walk(node.Expr)
 		s.js(";\n")
-	// case *parse.LetContentNode:
-	// 	s.context.set(node.Name, data.String(s.renderBlock(node.Body)))
+	case *parse.LetContentNode:
+		var oldBufferName = s.bufferName
+		s.bufferName = node.Name
+		s.jsln("var ", node.Name, " = '';")
+		s.walk(node.Body)
+		s.bufferName = oldBufferName
 
 	// Values ----------
 	case *parse.NullNode:
@@ -261,6 +269,22 @@ func (s *state) visitTemplate(node *parse.TemplateNode) {
 }
 
 func (s *state) visitFunction(node *parse.FunctionNode) {
+	switch node.Name {
+	case "length":
+		s.walk(node.Args[0])
+		s.js(".length")
+		return
+	case "isFirst":
+		// TODO: Add compile-time check that this is only called on loop variable.
+		s.js("(", s.scope.loopindex(), " == 0)")
+		return
+	case "isLast":
+		s.js("(", s.scope.loopindex(), " == ", s.scope.looplimit(), " - 1)")
+		return
+	case "index":
+		s.js(s.scope.loopindex())
+		return
+	}
 	s.js("soy.", node.Name, "(")
 	for i, arg := range node.Args {
 		if i != 0 {
@@ -274,6 +298,8 @@ func (s *state) visitFunction(node *parse.FunctionNode) {
 func (s *state) visitDataRef(node *parse.DataRefNode) {
 	if node.Key == "ij" {
 		s.js("opt_ijData")
+	} else if genVarName := s.scope.lookup(node.Key); genVarName != "" {
+		s.js(genVarName)
 	} else {
 		s.js("opt_data.", node.Key)
 	}
@@ -345,21 +371,60 @@ func (s *state) visitIf(node *parse.IfNode) {
 }
 
 func (s *state) visitFor(node *parse.ForNode) {
-	var foreachList, isForeach = node.List.(*parse.DataRefNode)
-	if !isForeach {
-		s.errorf("for range() unimplemented")
+	if _, isForeach := node.List.(*parse.DataRefNode); isForeach {
+		s.visitForeach(node)
+	} else {
+		s.visitForRange(node)
+	}
+}
+
+func (s *state) visitForRange(node *parse.ForNode) {
+	// TODO: unify the range implementation
+	var rangeNode = node.List.(*parse.FunctionNode)
+	var (
+		increment parse.Node = &parse.IntNode{0, 1}
+		init      parse.Node = &parse.IntNode{0, 0}
+		limit     parse.Node
+	)
+	switch len(rangeNode.Args) {
+	case 3:
+		increment = rangeNode.Args[2]
+		fallthrough
+	case 2:
+		init = rangeNode.Args[0]
+		limit = rangeNode.Args[1]
+	case 1:
+		limit = rangeNode.Args[0]
 	}
 
-	// TODO: uniquify the variable names
-	var (
-		itemList    = node.Var + "List"
-		itemListLen = node.Var + "Len"
-		itemData    = node.Var + "Data"
-		itemIndex   = node.Var + "Index"
-	)
+	var varIndex,
+		varLimit = s.scope.pushForRange(node.Var)
+	defer s.scope.pop()
+	s.indent()
+	s.js("var ", varLimit, " = ")
+	s.walk(limit)
+	s.js(";\n")
+	s.indent()
+	s.js("for (var ", varIndex, " = ")
+	s.walk(init)
+	s.js("; ", varIndex, " < ", varLimit, "; ", varIndex, " += ")
+	s.walk(increment)
+	s.js(") {\n")
+	s.indentLevels++
+	s.walk(node.Body)
+	s.indentLevels--
+	s.jsln("}")
+}
+
+func (s *state) visitForeach(node *parse.ForNode) {
+	var itemData,
+		itemList,
+		itemListLen,
+		itemIndex = s.scope.pushForEach(node.Var)
+	defer s.scope.pop()
 	s.indent()
 	s.js("var ", itemList, " = ")
-	s.walk(foreachList)
+	s.walk(node.List)
 	s.js(";\n")
 	s.jsln("var ", itemListLen, " = ", itemList, ".length;")
 	s.jsln("if (", itemListLen, " > 0) {")
