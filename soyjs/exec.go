@@ -119,13 +119,13 @@ func (s *state) walk(node parse.Node) {
 		s.visitCall(node)
 	case *parse.LetValueNode:
 		s.indent()
-		s.js("var ", node.Name, " = ")
+		s.js("var ", s.scope.makevar(node.Name), " = ")
 		s.walk(node.Expr)
 		s.js(";\n")
 	case *parse.LetContentNode:
 		var oldBufferName = s.bufferName
-		s.bufferName = node.Name
-		s.jsln("var ", node.Name, " = '';")
+		s.bufferName = s.scope.makevar(node.Name)
+		s.jsln("var ", s.bufferName, " = '';")
 		s.walk(node.Body)
 		s.bufferName = oldBufferName
 
