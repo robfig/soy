@@ -8,6 +8,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/robfig/soy/data"
 	"github.com/robfig/soy/parse"
 	"github.com/robfig/soy/tofu"
 )
@@ -130,7 +131,7 @@ func (s *state) walk(node parse.Node) {
 	case *parse.BoolNode:
 		s.js(node.String())
 	case *parse.GlobalNode:
-		s.js(node.Value.String())
+		s.visitGlobal(node)
 	case *parse.ListLiteralNode:
 		s.js("[")
 		for i, item := range node.Items {
@@ -555,6 +556,42 @@ func (s *state) visitSwitch(node *parse.SwitchNode) {
 	}
 	s.indentLevels--
 	s.jsln("}")
+}
+
+// visitGlobal constructs a primitive node from its value and uses walk to
+// render the right thing.
+func (s *state) visitGlobal(node *parse.GlobalNode) {
+	s.walk(s.nodeFromValue(node.Pos, node.Value))
+}
+
+func (s *state) nodeFromValue(pos parse.Pos, val data.Value) parse.Node {
+	switch val := val.(type) {
+	case data.Undefined:
+		s.errorf("undefined value can not be converted to node")
+	case data.Null:
+		return &parse.NullNode{pos}
+	case data.Bool:
+		return &parse.BoolNode{pos, bool(val)}
+	case data.Int:
+		return &parse.IntNode{pos, int64(val)}
+	case data.Float:
+		return &parse.FloatNode{pos, float64(val)}
+	case data.String:
+		return &parse.StringNode{pos, string(val)}
+	case data.List:
+		var items = make([]parse.Node, len(val))
+		for i, item := range val {
+			items[i] = s.nodeFromValue(pos, item)
+		}
+		return &parse.ListLiteralNode{pos, items}
+	case data.Map:
+		var items = make(map[string]parse.Node, len(val))
+		for k, v := range val {
+			items[k] = s.nodeFromValue(pos, v)
+		}
+		return &parse.MapLiteralNode{pos, items}
+	}
+	panic("unreachable")
 }
 
 func (s *state) writeRawText(text []byte) {

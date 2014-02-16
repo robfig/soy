@@ -16,6 +16,9 @@ import (
 	"github.com/robfig/soy/parse"
 )
 
+// TODO: test all types of globals
+// TODO: test all functions
+
 // This is the same test suite as tofu/exec_test, verifying that the JS versions
 // get the same result.
 

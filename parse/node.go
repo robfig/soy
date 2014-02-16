@@ -19,8 +19,8 @@ func (p Pos) Position() Pos {
 }
 
 type Node interface {
-	String() string
-	Position() Pos // byte position of start of node in full original input string
+	String() string // String returns the soy source representation of this node.
+	Position() Pos  // byte position of start of node in full original input string
 }
 
 type ParentNode interface {
@@ -609,6 +609,9 @@ type MapLiteralNode struct {
 }
 
 func (n *MapLiteralNode) String() string {
+	if len(n.Items) == 0 {
+		return "[:]"
+	}
 	var expr = "["
 	var first = true
 	for k, v := range n.Items {

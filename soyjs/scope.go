@@ -2,8 +2,6 @@ package soyjs
 
 import "strconv"
 
-type loopvars struct{ i, limit, length, index string }
-
 // scope provides a lookup from soy variable name to the JS name.
 // it is pushed and popped upon entering and leaving loop scopes.
 type scope struct {

@@ -71,7 +71,7 @@ func (v Null) String() string      { return "null" }
 func (v Bool) String() string      { return strconv.FormatBool(bool(v)) }
 func (v Int) String() string       { return strconv.FormatInt(int64(v), 10) }
 func (v Float) String() string     { return strconv.FormatFloat(float64(v), 'g', -1, 64) }
-func (v String) String() string    { return "'" + string(v) + "'" }
+func (v String) String() string    { return string(v) }
 
 func (v List) String() string {
 	var items = make([]string, len(v))
