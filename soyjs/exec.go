@@ -24,6 +24,8 @@ type state struct {
 	lastNode     parse.Node
 }
 
+// Write writes the javascript represented by the given node to the given
+// writer.  The first error encountered is returned.
 func Write(out io.Writer, node parse.Node) (err error) {
 	defer errRecover(&err)
 	var s = &state{wr: out}
@@ -394,9 +396,7 @@ func (s *state) visitDataRef(node *parse.DataRefNode) {
 			if node.NullSafe {
 				s.js("(", expr, " == null) ? null : ")
 			}
-			var buf bytes.Buffer
-			(&state{wr: &buf, scope: s.scope}).walk(node.Arg)
-			expr += "[" + buf.String() + "]"
+			expr += "[" + s.block(node.Arg) + "]"
 		}
 	}
 	s.js(expr)
@@ -405,11 +405,7 @@ func (s *state) visitDataRef(node *parse.DataRefNode) {
 func (s *state) visitCall(node *parse.CallNode) {
 	var dataExpr = "{}"
 	if node.Data != nil {
-		var buf bytes.Buffer
-		if err := Write(&buf, node.Data); err != nil {
-			s.errorf("%v", err)
-		}
-		dataExpr = buf.String()
+		dataExpr = s.block(node.Data)
 	} else if node.AllData {
 		dataExpr = "opt_data"
 	}
@@ -423,9 +419,7 @@ func (s *state) visitCall(node *parse.CallNode) {
 			switch param := param.(type) {
 			case *parse.CallParamValueNode:
 				s.js(param.Key, ": ")
-				var buf bytes.Buffer
-				(&state{wr: &buf, scope: s.scope}).walk(param.Value)
-				dataExpr += param.Key + ": " + buf.String()
+				dataExpr += param.Key + ": " + s.block(param.Value)
 			case *parse.CallParamContentNode:
 				var oldBufferName = s.bufferName
 				s.bufferName = s.scope.makevar("param")
@@ -568,6 +562,13 @@ func (s *state) writeRawText(text []byte) {
 	s.js(s.bufferName, " += '")
 	template.JSEscape(s.wr, text)
 	s.js("';\n")
+}
+
+// block renders the given node to a temporary buffer and returns the string.
+func (s *state) block(node parse.Node) string {
+	var buf bytes.Buffer
+	(&state{wr: &buf, scope: s.scope}).walk(node)
+	return buf.String()
 }
 
 func (s *state) op(symbol string, node parse.ParentNode) {
