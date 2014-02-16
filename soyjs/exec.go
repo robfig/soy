@@ -532,23 +532,24 @@ func (s *state) visitForeach(node *parse.ForNode) {
 	s.walk(node.List)
 	s.js(";\n")
 	s.jsln("var ", itemListLen, " = ", itemList, ".length;")
-	s.jsln("if (", itemListLen, " > 0) {")
-	s.indentLevels++
+	if node.IfEmpty != nil {
+		s.jsln("if (", itemListLen, " > 0) {")
+		s.indentLevels++
+	}
 	s.jsln("for (var ", itemIndex, " = 0; ", itemIndex, " < ", itemListLen, "; ", itemIndex, "++) {")
 	s.indentLevels++
 	s.jsln("var ", itemData, " = ", itemList, "[", itemIndex, "];")
 	s.walk(node.Body)
 	s.indentLevels--
 	s.jsln("}")
-	s.indentLevels--
-	s.jsln("} else {")
-	// TODO: Omit the if/else if there is no {ifempty}
 	if node.IfEmpty != nil {
+		s.indentLevels--
+		s.jsln("} else {")
 		s.indentLevels++
 		s.walk(node.IfEmpty)
 		s.indentLevels--
+		s.jsln("}")
 	}
-	s.jsln("}")
 }
 
 func (s *state) visitSwitch(node *parse.SwitchNode) {
