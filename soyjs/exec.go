@@ -606,35 +606,3 @@ func (s *state) jsln(args ...string) {
 	}
 	s.wr.Write([]byte("\n"))
 }
-
-var unescapes = map[rune]rune{
-	'\\': '\\',
-	'\'': '\'',
-	'n':  '\n',
-	'r':  '\r',
-	't':  '\t',
-	'b':  '\b',
-	'f':  '\f',
-}
-
-var escapes = make(map[rune]rune)
-
-func init() {
-	for k, v := range unescapes {
-		escapes[v] = k
-	}
-}
-
-// TODO: hijacked quoteString from parse
-func quoteString(s string) string {
-	var q = make([]rune, 1, len(s)+10)
-	q[0] = '\''
-	for _, ch := range s {
-		if seq, ok := escapes[ch]; ok {
-			q = append(q, '\\', seq)
-			continue
-		}
-		q = append(q, ch)
-	}
-	return string(append(q, '\''))
-}
