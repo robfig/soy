@@ -1,7 +1,8 @@
 language: go
-go: 
+go:
   - 1.2
 install:
   - go get code.google.com/p/go.tools/cmd/cover
+  - go get github.com/robertkrimen/otto
 script:
-  - go test -v -cover github.com/robfig/soy/...
+  - go test -cover github.com/robfig/soy/...

@@ -76,7 +76,6 @@ func (s *state) walk(node parse.Node) {
 		s.writeRawText(node.Text)
 	case *parse.PrintNode:
 		s.visitPrint(node)
-
 	case *parse.MsgNode:
 		s.walk(node.Body)
 	case *parse.CssNode:
@@ -158,7 +157,7 @@ func (s *state) walk(node parse.Node) {
 	case *parse.DataRefNode:
 		s.visitDataRef(node)
 
-	// 	// Arithmetic operators ----------
+	// Arithmetic operators ----------
 	case *parse.NegateNode:
 		s.js("(-")
 		s.walk(node.Arg)
