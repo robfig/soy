@@ -11,6 +11,7 @@ import (
 	"github.com/robfig/soy/tofu"
 )
 
+// TODO: Ensure variables don't conflict with these.
 var reservedWords = []string{
 	"break", "case", "catch", "class", "const", "continue", "debugger", "default", "delete", "do",
 	"else", "enum", "export", "extends", "false", "finally", "for", "function", "if",
@@ -28,8 +29,6 @@ func init() {
 	}
 }
 
-type loopVarSet struct{ i, limit string }
-
 type state struct {
 	wr           io.Writer
 	node         parse.Node // current node, for errors
@@ -39,6 +38,7 @@ type state struct {
 	varnum       int
 	scope        scope
 	autoescape   parse.AutoescapeType
+	lastNode     parse.Node
 }
 
 func Write(out io.Writer, node parse.Node) (err error) {
@@ -51,6 +51,7 @@ func Write(out io.Writer, node parse.Node) (err error) {
 
 // at marks the state to be on node n, for error reporting.
 func (s *state) at(node parse.Node) {
+	s.lastNode = s.node
 	s.node = node
 }
 
@@ -271,10 +272,24 @@ func (s *state) visitTemplate(node *parse.TemplateNode) {
 	if node.Autoescape != parse.AutoescapeUnspecified {
 		s.autoescape = node.Autoescape
 	}
+
+	// Determine if we need nullsafe initialization for opt_data
+	var allOptionalParams = false
+	if soydoc, ok := s.lastNode.(*parse.SoyDocNode); ok {
+		allOptionalParams = len(soydoc.Params) > 0
+		for _, param := range soydoc.Params {
+			if !param.Optional {
+				allOptionalParams = false
+			}
+		}
+	}
+
 	s.jsln("")
 	s.jsln(node.Name, " = function(opt_data, opt_sb, opt_ijData) {")
 	s.indentLevels++
-	s.jsln("opt_data = opt_data || {};") // TODO: Only do this if all params are optional.
+	if allOptionalParams {
+		s.jsln("opt_data = opt_data || {};")
+	}
 	s.jsln("var output = '';")
 	s.bufferName = "output"
 	s.walk(node.Body)
