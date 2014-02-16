@@ -656,7 +656,9 @@ func TestLog(t *testing.T) {
 	_, err := otto.Run(`
 var console_output = '';
 var console = {};
-console.log = function(arg) { console_output += arg; }
+console.log = function(arg) { console_output += arg; };
+var soy = {};
+soy.$$escapeHtml = function(arg) { return arg; };
 `)
 	if err != nil {
 		t.Error(err)

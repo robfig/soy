@@ -92,12 +92,14 @@ func (s *state) walk(node parse.Node) {
 
 	case *parse.MsgNode:
 		s.walk(node.Body)
-	// case *parse.CssNode:
-	// 	var prefix = ""
-	// 	if node.Expr != nil {
-	// 		prefix = s.eval(node.Expr).String() + "-"
-	// 	}
-	// 	s.wr.Write([]byte(prefix + node.Suffix))
+	case *parse.CssNode:
+		if node.Expr != nil {
+			s.indent()
+			s.js(s.bufferName, " += ")
+			s.walk(node.Expr)
+			s.js(" + '-';\n")
+		}
+		s.jsln(s.bufferName, " += ", strconv.Quote(node.Suffix), ";")
 	case *parse.DebuggerNode:
 		s.jsln("debugger;")
 	case *parse.LogNode:
@@ -114,7 +116,6 @@ func (s *state) walk(node parse.Node) {
 		s.visitFor(node)
 	case *parse.SwitchNode:
 		s.visitSwitch(node)
-
 	case *parse.CallNode:
 		s.visitCall(node)
 	case *parse.LetValueNode:
@@ -141,7 +142,7 @@ func (s *state) walk(node parse.Node) {
 	case *parse.BoolNode:
 		s.js(node.String())
 	case *parse.GlobalNode:
-		s.js(node.Name)
+		s.js(node.Value.String())
 	case *parse.ListLiteralNode:
 		s.js("[")
 		for i, item := range node.Items {
@@ -248,9 +249,11 @@ func (s *state) visitNamespace(node *parse.NamespaceNode) {
 		i = strings.Index(node.Name[prev:], ".")
 		if i == -1 {
 			i = len(node.Name)
-			decl = ""
 		} else {
 			i += prev
+		}
+		if strings.Contains(node.Name[:i], ".") {
+			decl = ""
 		}
 		s.jsln("if (typeof ", node.Name[:i], " == 'undefined') { ", decl, node.Name[:i], " = {}; }")
 	}
