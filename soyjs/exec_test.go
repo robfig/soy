@@ -78,17 +78,21 @@ func TestBasicExec(t *testing.T) {
 	})
 }
 
+// DIFFERENCE: Boolean expressions print true/false on server but return a value on client.
+// (This happens in official Soy)
 func TestExpressions(t *testing.T) {
 	runExecTests(t, []execTest{
 		exprtest("arithmetic", "{2*(1+1)/(2%4)}", "2"),
 		exprtest("arithmetic2", "{2.0-1.5}", "0.5"),
 		exprtest("bools", "{not false and (2 > 5.0 or (null ?: true))}", "true"),
 		exprtest("bools2", "{2*(1.5+1) < 3 ? 'nope' : (2 >= 2) == (5.5<6) != true }", "false"),
-		exprtest("bools3", "{null or 0.0 or ([:] and [])}", "true"), // map/list is truthy
+		// DIFFERENCE: official soy returns true but prints nothing.  (weird!)
+		// ({true} prints true. {[:]} is truthy but prints nothing.)
+		// exprtest("bools3", "{null or 0.0 or ([:] and [])}", "true"), // map/list is truthy
 		exprtest("bools4", "{'a' == 'a'}", "true"),
-		exprtest("bools5", "{null == $foo}", "false"),
+		// exprtest("bools5", "{null == $foo}", "false"),  // DIFFERENCE
 		exprtest("bools6", "{null == null}", "true"),
-		exprtest("bools7", "{$foo == $foo}", "true"),
+		// exprtest("bools7", "{$foo == $foo}", "true"),  // DIFFERENCE
 		exprtest("comparisons", `{0.5<=1 ? null?:'hello' : (1!=1)}`, "hello"),
 		exprtest("stringconcat", `{'hello' + 'world'}`, "helloworld"),
 		exprtest("mixedconcat", `{5 + 'world'}`, "5world"),
@@ -101,8 +105,8 @@ func TestExpressions(t *testing.T) {
 
 		// short-circuiting
 		exprtest("shortcircuit precondition undef key fails", "{$undef.key}", "").fails(),
-		exprtest("shortcircuit and", "{$undef and $undef.key}", "false"),
-		exprtest("shortcircuit or", "{'yay' or $undef.key}", "true"),
+		exprtest("shortcircuit and", "{$undef and $undef.key}", "undefined"), // DIFFERENCE
+		exprtest("shortcircuit or", "{'yay' or $undef.key}", "yay"),          // DIFFERENCE
 	})
 }
 
@@ -273,7 +277,8 @@ func TestCall(t *testing.T) {
 func TestDataRefs(t *testing.T) {
 	runExecTests(t, []execTest{
 		// single key
-		exprtestwdata("undefined", "{$foo}", "", nil).fails(),     // undefined = error
+		// TODO: This will work when opt_data is only initialized if all params are optional.
+		// exprtestwdata("undefined", "{$foo}", "", nil).fails(),     // undefined = error
 		exprtestwdata("null", "{$foo}", "null", d{"foo": nil}),    // null prints
 		exprtestwdata("string", "{$foo}", "foo", d{"foo": "foo"}), // string print
 		// DIFFERENCE: JS prints lists as "a,5,2.5", without brackets
@@ -739,12 +744,6 @@ soy.$$escapeHtml = function(arg) { return arg; };
 		t.Errorf("got %q", val.String())
 	}
 }
-
-// func TestDebugger(t *testing.T) {
-// 	runExecTests(t, []execTest{
-// 		exprtest("debugger", `{debugger}`, ``),
-// 	})
-// }
 
 func runExecTests(t *testing.T, tests []execTest) {
 	var nstest []nsExecTest

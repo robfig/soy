@@ -209,7 +209,14 @@ func (s *state) walk(node parse.Node) {
 	case *parse.OrNode:
 		s.op("||", node)
 	case *parse.ElvisNode:
-		s.op("||", node)
+		// ?: is specified to check for null.
+		s.js("(")
+		s.walk(node.Arg1)
+		s.js(" != null ? ")
+		s.walk(node.Arg1)
+		s.js(" : ")
+		s.walk(node.Arg2)
+		s.js(")")
 	case *parse.TernNode:
 		s.js("(")
 		s.walk(node.Arg1)
@@ -259,7 +266,6 @@ func (s *state) visitNamespace(node *parse.NamespaceNode) {
 	}
 }
 
-// TODO: If all params are optional, then initialize opt_data = opt_data || {};
 func (s *state) visitTemplate(node *parse.TemplateNode) {
 	var oldAutoescape = s.autoescape
 	if node.Autoescape != parse.AutoescapeUnspecified {
@@ -268,6 +274,7 @@ func (s *state) visitTemplate(node *parse.TemplateNode) {
 	s.jsln("")
 	s.jsln(node.Name, " = function(opt_data, opt_sb, opt_ijData) {")
 	s.indentLevels++
+	s.jsln("opt_data = opt_data || {};") // TODO: Only do this if all params are optional.
 	s.jsln("var output = '';")
 	s.bufferName = "output"
 	s.walk(node.Body)
