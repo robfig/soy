@@ -6,28 +6,11 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"text/template"
 
 	"github.com/robfig/soy/parse"
 	"github.com/robfig/soy/tofu"
 )
-
-// TODO: Ensure variables don't conflict with these.
-var reservedWords = []string{
-	"break", "case", "catch", "class", "const", "continue", "debugger", "default", "delete", "do",
-	"else", "enum", "export", "extends", "false", "finally", "for", "function", "if",
-	"implements", "import", "in", "instanceof", "interface", "let", "null", "new", "package",
-	"private", "protected", "public", "return", "static", "super", "switch", "this", "throw",
-	"true", "try", "typeof", "var", "void", "while", "with", "yield",
-}
-
-var reservedWordSet map[string]struct{}
-
-func init() {
-	reservedWordSet = make(map[string]struct{}, len(reservedWords))
-	for _, word := range reservedWords {
-		reservedWordSet[word] = struct{}{}
-	}
-}
 
 type state struct {
 	wr           io.Writer
@@ -87,7 +70,7 @@ func (s *state) walk(node parse.Node) {
 
 		// Output nodes ----------
 	case *parse.RawTextNode:
-		s.jsln(s.bufferName, " += ", strconv.Quote(string(node.Text)), ";")
+		s.writeRawText(node.Text)
 	case *parse.PrintNode:
 		s.visitPrint(node)
 
@@ -100,7 +83,7 @@ func (s *state) walk(node parse.Node) {
 			s.walk(node.Expr)
 			s.js(" + '-';\n")
 		}
-		s.jsln(s.bufferName, " += ", strconv.Quote(node.Suffix), ";")
+		s.writeRawText([]byte(node.Suffix))
 	case *parse.DebuggerNode:
 		s.jsln("debugger;")
 	case *parse.LogNode:
@@ -135,7 +118,9 @@ func (s *state) walk(node parse.Node) {
 	case *parse.NullNode:
 		s.js("null")
 	case *parse.StringNode:
-		s.js(strconv.Quote(node.Value))
+		s.js("'")
+		template.JSEscape(s.wr, []byte(node.Value))
+		s.js("'")
 	case *parse.IntNode:
 		s.js(node.String())
 	case *parse.FloatNode:
@@ -576,6 +561,13 @@ func (s *state) visitSwitch(node *parse.SwitchNode) {
 	}
 	s.indentLevels--
 	s.jsln("}")
+}
+
+func (s *state) writeRawText(text []byte) {
+	s.indent()
+	s.js(s.bufferName, " += '")
+	template.JSEscape(s.wr, text)
+	s.js("';\n")
 }
 
 func (s *state) op(symbol string, node parse.ParentNode) {

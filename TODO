@@ -1,8 +1,11 @@
-- js code generation
 - content "kind": text, html, uri, js (code), js (str chars), html attributes
 - Contextual autoescape
 - {msg}
 - Delegates (delpackage, delcall, deltemplate)
+- js: combine nodes into expressions for output when possible
+- js options: generate goog.provide/goog.require
+- js: generate jsdoc
+- js: goog.getCssName
 - parsepasses (optimizations) (Simplify, CombineConsecutiveRawText, Prerender)
 - Bidi
 - use xliff message bundles
