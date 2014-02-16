@@ -68,8 +68,8 @@ func errRecover(errp *error) {
 	}
 }
 
-// walk recursively goes through each node and executes the indicated logic and
-// writes the output
+// walk recursively goes through each node and translates the nodes to
+// javascript, writing the result to s.wr
 func (s *state) walk(node parse.Node) {
 	s.at(node)
 	switch node := node.(type) {
@@ -400,11 +400,9 @@ func (s *state) visitCall(node *parse.CallNode) {
 			}
 			switch param := param.(type) {
 			case *parse.CallParamValueNode:
-				// TODO: Reference to data item.
+				s.js(param.Key, ": ")
 				var buf bytes.Buffer
-				if err := Write(&buf, param.Value); err != nil {
-					s.errorf("%v", err)
-				}
+				(&state{wr: &buf, scope: s.scope}).walk(param.Value)
 				dataExpr += param.Key + ": " + buf.String()
 			case *parse.CallParamContentNode:
 				var oldBufferName = s.bufferName
@@ -450,7 +448,6 @@ func (s *state) visitFor(node *parse.ForNode) {
 }
 
 func (s *state) visitForRange(node *parse.ForNode) {
-	// TODO: unify the range implementation
 	var rangeNode = node.List.(*parse.FunctionNode)
 	var (
 		increment parse.Node = &parse.IntNode{0, 1}

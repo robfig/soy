@@ -59,7 +59,7 @@ func (s *scope) pushForEach(loopVar string) (lVar, lList, lLen, lIndex string) {
 		"__index": loopVar + "Index" + n,
 	})
 	return loopVar + n,
-		s.makevar(loopVar + "List" + n),
+		loopVar + "List" + n,
 		loopVar + "Limit" + n,
 		loopVar + "Index" + n
 }
