@@ -56,26 +56,25 @@ func TestBasicExec(t *testing.T) {
 			"Hello Rob!",
 			d{"name": "Rob"}, true},
 
-		// {"call w/ line join", "test.callLine",
-		// 	`{namespace test}
+		{"call w/ line join", "test.callLine",
+			`{namespace test}
 
-		// {template .callLine}
-		// Hello <a>{call .guy/}</a>!
-		// {/template}
+		{template .callLine}
+		Hello <a>{call .guy/}</a>!
+		{/template}
 
-		// {template .guy}
-		//   Rob
-		// {/template}
-		// `,
-		// 	" Hello <a>Rob</a>! ",
-		// 	nil, true},
+		{template .guy}
+		  Rob
+		{/template}
+		`,
+			"Hello <a>Rob</a>!",
+			nil, true},
 
-		// // Invalid
-		// {"missing namespace", ".sayHello",
-		// 	"{template .sayHello}Hello world!{/template}",
-		// 	"",
-		// 	nil, false},
-
+		// Invalid
+		{"missing namespace", ".sayHello",
+			"{template .sayHello}Hello world!{/template}",
+			"",
+			nil, false},
 	})
 }
 
@@ -128,11 +127,13 @@ func TestIf(t *testing.T) {
 		{d{"zoo": "zoo", "foo": d{"goo": 0}, "moo": 3}, "zooY 3"},
 	}, []errortest{
 		{nil},
-		{d{"foo": nil}},             // $foo.goo fails
-		{d{"foo": "str"}},           // $foo.goo must be number
-		{d{"foo": true}},            // $foo.goo must be number
-		{d{"foo": d{}}},             // $foo.goo must be number
-		{d{"foo": []interface{}{}}}, // $foo.goo must be number
+		{d{"foo": nil}}, // $foo.goo fails
+
+		// DIFFERENCE: JS templates don't error on these.
+		// {d{"foo": "str"}},           // $foo.goo must be number
+		// {d{"foo": true}},            // $foo.goo must be number
+		// {d{"foo": d{}}},             // $foo.goo must be number
+		// {d{"foo": []interface{}{}}}, // $foo.goo must be number
 	}))
 }
 
@@ -189,7 +190,8 @@ func TestFor(t *testing.T) {
 	}, []errortest{
 		{d{}},             // undefined is not a valid slice
 		{d{"items": nil}}, // null is not a valid slice
-		{d{"items": "a"}}, // string is not a valid slice
+		// DIFFERENCE: JS function iterates through the string "a" instead of throwing an error.
+		// {d{"items": "a"}}, // string is not a valid slice
 	}))
 }
 
@@ -274,23 +276,28 @@ func TestDataRefs(t *testing.T) {
 		exprtestwdata("undefined", "{$foo}", "", nil).fails(),     // undefined = error
 		exprtestwdata("null", "{$foo}", "null", d{"foo": nil}),    // null prints
 		exprtestwdata("string", "{$foo}", "foo", d{"foo": "foo"}), // string print
-		exprtestwdata("list", "{$foo}", "[a, 5, [2.5], [null]]",
-			d{"foo": []interface{}{"a", 5, []interface{}{2.5}, []interface{}{nil}}}), // list print
-		exprtestwdata("map", "{$foo}", "{a: 5, b: [true], c: {}}",
-			d{"foo": d{"a": 5, "b": []interface{}{true}, "c": d{}}}), // map print
+		// DIFFERENCE: JS prints lists as "a,5,2.5", without brackets
+		// exprtestwdata("list", "{$foo}", "[a, 5, [2.5], [null]]",
+		// 	d{"foo": []interface{}{"a", 5, []interface{}{2.5}, []interface{}{nil}}}), // list print
+		// DIFFERENCE JS prints maps as [Object object]
+		// exprtestwdata("map", "{$foo}", "{a: 5, b: [true], c: {}}",
+		// 	d{"foo": d{"a": 5, "b": []interface{}{true}, "c": d{}}}), // map print
 
 		// index lookups
 		exprtestwdata("basic", "{$foo.2}", "result",
 			d{"foo": []interface{}{"a", 5, "result"}}),
-		exprtestwdata("out of bounds", "{$foo.7}", "",
-			d{"foo": []interface{}{"a", 5, "result"}}).fails(),
+		// DIFFERENCE: JS just returns undefined
+		// exprtestwdata("out of bounds", "{$foo.7}", "",
+		// 	d{"foo": []interface{}{"a", 5, "result"}}).fails(),
 		exprtestwdata("undefined slice", "{$foo.2}", "", d{}).fails(),
 		exprtestwdata("null slice", "{$foo.2}", "", d{"foo": nil}).fails(),
 		exprtestwdata("nullsafe on undefined slice", "{$foo?.2}", "null", d{}),
 		exprtestwdata("nullsafe on null slice", "{$foo?.2}", "null", d{"foo": nil}),
-		exprtestwdata("nullsafe does not save out of bounds", "{$foo?.2}", "",
-			d{"foo": []interface{}{"a"}}).fails(),
-		exprtestwdata("lookup on nonslice", "{$foo?.2}", "", d{"foo": "hello"}).fails(),
+		// DIFFERENCE: JS does not throw error on out-of-bounds
+		// exprtestwdata("nullsafe does not save out of bounds", "{$foo?.2}", "",
+		// 	d{"foo": []interface{}{"a"}}).fails(),
+		// DIFFERENCE: JS allows lookups on everything.
+		// exprtestwdata("lookup on nonslice", "{$foo?.2}", "", d{"foo": "hello"}).fails(),
 
 		// key lookups
 		exprtestwdata("basic", "{$foo.bar}", "result", d{"foo": d{"bar": "result"}}),
@@ -299,17 +306,20 @@ func TestDataRefs(t *testing.T) {
 		exprtestwdata("null value is ok", "{$foo.bar}", "null", d{"foo": d{"bar": nil}}),
 		exprtestwdata("nullsafe on undefined map", "{$foo?.bar}", "null", d{}),
 		exprtestwdata("nullsafe on null map", "{$foo?.bar}", "null", d{"foo": nil}),
-		exprtestwdata("lookup on nonmap", "{$foo?.bar}", "", d{"foo": "hello"}).fails(),
+		// DIFFERENCE: In JS everything's a map.
+		// exprtestwdata("lookup on nonmap", "{$foo?.bar}", "", d{"foo": "hello"}).fails(),
 
 		// expr lookups (index)
 		exprtestwdata("exprbasic", "{$foo[2]}", "result", d{"foo": []interface{}{"a", 5, "result"}}),
-		exprtestwdata("exprout of bounds", "{$foo[7]}", "", d{"foo": []interface{}{"a", 5, "result"}}).fails(),
+		// DIFFERENCE: No error
+		// exprtestwdata("exprout of bounds", "{$foo[7]}", "", d{"foo": []interface{}{"a", 5, "result"}}).fails(),
 		exprtestwdata("exprundefined slice", "{$foo[2]}", "", d{}).fails(),
 		exprtestwdata("exprnull slice", "{$foo[2]}", "", d{"foo": nil}).fails(),
 		exprtestwdata("exprnullsafe on undefined slice", "{$foo?[2]}", "null", d{}),
 		exprtestwdata("exprnullsafe on null slice", "{$foo?[2]}", "null", d{"foo": nil}),
-		exprtestwdata("exprnullsafe does not save out of bounds", "{$foo?[2]}", "",
-			d{"foo": []interface{}{"a"}}).fails(),
+		// DIFFERENCE: No error
+		// exprtestwdata("exprnullsafe does not save out of bounds", "{$foo?[2]}", "",
+		// 	d{"foo": []interface{}{"a"}}).fails(),
 		exprtestwdata("exprarith", "{$foo[1+1>3.0?8:1]}", "5", d{"foo": []interface{}{"a", 5, "z"}}),
 
 		// expr lookups (key)
@@ -320,6 +330,41 @@ func TestDataRefs(t *testing.T) {
 		exprtestwdata("exprkeynullsafe on undefined map", "{$foo?['bar']}", "null", d{}),
 		exprtestwdata("exprkeynullsafe on null map", "{$foo?['bar']}", "null", d{"foo": nil}),
 		exprtestwdata("exprkeyarith", "{$foo['b'+('a'+'r')]}", "result", d{"foo": d{"bar": "result"}}),
+
+		// DIFFERENCE: More tests on nullsafe navigation.
+		exprtestwdata("nullsafe battle royale",
+			"{$foo[2].bar?.baz?['bar']?[3].boo[3]}", "null", d{
+				"foo": []interface{}{
+					d{},
+					d{},
+					d{}, // foo[2].bar is null
+				}}),
+		exprtestwdata("nullsafe battle royale2",
+			"{$foo[2].bar?.baz?['bar']?[3].boo[3]}", "null", d{
+				"foo": []interface{}{
+					d{},
+					d{},
+					d{"bar": d{}}, // foo[2].bar.baz is null
+				}}),
+		exprtestwdata("nullsafe battle royale3",
+			"{$foo[2].bar?.baz?['bar']?[3].boo[3]}", "null", d{
+				"foo": []interface{}{
+					d{},
+					d{},
+					d{"bar": d{"baz": d{}}}, // foo[2].bar.baz['bar'] is null
+				}}),
+		exprtestwdata("nullsafe battle royale4",
+			"{$foo[2].bar?.baz?['bar']?[3].boo[3]}", "d", d{
+				"foo": []interface{}{
+					d{},
+					d{},
+					d{"bar": d{"baz": d{"bar": []interface{}{
+						d{},
+						d{},
+						d{},
+						// foo[2].bar.baz['bar'][3].boo[3] is NOT null
+						d{"boo": []interface{}{"a", "b", "c", "d"}}}}}},
+				}}),
 	})
 }
 
@@ -738,7 +783,9 @@ func runNsExecTests(t *testing.T, tests []nsExecTest) {
 
 			_, err = js.Run(buf.String())
 			if err != nil {
-				t.Errorf("compile error: %v\n%v", err, numberLines(&buf))
+				if test.ok {
+					t.Errorf("compile error: %v\n%v", err, numberLines(&buf))
+				}
 				continue
 			}
 			source.Write(buf.Bytes())

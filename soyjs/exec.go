@@ -259,6 +259,7 @@ func (s *state) visitNamespace(node *parse.NamespaceNode) {
 	}
 }
 
+// TODO: If all params are optional, then initialize opt_data = opt_data || {};
 func (s *state) visitTemplate(node *parse.TemplateNode) {
 	var oldAutoescape = s.autoescape
 	if node.Autoescape != parse.AutoescapeUnspecified {
@@ -359,25 +360,39 @@ func (s *state) visitFunction(node *parse.FunctionNode) {
 }
 
 func (s *state) visitDataRef(node *parse.DataRefNode) {
+	var expr string
 	if node.Key == "ij" {
-		s.js("opt_ijData")
+		expr = "opt_ijData"
 	} else if genVarName := s.scope.lookup(node.Key); genVarName != "" {
-		s.js(genVarName)
+		expr = genVarName
 	} else {
-		s.js("opt_data.", node.Key)
+		expr = "opt_data." + node.Key
 	}
+
+	// Nullsafe access makes this complicated.
+	// FOO.BAR?.BAZ => (FOO.BAR == null ? null : FOO.BAR.BAZ)
 	for _, accessNode := range node.Access {
 		switch node := accessNode.(type) {
 		case *parse.DataRefIndexNode:
-			s.js("[", strconv.Itoa(node.Index), "]")
+			if node.NullSafe {
+				s.js("(", expr, " == null) ? null : ")
+			}
+			expr += "[" + strconv.Itoa(node.Index) + "]"
 		case *parse.DataRefKeyNode:
-			s.js(".", node.Key)
+			if node.NullSafe {
+				s.js("(", expr, " == null) ? null : ")
+			}
+			expr += "." + node.Key
 		case *parse.DataRefExprNode:
-			s.js("[")
-			s.walk(node.Arg)
-			s.js("]")
+			if node.NullSafe {
+				s.js("(", expr, " == null) ? null : ")
+			}
+			var buf bytes.Buffer
+			(&state{wr: &buf, scope: s.scope}).walk(node.Arg)
+			expr += "[" + buf.String() + "]"
 		}
 	}
+	s.js(expr)
 }
 
 func (s *state) visitCall(node *parse.CallNode) {
