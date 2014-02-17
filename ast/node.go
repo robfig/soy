@@ -1,4 +1,4 @@
-package parse
+package ast
 
 import (
 	"bytes"
@@ -57,10 +57,6 @@ type ListNode struct {
 	Nodes []Node // The element nodes in lexical order.
 }
 
-func newList(pos Pos) *ListNode {
-	return &ListNode{Pos: pos}
-}
-
 func (l *ListNode) append(n Node) {
 	l.Nodes = append(l.Nodes, n)
 }
@@ -80,10 +76,6 @@ func (l *ListNode) Children() []Node {
 type RawTextNode struct {
 	Pos
 	Text []byte // The text; may span newlines.
-}
-
-func newText(pos Pos, text string) *RawTextNode {
-	return &RawTextNode{Pos: pos, Text: []byte(text)}
 }
 
 func (t *RawTextNode) String() string {
@@ -552,11 +544,12 @@ func (n *FloatNode) String() string {
 
 type StringNode struct {
 	Pos
-	Value string
+	Quoted string // e.g. 'hello\tworld'
+	Value  string // e.g. hello	world
 }
 
 func (s *StringNode) String() string {
-	return quoteString(s.Value)
+	return s.Quoted
 }
 
 type GlobalNode struct {
@@ -733,35 +726,35 @@ func (n *NegateNode) Children() []Node {
 	return []Node{n.Arg}
 }
 
-type binaryOpNode struct {
+type BinaryOpNode struct {
 	Name string
 	Pos
 	Arg1, Arg2 Node
 }
 
-func (n *binaryOpNode) String() string {
+func (n *BinaryOpNode) String() string {
 	return n.Arg1.String() + n.Name + n.Arg2.String()
 }
 
-func (n *binaryOpNode) Children() []Node {
+func (n *BinaryOpNode) Children() []Node {
 	return []Node{n.Arg1, n.Arg2}
 }
 
 type (
-	MulNode   struct{ binaryOpNode }
-	DivNode   struct{ binaryOpNode }
-	ModNode   struct{ binaryOpNode }
-	AddNode   struct{ binaryOpNode }
-	SubNode   struct{ binaryOpNode }
-	EqNode    struct{ binaryOpNode }
-	NotEqNode struct{ binaryOpNode }
-	GtNode    struct{ binaryOpNode }
-	GteNode   struct{ binaryOpNode }
-	LtNode    struct{ binaryOpNode }
-	LteNode   struct{ binaryOpNode }
-	OrNode    struct{ binaryOpNode }
-	AndNode   struct{ binaryOpNode }
-	ElvisNode struct{ binaryOpNode }
+	MulNode   struct{ BinaryOpNode }
+	DivNode   struct{ BinaryOpNode }
+	ModNode   struct{ BinaryOpNode }
+	AddNode   struct{ BinaryOpNode }
+	SubNode   struct{ BinaryOpNode }
+	EqNode    struct{ BinaryOpNode }
+	NotEqNode struct{ BinaryOpNode }
+	GtNode    struct{ BinaryOpNode }
+	GteNode   struct{ BinaryOpNode }
+	LtNode    struct{ BinaryOpNode }
+	LteNode   struct{ BinaryOpNode }
+	OrNode    struct{ BinaryOpNode }
+	AndNode   struct{ BinaryOpNode }
+	ElvisNode struct{ BinaryOpNode }
 )
 
 type TernNode struct {

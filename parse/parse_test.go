@@ -6,13 +6,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
 )
 
 type parseTest struct {
 	name  string
 	input string
-	tree  Node
+	tree  ast.Node
 }
 
 const (
@@ -20,63 +21,75 @@ const (
 	hasError = false
 )
 
-func tList(nodes ...Node) Node {
+func newList(pos ast.Pos) *ast.ListNode {
+	return &ast.ListNode{Pos: pos}
+}
+
+func tList(nodes ...ast.Node) ast.Node {
 	n := newList(0)
 	n.Nodes = nodes
 	return n
 }
 
-func tFile(nodes ...Node) Node {
-	return &SoyFileNode{Body: nodes}
+func tFile(nodes ...ast.Node) ast.Node {
+	return &ast.SoyFileNode{Body: nodes}
 }
 
-func tTemplate(name string, nodes ...Node) Node {
-	n := &TemplateNode{0, name, nil, AutoescapeOn, false}
+func tTemplate(name string, nodes ...ast.Node) ast.Node {
+	n := &ast.TemplateNode{0, name, nil, ast.AutoescapeOn, false}
 	n.Body = newList(0)
 	n.Body.Nodes = nodes
 	return n
 }
 
-func bin(n1, n2 Node) binaryOpNode {
-	return binaryOpNode{Arg1: n1, Arg2: n2}
+func newText(pos ast.Pos, text string) *ast.RawTextNode {
+	return &ast.RawTextNode{Pos: pos, Text: []byte(text)}
+}
+
+func bin(n1, n2 ast.Node) ast.BinaryOpNode {
+	return ast.BinaryOpNode{Arg1: n1, Arg2: n2}
+}
+
+func str(value string) *ast.StringNode {
+	return &ast.StringNode{0, quoteString(value), value}
 }
 
 var parseTests = []parseTest{
 	{"empty", "", tFile()},
-	{"namespace", "{namespace soy.example}", tFile(&NamespaceNode{0, "soy.example", 0})},
+	{"namespace", "{namespace soy.example}", tFile(&ast.NamespaceNode{0, "soy.example", 0})},
 	{"empty template", "{template .name}{/template}", tFile(tTemplate(".name"))},
 	{"text template", "{template .name}\nHello world!\n{/template}",
 		tFile(tTemplate(".name", newText(0, "Hello world!")))},
 	{"variable template", "{template .name}\nHello {$name}!\n{/template}",
 		tFile(tTemplate(".name",
 			newText(0, "Hello "),
-			&PrintNode{0, &DataRefNode{0, "name", nil}, nil}, // implicit print
+			&ast.PrintNode{0, &ast.DataRefNode{0, "name", nil}, nil}, // implicit print
 			newText(0, "!"),
 		))},
-	{"not", "{not $var}", tFile(&PrintNode{0, &NotNode{0, &DataRefNode{0, "var", nil}}, nil})},
-	{"negate", "{-$var}", tFile(&PrintNode{0, &NegateNode{0, &DataRefNode{0, "var", nil}}, nil})},
-	{"concat", `{'hello' + 'world'}`, tFile(&PrintNode{0, &AddNode{bin(
-		&StringNode{0, "hello"},
-		&StringNode{0, "world"})}, nil})},
-	{"explicit print", `{print 'hello'}`, tFile(&PrintNode{0, &StringNode{0, "hello"}, nil})},
-	{"print directive", `{print 'hello'|id}`, tFile(&PrintNode{0, &StringNode{0, "hello"},
-		[]*PrintDirectiveNode{{0, "id", nil}}})},
-	{"print directives", `{'hello'|noAutoescape|truncate:5,false}`, tFile(&PrintNode{0, &StringNode{0, "hello"},
-		[]*PrintDirectiveNode{
+	{"not", "{not $var}", tFile(&ast.PrintNode{0, &ast.NotNode{0, &ast.DataRefNode{0, "var", nil}}, nil})},
+	{"negate", "{-$var}", tFile(&ast.PrintNode{0, &ast.NegateNode{0, &ast.DataRefNode{0, "var", nil}}, nil})},
+	{"concat", `{'hello' + 'world'}`, tFile(&ast.PrintNode{0, &ast.AddNode{bin(
+		str("hello"),
+		str("world"))}, nil})},
+	{"explicit print", `{print 'hello'}`, tFile(&ast.PrintNode{0, str("hello"), nil})},
+	{"print directive", `{print 'hello'|id}`, tFile(&ast.PrintNode{0, str("hello"),
+		[]*ast.PrintDirectiveNode{{0, "id", nil}}})},
+	{"print directives", `{'hello'|noAutoescape|truncate:5,false}`, tFile(&ast.PrintNode{0, str("hello"),
+		[]*ast.PrintDirectiveNode{
 			{0, "noAutoescape", nil},
-			{0, "truncate", []Node{
-				&IntNode{0, 5},
-				&BoolNode{0, false}}}}})},
+			{0, "truncate", []ast.Node{
+				&ast.IntNode{0, 5},
+				&ast.BoolNode{0, false}}}}})},
 
 	{"soydoc", `/**
  * Text
  * @param boo scary description
  * @param? goo slimy
- */`, tFile(&SoyDocNode{0, []*SoyDocParamNode{
+ */`, tFile(&ast.SoyDocNode{0, []*ast.SoyDocParamNode{
 		{0, "boo", false},
 		{0, "goo", true},
 	}})},
-	{"soydoc - one line", "/** @param name */", tFile(&SoyDocNode{0, []*SoyDocParamNode{
+	{"soydoc - one line", "/** @param name */", tFile(&ast.SoyDocNode{0, []*ast.SoyDocParamNode{
 		{0, "name", false},
 	}})},
 
@@ -89,20 +102,20 @@ var parseTests = []parseTest{
 	)},
 	{"rawtext+tag", "a {$foo}\t {$baz}\n\t  b\r\n\n  {$bar} c", tFile(
 		newText(0, "a "),
-		&PrintNode{0, &DataRefNode{0, "foo", nil}, nil},
+		&ast.PrintNode{0, &ast.DataRefNode{0, "foo", nil}, nil},
 		newText(0, "\t "),
-		&PrintNode{0, &DataRefNode{0, "baz", nil}, nil},
+		&ast.PrintNode{0, &ast.DataRefNode{0, "baz", nil}, nil},
 		newText(0, "b"),
-		&PrintNode{0, &DataRefNode{0, "bar", nil}, nil},
+		&ast.PrintNode{0, &ast.DataRefNode{0, "bar", nil}, nil},
 		newText(0, " c"),
 	)},
 	{"rawtext+tag+html+comment", `
   {$italicHtml}<br>  // a {comment}
   {$italicHtml |noAutoescape}<br>  /* {a }comment */
   abc`, tFile(
-		&PrintNode{0, &DataRefNode{0, "italicHtml", nil}, nil},
+		&ast.PrintNode{0, &ast.DataRefNode{0, "italicHtml", nil}, nil},
 		newText(0, "<br>"),
-		&PrintNode{0, &DataRefNode{0, "italicHtml", nil}, []*PrintDirectiveNode{
+		&ast.PrintNode{0, &ast.DataRefNode{0, "italicHtml", nil}, []*ast.PrintDirectiveNode{
 			{0, "noAutoescape", nil}}},
 		newText(0, "<br>"),
 		newText(0, "abc"),
@@ -118,7 +131,7 @@ var parseTests = []parseTest{
 		newText(0, "}"),
 	)},
 	{"specialchars inside string", `{'abc\ndef'}`, tFile(
-		&PrintNode{0, &StringNode{0, "abc\ndef"}, nil},
+		&ast.PrintNode{0, str("abc\ndef"), nil},
 	)},
 
 	{"literal", "{literal} {/call}\n {sp} // comment {/literal}", tFile(
@@ -126,91 +139,91 @@ var parseTests = []parseTest{
 	)},
 
 	{"css", `{css my-class} {css $component, myclass}`, tFile(
-		&CssNode{0, nil, "my-class"},
+		&ast.CssNode{0, nil, "my-class"},
 		newText(0, " "),
-		&CssNode{0, &DataRefNode{0, "component", nil}, "myclass"},
+		&ast.CssNode{0, &ast.DataRefNode{0, "component", nil}, "myclass"},
 	)},
 
 	{"log", "{log}Hello {$name}{/log}", tFile(
-		&LogNode{0, tList(
+		&ast.LogNode{0, tList(
 			newText(0, "Hello "),
-			&PrintNode{0, &DataRefNode{0, "name", nil}, nil},
+			&ast.PrintNode{0, &ast.DataRefNode{0, "name", nil}, nil},
 		)},
 	)},
 	{"log+comment", "{log}Hello {$name} // comment\n{/log}", tFile(
-		&LogNode{0, tList(
+		&ast.LogNode{0, tList(
 			newText(0, "Hello "),
-			&PrintNode{0, &DataRefNode{0, "name", nil}, nil},
+			&ast.PrintNode{0, &ast.DataRefNode{0, "name", nil}, nil},
 		)},
 	)},
 
-	{"debugger", "{debugger}", tFile(&DebuggerNode{0})},
+	{"debugger", "{debugger}", tFile(&ast.DebuggerNode{0})},
 	{"global", "{GLOBAL_STR}{app.GLOBAL}", tFile(
-		&PrintNode{0, &GlobalNode{0, "GLOBAL_STR", data.String("a")}, nil},
-		&PrintNode{0, &GlobalNode{0, "app.GLOBAL", data.String("b")}, nil},
+		&ast.PrintNode{0, &ast.GlobalNode{0, "GLOBAL_STR", data.String("a")}, nil},
+		&ast.PrintNode{0, &ast.GlobalNode{0, "app.GLOBAL", data.String("b")}, nil},
 	)},
 
-	{"expression1", "{not false and (isFirst($foo) or (-$x - 5) > 3.1)}", tFile(&PrintNode{0, &AndNode{bin(
-		&NotNode{0, &BoolNode{0, false}},
-		&OrNode{bin(
-			&FunctionNode{0, "isFirst", []Node{&DataRefNode{0, "foo", nil}}},
-			&GtNode{bin(
-				&SubNode{bin(
-					&NegateNode{0, &DataRefNode{0, "x", nil}},
-					&IntNode{0, 5})},
-				&FloatNode{0, 3.1})})})}, nil})},
+	{"expression1", "{not false and (isFirst($foo) or (-$x - 5) > 3.1)}", tFile(&ast.PrintNode{0, &ast.AndNode{bin(
+		&ast.NotNode{0, &ast.BoolNode{0, false}},
+		&ast.OrNode{bin(
+			&ast.FunctionNode{0, "isFirst", []ast.Node{&ast.DataRefNode{0, "foo", nil}}},
+			&ast.GtNode{bin(
+				&ast.SubNode{bin(
+					&ast.NegateNode{0, &ast.DataRefNode{0, "x", nil}},
+					&ast.IntNode{0, 5})},
+				&ast.FloatNode{0, 3.1})})})}, nil})},
 
-	{"expression2", `{null or ('foo' == 'f'+true ? -3 <= 5 : not $foo ?: bar(5))}`, tFile(&PrintNode{0, &OrNode{bin(
-		&NullNode{0},
-		&TernNode{0,
-			&EqNode{bin(
-				&StringNode{0, "foo"},
-				&AddNode{bin(
-					&StringNode{0, "f"},
-					&BoolNode{0, true})})},
-			&LteNode{bin(
-				&IntNode{0, -3},
-				&IntNode{0, 5})},
-			&ElvisNode{bin(
-				&NotNode{0, &DataRefNode{0, "foo", nil}},
-				&FunctionNode{0, "bar", []Node{&IntNode{0, 5}}})}})}, nil})},
+	{"expression2", `{null or ('foo' == 'f'+true ? -3 <= 5 : not $foo ?: bar(5))}`, tFile(&ast.PrintNode{0, &ast.OrNode{bin(
+		&ast.NullNode{0},
+		&ast.TernNode{0,
+			&ast.EqNode{bin(
+				str("foo"),
+				&ast.AddNode{bin(
+					str("f"),
+					&ast.BoolNode{0, true})})},
+			&ast.LteNode{bin(
+				&ast.IntNode{0, -3},
+				&ast.IntNode{0, 5})},
+			&ast.ElvisNode{bin(
+				&ast.NotNode{0, &ast.DataRefNode{0, "foo", nil}},
+				&ast.FunctionNode{0, "bar", []ast.Node{&ast.IntNode{0, 5}}})}})}, nil})},
 
-	{"expression3", `{'a'+'b' != 'ab' and (2 >= -5.0 or (null ?: true))}`, tFile(&PrintNode{0, &AndNode{bin(
-		&NotEqNode{bin(
-			&AddNode{bin(
-				&StringNode{0, "a"},
-				&StringNode{0, "b"})},
-			&StringNode{0, "ab"})},
-		&OrNode{bin(
-			&GteNode{bin(&IntNode{0, 2}, &FloatNode{0, -5.0})},
-			&ElvisNode{bin(
-				&NullNode{0},
-				&BoolNode{0, true})})})}, nil})},
+	{"expression3", `{'a'+'b' != 'ab' and (2 >= -5.0 or (null ?: true))}`, tFile(&ast.PrintNode{0, &ast.AndNode{bin(
+		&ast.NotEqNode{bin(
+			&ast.AddNode{bin(
+				str("a"),
+				str("b"))},
+			str("ab"))},
+		&ast.OrNode{bin(
+			&ast.GteNode{bin(&ast.IntNode{0, 2}, &ast.FloatNode{0, -5.0})},
+			&ast.ElvisNode{bin(
+				&ast.NullNode{0},
+				&ast.BoolNode{0, true})})})}, nil})},
 
-	{"sub", `{1.0-0.5}`, tFile(&PrintNode{0, &SubNode{bin(
-		&FloatNode{0, 1.0},
-		&FloatNode{0, 0.5},
+	{"sub", `{1.0-0.5}`, tFile(&ast.PrintNode{0, &ast.SubNode{bin(
+		&ast.FloatNode{0, 1.0},
+		&ast.FloatNode{0, 0.5},
 	)}, nil})},
 
-	{"function", `{hasData()}`, tFile(&PrintNode{0, &FunctionNode{0, "hasData", nil}, nil})},
+	{"function", `{hasData()}`, tFile(&ast.PrintNode{0, &ast.FunctionNode{0, "hasData", nil}, nil})},
 
-	{"empty list", `{[]}`, tFile(&PrintNode{0, &ListLiteralNode{0, nil}, nil})},
+	{"empty list", `{[]}`, tFile(&ast.PrintNode{0, &ast.ListLiteralNode{0, nil}, nil})},
 
-	{"list", `{[1, 'two', [3, false]]}`, tFile(&PrintNode{0, &ListLiteralNode{0, []Node{
-		&IntNode{0, 1},
-		&StringNode{0, "two"},
-		&ListLiteralNode{0, []Node{
-			&IntNode{0, 3},
-			&BoolNode{0, false},
+	{"list", `{[1, 'two', [3, false]]}`, tFile(&ast.PrintNode{0, &ast.ListLiteralNode{0, []ast.Node{
+		&ast.IntNode{0, 1},
+		str("two"),
+		&ast.ListLiteralNode{0, []ast.Node{
+			&ast.IntNode{0, 3},
+			&ast.BoolNode{0, false},
 		}},
 	}}, nil})},
 
-	{"empty map", `{[:]}`, tFile(&PrintNode{0, &MapLiteralNode{0, make(map[string]Node)}, nil})},
+	{"empty map", `{[:]}`, tFile(&ast.PrintNode{0, &ast.MapLiteralNode{0, make(map[string]ast.Node)}, nil})},
 
-	{"map", `{['aaa': 42, 'bbb': 'hello', 'ccc':[1]]}`, tFile(&PrintNode{0, &MapLiteralNode{0, map[string]Node{
-		"aaa": &IntNode{0, 42},
-		"bbb": &StringNode{0, "hello"},
-		"ccc": &ListLiteralNode{0, []Node{&IntNode{0, 1}}},
+	{"map", `{['aaa': 42, 'bbb': 'hello', 'ccc':[1]]}`, tFile(&ast.PrintNode{0, &ast.MapLiteralNode{0, map[string]ast.Node{
+		"aaa": &ast.IntNode{0, 42},
+		"bbb": str("hello"),
+		"ccc": &ast.ListLiteralNode{0, []ast.Node{&ast.IntNode{0, 1}}},
 	}}, nil})},
 
 	{"if", `
@@ -222,19 +235,19 @@ var parseTests = []parseTest{
 {else}
   Blah {$moo}
 {/if}`, tFile(
-		&IfNode{0, []*IfCondNode{
-			&IfCondNode{0, &DataRefNode{0, "zoo", nil}, tList(&PrintNode{0, &DataRefNode{0, "zoo", nil}, nil})},
+		&ast.IfNode{0, []*ast.IfCondNode{
+			&ast.IfCondNode{0, &ast.DataRefNode{0, "zoo", nil}, tList(&ast.PrintNode{0, &ast.DataRefNode{0, "zoo", nil}, nil})},
 		}},
-		&IfNode{0, []*IfCondNode{
-			&IfCondNode{0, &DataRefNode{0, "boo", nil}, tList(newText(0, "Blah"))},
-			&IfCondNode{0,
-				&GtNode{bin(
-					&DataRefNode{0, "foo", []Node{&DataRefKeyNode{0, false, "goo"}}},
-					&IntNode{0, 2})},
-				tList(&PrintNode{0, &DataRefNode{0, "boo", nil}, nil})},
-			&IfCondNode{0,
+		&ast.IfNode{0, []*ast.IfCondNode{
+			&ast.IfCondNode{0, &ast.DataRefNode{0, "boo", nil}, tList(newText(0, "Blah"))},
+			&ast.IfCondNode{0,
+				&ast.GtNode{bin(
+					&ast.DataRefNode{0, "foo", []ast.Node{&ast.DataRefKeyNode{0, false, "goo"}}},
+					&ast.IntNode{0, 2})},
+				tList(&ast.PrintNode{0, &ast.DataRefNode{0, "boo", nil}, nil})},
+			&ast.IfCondNode{0,
 				nil,
-				tList(newText(0, "Blah "), &PrintNode{0, &DataRefNode{0, "moo", nil}, nil})},
+				tList(newText(0, "Blah "), &ast.PrintNode{0, &ast.DataRefNode{0, "moo", nil}, nil})},
 		}},
 	)},
 
@@ -247,15 +260,15 @@ var parseTests = []parseTest{
   {default}
     Bloh
 {/switch}`, tFile(
-		&SwitchNode{0, &DataRefNode{0, "boo", nil}, []*SwitchCaseNode{
-			&SwitchCaseNode{0, []Node{&IntNode{0, 0}}, tList(newText(0, "Blah"))},
-			&SwitchCaseNode{0, []Node{&DataRefNode{0, "foo", []Node{&DataRefKeyNode{0, false, "goo"}}}},
+		&ast.SwitchNode{0, &ast.DataRefNode{0, "boo", nil}, []*ast.SwitchCaseNode{
+			&ast.SwitchCaseNode{0, []ast.Node{&ast.IntNode{0, 0}}, tList(newText(0, "Blah"))},
+			&ast.SwitchCaseNode{0, []ast.Node{&ast.DataRefNode{0, "foo", []ast.Node{&ast.DataRefKeyNode{0, false, "goo"}}}},
 				tList(newText(0, "Bleh"))},
-			&SwitchCaseNode{0, []Node{
-				&IntNode{0, -1},
-				&AddNode{bin(&IntNode{0, 1}, &IntNode{0, 1})},
-				&DataRefNode{0, "moo", nil}}, tList(newText(0, "Bluh"))},
-			&SwitchCaseNode{0, nil, tList(newText(0, "Bloh"))},
+			&ast.SwitchCaseNode{0, []ast.Node{
+				&ast.IntNode{0, -1},
+				&ast.AddNode{bin(&ast.IntNode{0, 1}, &ast.IntNode{0, 1})},
+				&ast.DataRefNode{0, "moo", nil}}, tList(newText(0, "Bluh"))},
+			&ast.SwitchCaseNode{0, nil, tList(newText(0, "Bloh"))},
 		}},
 	)},
 
@@ -269,19 +282,19 @@ var parseTests = []parseTest{
 {ifempty}
   Sorry, no booze.
 {/foreach}`, tFile(
-		&ForNode{0, "goo", &DataRefNode{0, "goose", nil}, tList(
-			&PrintNode{0, &DataRefNode{0, "goose", []Node{&DataRefKeyNode{0, false, "numKids"}}}, nil},
+		&ast.ForNode{0, "goo", &ast.DataRefNode{0, "goose", nil}, tList(
+			&ast.PrintNode{0, &ast.DataRefNode{0, "goose", []ast.Node{&ast.DataRefKeyNode{0, false, "numKids"}}}, nil},
 			newText(0, " goslings."),
 			newText(0, "\n"),
 		), nil},
-		&ForNode{0, "boo", &DataRefNode{0, "foo", []Node{&DataRefKeyNode{0, false, "booze"}}},
+		&ast.ForNode{0, "boo", &ast.DataRefNode{0, "foo", []ast.Node{&ast.DataRefKeyNode{0, false, "booze"}}},
 			tList(
 				newText(0, "Scary drink "),
-				&PrintNode{0, &DataRefNode{0, "boo", []Node{&DataRefKeyNode{0, false, "name"}}}, nil},
+				&ast.PrintNode{0, &ast.DataRefNode{0, "boo", []ast.Node{&ast.DataRefKeyNode{0, false, "name"}}}, nil},
 				newText(0, "!"),
-				&IfNode{0,
-					[]*IfCondNode{&IfCondNode{0,
-						&NotNode{0, &FunctionNode{0, "isLast", []Node{&DataRefNode{0, "boo", nil}}}},
+				&ast.IfNode{0,
+					[]*ast.IfCondNode{&ast.IfCondNode{0,
+						&ast.NotNode{0, &ast.FunctionNode{0, "isLast", []ast.Node{&ast.DataRefNode{0, "boo", nil}}}},
 						tList(newText(0, "\n"))}}}),
 			tList(
 				newText(0, "Sorry, no booze."))},
@@ -293,36 +306,36 @@ var parseTests = []parseTest{
     {$i}: {$items[$i - 1]}{\n}
   {/msg}
 {/for}`, tFile(
-		&ForNode{0, "i",
-			&FunctionNode{0, "range", []Node{
-				&IntNode{0, 1},
-				&AddNode{bin(
-					&DataRefNode{0, "items", []Node{&DataRefKeyNode{0, false, "length"}}},
-					&IntNode{0, 1})}}},
+		&ast.ForNode{0, "i",
+			&ast.FunctionNode{0, "range", []ast.Node{
+				&ast.IntNode{0, 1},
+				&ast.AddNode{bin(
+					&ast.DataRefNode{0, "items", []ast.Node{&ast.DataRefKeyNode{0, false, "length"}}},
+					&ast.IntNode{0, 1})}}},
 			tList(
-				&MsgNode{0, "Numbered item.", tList(
-					&PrintNode{0, &DataRefNode{0, "i", nil}, nil},
+				&ast.MsgNode{0, "Numbered item.", tList(
+					&ast.PrintNode{0, &ast.DataRefNode{0, "i", nil}, nil},
 					newText(0, ": "),
-					&PrintNode{0, &DataRefNode{0, "items", []Node{
-						&DataRefExprNode{0, false,
-							&SubNode{bin(
-								&DataRefNode{0, "i", nil},
-								&IntNode{0, 1})}}}}, nil},
+					&ast.PrintNode{0, &ast.DataRefNode{0, "items", []ast.Node{
+						&ast.DataRefExprNode{0, false,
+							&ast.SubNode{bin(
+								&ast.DataRefNode{0, "i", nil},
+								&ast.IntNode{0, 1})}}}}, nil},
 
 					newText(0, "\n"), // {\n}
 				)}),
 			nil},
 	)},
 
-	{"data ref", "{$boo.0['foo'+'bar'][5]?.goo}", tFile(&PrintNode{0, &DataRefNode{0, "boo", []Node{
-		&DataRefIndexNode{0, false, 0},
-		&DataRefExprNode{0,
+	{"data ref", "{$boo.0['foo'+'bar'][5]?.goo}", tFile(&ast.PrintNode{0, &ast.DataRefNode{0, "boo", []ast.Node{
+		&ast.DataRefIndexNode{0, false, 0},
+		&ast.DataRefExprNode{0,
 			false,
-			&AddNode{bin(
-				&StringNode{0, "foo"},
-				&StringNode{0, "bar"})}},
-		&DataRefExprNode{0, false, &IntNode{0, 5}},
-		&DataRefKeyNode{0, true, "goo"}},
+			&ast.AddNode{bin(
+				str("foo"),
+				str("bar"))}},
+		&ast.DataRefExprNode{0, false, &ast.IntNode{0, 5}},
+		&ast.DataRefKeyNode{0, true, "goo"}},
 	}, nil})},
 
 	{"call", `
@@ -342,26 +355,26 @@ var parseTests = []parseTest{
   {param zoo: 0 /}
   {param doo kind="html"}doopoo{/param}
 {/call}`, tFile(
-		&CallNode{0, ".booTemplate_", false, nil, nil},
-		&CallNode{0, "foo.goo.mooTemplate", true, nil, nil},
-		&CallNode{0, ".zooTemplate", false, &DataRefNode{0, "animals", nil}, []Node{
-			&CallParamValueNode{0, "yoo", &FunctionNode{0, "round", []Node{&DataRefNode{0, "too", nil}}}},
-			&CallParamContentNode{0, "woo", tList(newText(0, "poo"))},
-			&CallParamContentNode{0, "doo", tList(newText(0, "doopoo"))}}},
-		&CallNode{0, "a.long.template.booTemplate_", false, nil, nil},
-		&CallNode{0, ".zooTemplate", false, &DataRefNode{0, "animals", nil}, []Node{
-			&CallParamValueNode{0, "yoo", &FunctionNode{0, "round", []Node{&DataRefNode{0, "too", nil}}}},
-			&CallParamContentNode{0, "woo", tList(newText(0, "poo"))},
-			&CallParamValueNode{0, "zoo", &IntNode{0, 0}},
-			&CallParamContentNode{0, "doo", tList(newText(0, "doopoo"))}}},
+		&ast.CallNode{0, ".booTemplate_", false, nil, nil},
+		&ast.CallNode{0, "foo.goo.mooTemplate", true, nil, nil},
+		&ast.CallNode{0, ".zooTemplate", false, &ast.DataRefNode{0, "animals", nil}, []ast.Node{
+			&ast.CallParamValueNode{0, "yoo", &ast.FunctionNode{0, "round", []ast.Node{&ast.DataRefNode{0, "too", nil}}}},
+			&ast.CallParamContentNode{0, "woo", tList(newText(0, "poo"))},
+			&ast.CallParamContentNode{0, "doo", tList(newText(0, "doopoo"))}}},
+		&ast.CallNode{0, "a.long.template.booTemplate_", false, nil, nil},
+		&ast.CallNode{0, ".zooTemplate", false, &ast.DataRefNode{0, "animals", nil}, []ast.Node{
+			&ast.CallParamValueNode{0, "yoo", &ast.FunctionNode{0, "round", []ast.Node{&ast.DataRefNode{0, "too", nil}}}},
+			&ast.CallParamContentNode{0, "woo", tList(newText(0, "poo"))},
+			&ast.CallParamValueNode{0, "zoo", &ast.IntNode{0, 0}},
+			&ast.CallParamContentNode{0, "doo", tList(newText(0, "doopoo"))}}},
 	)},
 
 	{"let", `
 {let $alpha: $boo.foo /}
 {let $beta}Boo!{/let}
 `, /*{let $delta kind="html"}Boo!{/let}*/ tFile(
-		&LetValueNode{0, "alpha", &DataRefNode{0, "boo", []Node{&DataRefKeyNode{0, false, "foo"}}}},
-		&LetContentNode{0, "beta", tList(newText(0, "Boo!"))},
+		&ast.LetValueNode{0, "alpha", &ast.DataRefNode{0, "boo", []ast.Node{&ast.DataRefKeyNode{0, false, "foo"}}}},
+		&ast.LetContentNode{0, "beta", tList(newText(0, "Boo!"))},
 	)},
 
 	{"comments", `
@@ -379,7 +392,7 @@ var parseTests = []parseTest{
 	)},
 
 	{"alias", `{alias a.b.c}{call c.d/}`, tFile(
-		&CallNode{0, "a.b.c.d", false, nil, nil},
+		&ast.CallNode{0, "a.b.c.d", false, nil, nil},
 	)},
 }
 
@@ -389,8 +402,6 @@ var globals = data.Map{
 }
 
 func TestParse(t *testing.T) {
-	textFormat = "%q"
-	defer func() { textFormat = "%s" }()
 	for _, test := range parseTests {
 		tmpl, err := Soy(test.name, test.input, globals)
 
@@ -419,7 +430,7 @@ func TestParse(t *testing.T) {
 	}
 }
 
-func eqTree(t *testing.T, expected, actual Node) bool {
+func eqTree(t *testing.T, expected, actual ast.Node) bool {
 	if reflect.TypeOf(actual) != reflect.TypeOf(expected) {
 		t.Errorf("expected %T, got %T", expected, actual)
 		return false
@@ -430,49 +441,50 @@ func eqTree(t *testing.T, expected, actual Node) bool {
 	}
 
 	switch actual.(type) {
-	case *SoyFileNode:
-		return eqNodes(t, expected.(*SoyFileNode).Body, actual.(*SoyFileNode).Body)
-	case *ListNode:
-		return eqNodes(t, expected.(*ListNode).Nodes, actual.(*ListNode).Nodes)
-	case *NamespaceNode:
-		return eqstr(t, "namespace", expected.(*NamespaceNode).Name, actual.(*NamespaceNode).Name)
-	case *TemplateNode:
-		if expected.(*TemplateNode).Name != actual.(*TemplateNode).Name {
+	case *ast.SoyFileNode:
+		return eqNodes(t, expected.(*ast.SoyFileNode).Body, actual.(*ast.SoyFileNode).Body)
+	case *ast.ListNode:
+		return eqNodes(t, expected.(*ast.ListNode).Nodes, actual.(*ast.ListNode).Nodes)
+	case *ast.NamespaceNode:
+		return eqstr(t, "namespace", expected.(*ast.NamespaceNode).Name, actual.(*ast.NamespaceNode).Name)
+	case *ast.TemplateNode:
+		if expected.(*ast.TemplateNode).Name != actual.(*ast.TemplateNode).Name {
 			return false
 		}
-		return eqTree(t, expected.(*TemplateNode).Body, actual.(*TemplateNode).Body)
-	case *RawTextNode:
-		return eqstr(t, "text", string(expected.(*RawTextNode).Text), string(actual.(*RawTextNode).Text))
-	case *CssNode:
-		return eqTree(t, expected.(*CssNode).Expr, actual.(*CssNode).Expr) &&
-			eqstr(t, "css", expected.(*CssNode).Suffix, actual.(*CssNode).Suffix)
-	case *DebuggerNode:
+		return eqTree(t, expected.(*ast.TemplateNode).Body, actual.(*ast.TemplateNode).Body)
+	case *ast.RawTextNode:
+		return eqstr(t, "text", string(expected.(*ast.RawTextNode).Text), string(actual.(*ast.RawTextNode).Text))
+	case *ast.CssNode:
+		return eqTree(t, expected.(*ast.CssNode).Expr, actual.(*ast.CssNode).Expr) &&
+			eqstr(t, "css", expected.(*ast.CssNode).Suffix, actual.(*ast.CssNode).Suffix)
+	case *ast.DebuggerNode:
 		return true
-	case *LogNode:
-		return eqTree(t, expected.(*LogNode).Body, actual.(*LogNode).Body)
-	case *LetValueNode:
-		return eqstr(t, "let", expected.(*LetValueNode).Name, actual.(*LetValueNode).Name) &&
-			eqTree(t, expected.(*LetValueNode).Expr, actual.(*LetValueNode).Expr)
-	case *LetContentNode:
-		return eqstr(t, "let", expected.(*LetContentNode).Name, actual.(*LetContentNode).Name) &&
-			eqTree(t, expected.(*LetContentNode).Body, actual.(*LetContentNode).Body)
+	case *ast.LogNode:
+		return eqTree(t, expected.(*ast.LogNode).Body, actual.(*ast.LogNode).Body)
+	case *ast.LetValueNode:
+		return eqstr(t, "let", expected.(*ast.LetValueNode).Name, actual.(*ast.LetValueNode).Name) &&
+			eqTree(t, expected.(*ast.LetValueNode).Expr, actual.(*ast.LetValueNode).Expr)
+	case *ast.LetContentNode:
+		return eqstr(t, "let", expected.(*ast.LetContentNode).Name, actual.(*ast.LetContentNode).Name) &&
+			eqTree(t, expected.(*ast.LetContentNode).Body, actual.(*ast.LetContentNode).Body)
 
-	case *NullNode:
+	case *ast.NullNode:
 		return true
-	case *BoolNode:
-		return eqbool(t, "bool", expected.(*BoolNode).True, actual.(*BoolNode).True)
-	case *IntNode:
-		return eqint(t, "int", expected.(*IntNode).Value, actual.(*IntNode).Value)
-	case *FloatNode:
-		return eqfloat(t, "float", expected.(*FloatNode).Value, actual.(*FloatNode).Value)
-	case *StringNode:
-		return eqstr(t, "stringnode", expected.(*StringNode).Value, actual.(*StringNode).Value)
-	case *GlobalNode:
-		return eqstr(t, "global", expected.(*GlobalNode).Name, actual.(*GlobalNode).Name)
-	case *ListLiteralNode:
-		return eqNodes(t, expected.(*ListLiteralNode).Items, actual.(*ListLiteralNode).Items)
-	case *MapLiteralNode:
-		e, a := expected.(*MapLiteralNode).Items, actual.(*MapLiteralNode).Items
+	case *ast.BoolNode:
+		return eqbool(t, "bool", expected.(*ast.BoolNode).True, actual.(*ast.BoolNode).True)
+	case *ast.IntNode:
+		return eqint(t, "int", expected.(*ast.IntNode).Value, actual.(*ast.IntNode).Value)
+	case *ast.FloatNode:
+		return eqfloat(t, "float", expected.(*ast.FloatNode).Value, actual.(*ast.FloatNode).Value)
+	case *ast.StringNode:
+		return eqstr(t, "stringnode",
+			string(expected.(*ast.StringNode).Value), string(actual.(*ast.StringNode).Value))
+	case *ast.GlobalNode:
+		return eqstr(t, "global", expected.(*ast.GlobalNode).Name, actual.(*ast.GlobalNode).Name)
+	case *ast.ListLiteralNode:
+		return eqNodes(t, expected.(*ast.ListLiteralNode).Items, actual.(*ast.ListLiteralNode).Items)
+	case *ast.MapLiteralNode:
+		e, a := expected.(*ast.MapLiteralNode).Items, actual.(*ast.MapLiteralNode).Items
 		if len(e) != len(a) {
 			t.Errorf("map differed in size. expected %d, got %d", len(e), len(a))
 			return false
@@ -485,71 +497,71 @@ func eqTree(t *testing.T, expected, actual Node) bool {
 		}
 		return true
 
-	case *DataRefNode:
-		return eqstr(t, "var", expected.(*DataRefNode).Key, actual.(*DataRefNode).Key) &&
-			eqNodes(t, expected.(*DataRefNode).Access, actual.(*DataRefNode).Access)
-	case *DataRefExprNode:
-		return eqbool(t, "datarefexpr", expected.(*DataRefExprNode).NullSafe, actual.(*DataRefExprNode).NullSafe) &&
-			eqTree(t, expected.(*DataRefExprNode).Arg, actual.(*DataRefExprNode).Arg)
-	case *DataRefKeyNode:
-		return eqbool(t, "datarefkey", expected.(*DataRefKeyNode).NullSafe, actual.(*DataRefKeyNode).NullSafe) &&
-			eqstr(t, "datarefkey", expected.(*DataRefKeyNode).Key, actual.(*DataRefKeyNode).Key)
-	case *DataRefIndexNode:
-		return eqbool(t, "datarefindex", expected.(*DataRefIndexNode).NullSafe, actual.(*DataRefIndexNode).NullSafe) &&
-			eqint(t, "datarefindex", int64(expected.(*DataRefIndexNode).Index), int64(actual.(*DataRefIndexNode).Index))
+	case *ast.DataRefNode:
+		return eqstr(t, "var", expected.(*ast.DataRefNode).Key, actual.(*ast.DataRefNode).Key) &&
+			eqNodes(t, expected.(*ast.DataRefNode).Access, actual.(*ast.DataRefNode).Access)
+	case *ast.DataRefExprNode:
+		return eqbool(t, "datarefexpr", expected.(*ast.DataRefExprNode).NullSafe, actual.(*ast.DataRefExprNode).NullSafe) &&
+			eqTree(t, expected.(*ast.DataRefExprNode).Arg, actual.(*ast.DataRefExprNode).Arg)
+	case *ast.DataRefKeyNode:
+		return eqbool(t, "datarefkey", expected.(*ast.DataRefKeyNode).NullSafe, actual.(*ast.DataRefKeyNode).NullSafe) &&
+			eqstr(t, "datarefkey", expected.(*ast.DataRefKeyNode).Key, actual.(*ast.DataRefKeyNode).Key)
+	case *ast.DataRefIndexNode:
+		return eqbool(t, "datarefindex", expected.(*ast.DataRefIndexNode).NullSafe, actual.(*ast.DataRefIndexNode).NullSafe) &&
+			eqint(t, "datarefindex", int64(expected.(*ast.DataRefIndexNode).Index), int64(actual.(*ast.DataRefIndexNode).Index))
 
-	case *NotNode:
-		return eqTree(t, expected.(*NotNode).Arg, actual.(*NotNode).Arg)
-	case *NegateNode:
-		return eqTree(t, expected.(*NegateNode).Arg, actual.(*NegateNode).Arg)
-	case *MulNode, *DivNode, *ModNode, *AddNode, *SubNode, *EqNode, *NotEqNode,
-		*GtNode, *GteNode, *LtNode, *LteNode, *OrNode, *AndNode, *ElvisNode:
+	case *ast.NotNode:
+		return eqTree(t, expected.(*ast.NotNode).Arg, actual.(*ast.NotNode).Arg)
+	case *ast.NegateNode:
+		return eqTree(t, expected.(*ast.NegateNode).Arg, actual.(*ast.NegateNode).Arg)
+	case *ast.MulNode, *ast.DivNode, *ast.ModNode, *ast.AddNode, *ast.SubNode, *ast.EqNode, *ast.NotEqNode,
+		*ast.GtNode, *ast.GteNode, *ast.LtNode, *ast.LteNode, *ast.OrNode, *ast.AndNode, *ast.ElvisNode:
 		return eqBinOp(t, expected, actual)
-	case *TernNode:
-		return eqTree(t, expected.(*TernNode).Arg1, actual.(*TernNode).Arg1) &&
-			eqTree(t, expected.(*TernNode).Arg2, actual.(*TernNode).Arg2) &&
-			eqTree(t, expected.(*TernNode).Arg3, actual.(*TernNode).Arg3)
-	case *FunctionNode:
-		return eqstr(t, "function", expected.(*FunctionNode).Name, actual.(*FunctionNode).Name) &&
-			eqNodes(t, expected.(*FunctionNode).Args, actual.(*FunctionNode).Args)
+	case *ast.TernNode:
+		return eqTree(t, expected.(*ast.TernNode).Arg1, actual.(*ast.TernNode).Arg1) &&
+			eqTree(t, expected.(*ast.TernNode).Arg2, actual.(*ast.TernNode).Arg2) &&
+			eqTree(t, expected.(*ast.TernNode).Arg3, actual.(*ast.TernNode).Arg3)
+	case *ast.FunctionNode:
+		return eqstr(t, "function", expected.(*ast.FunctionNode).Name, actual.(*ast.FunctionNode).Name) &&
+			eqNodes(t, expected.(*ast.FunctionNode).Args, actual.(*ast.FunctionNode).Args)
 
-	case *SoyDocNode:
-		return eqNodes(t, expected.(*SoyDocNode).Params, actual.(*SoyDocNode).Params)
-	case *SoyDocParamNode:
-		return eqstr(t, "soydocparam", expected.(*SoyDocParamNode).Name, actual.(*SoyDocParamNode).Name) &&
-			eqbool(t, "soydocparam", expected.(*SoyDocParamNode).Optional, actual.(*SoyDocParamNode).Optional)
-	case *PrintNode:
-		return eqTree(t, expected.(*PrintNode).Arg, actual.(*PrintNode).Arg)
-	case *MsgNode:
-		return eqstr(t, "msg", expected.(*MsgNode).Desc, actual.(*MsgNode).Desc) &&
-			eqTree(t, expected.(*MsgNode).Body, actual.(*MsgNode).Body)
-	case *CallNode:
-		return eqstr(t, "call", expected.(*CallNode).Name, actual.(*CallNode).Name) &&
-			eqTree(t, expected.(*CallNode).Data, actual.(*CallNode).Data) &&
-			eqNodes(t, expected.(*CallNode).Params, actual.(*CallNode).Params)
-	case *CallParamValueNode:
-		return eqstr(t, "param", expected.(*CallParamValueNode).Key, actual.(*CallParamValueNode).Key) &&
-			eqTree(t, expected.(*CallParamValueNode).Value, actual.(*CallParamValueNode).Value)
-	case *CallParamContentNode:
-		return eqstr(t, "param", expected.(*CallParamContentNode).Key, actual.(*CallParamContentNode).Key) &&
-			eqTree(t, expected.(*CallParamContentNode).Content, actual.(*CallParamContentNode).Content)
+	case *ast.SoyDocNode:
+		return eqNodes(t, expected.(*ast.SoyDocNode).Params, actual.(*ast.SoyDocNode).Params)
+	case *ast.SoyDocParamNode:
+		return eqstr(t, "soydocparam", expected.(*ast.SoyDocParamNode).Name, actual.(*ast.SoyDocParamNode).Name) &&
+			eqbool(t, "soydocparam", expected.(*ast.SoyDocParamNode).Optional, actual.(*ast.SoyDocParamNode).Optional)
+	case *ast.PrintNode:
+		return eqTree(t, expected.(*ast.PrintNode).Arg, actual.(*ast.PrintNode).Arg)
+	case *ast.MsgNode:
+		return eqstr(t, "msg", expected.(*ast.MsgNode).Desc, actual.(*ast.MsgNode).Desc) &&
+			eqTree(t, expected.(*ast.MsgNode).Body, actual.(*ast.MsgNode).Body)
+	case *ast.CallNode:
+		return eqstr(t, "call", expected.(*ast.CallNode).Name, actual.(*ast.CallNode).Name) &&
+			eqTree(t, expected.(*ast.CallNode).Data, actual.(*ast.CallNode).Data) &&
+			eqNodes(t, expected.(*ast.CallNode).Params, actual.(*ast.CallNode).Params)
+	case *ast.CallParamValueNode:
+		return eqstr(t, "param", expected.(*ast.CallParamValueNode).Key, actual.(*ast.CallParamValueNode).Key) &&
+			eqTree(t, expected.(*ast.CallParamValueNode).Value, actual.(*ast.CallParamValueNode).Value)
+	case *ast.CallParamContentNode:
+		return eqstr(t, "param", expected.(*ast.CallParamContentNode).Key, actual.(*ast.CallParamContentNode).Key) &&
+			eqTree(t, expected.(*ast.CallParamContentNode).Content, actual.(*ast.CallParamContentNode).Content)
 
-	case *IfNode:
-		return eqNodes(t, expected.(*IfNode).Conds, actual.(*IfNode).Conds)
-	case *IfCondNode:
-		return eqTree(t, expected.(*IfCondNode).Cond, actual.(*IfCondNode).Cond) &&
-			eqTree(t, expected.(*IfCondNode).Body, actual.(*IfCondNode).Body)
-	case *ForNode:
-		return eqstr(t, "for", expected.(*ForNode).Var, actual.(*ForNode).Var) &&
-			eqTree(t, expected.(*ForNode).List, actual.(*ForNode).List) &&
-			eqTree(t, expected.(*ForNode).Body, actual.(*ForNode).Body) &&
-			eqTree(t, expected.(*ForNode).IfEmpty, actual.(*ForNode).IfEmpty)
-	case *SwitchNode:
-		return eqTree(t, expected.(*SwitchNode).Value, actual.(*SwitchNode).Value) &&
-			eqNodes(t, expected.(*SwitchNode).Cases, actual.(*SwitchNode).Cases)
-	case *SwitchCaseNode:
-		return eqTree(t, expected.(*SwitchCaseNode).Body, actual.(*SwitchCaseNode).Body) &&
-			eqNodes(t, expected.(*SwitchCaseNode).Values, actual.(*SwitchCaseNode).Values)
+	case *ast.IfNode:
+		return eqNodes(t, expected.(*ast.IfNode).Conds, actual.(*ast.IfNode).Conds)
+	case *ast.IfCondNode:
+		return eqTree(t, expected.(*ast.IfCondNode).Cond, actual.(*ast.IfCondNode).Cond) &&
+			eqTree(t, expected.(*ast.IfCondNode).Body, actual.(*ast.IfCondNode).Body)
+	case *ast.ForNode:
+		return eqstr(t, "for", expected.(*ast.ForNode).Var, actual.(*ast.ForNode).Var) &&
+			eqTree(t, expected.(*ast.ForNode).List, actual.(*ast.ForNode).List) &&
+			eqTree(t, expected.(*ast.ForNode).Body, actual.(*ast.ForNode).Body) &&
+			eqTree(t, expected.(*ast.ForNode).IfEmpty, actual.(*ast.ForNode).IfEmpty)
+	case *ast.SwitchNode:
+		return eqTree(t, expected.(*ast.SwitchNode).Value, actual.(*ast.SwitchNode).Value) &&
+			eqNodes(t, expected.(*ast.SwitchNode).Cases, actual.(*ast.SwitchNode).Cases)
+	case *ast.SwitchCaseNode:
+		return eqTree(t, expected.(*ast.SwitchCaseNode).Body, actual.(*ast.SwitchCaseNode).Body) &&
+			eqNodes(t, expected.(*ast.SwitchCaseNode).Values, actual.(*ast.SwitchCaseNode).Values)
 	}
 	panic(fmt.Sprintf("type not implemented: %T", actual))
 }
@@ -585,8 +597,8 @@ func eqfloat(t *testing.T, name string, exp, act float64) bool {
 // eqBinOp compares structs that embed binaryOpNode
 func eqBinOp(t *testing.T, n1, n2 interface{}) bool {
 	var (
-		op1 = reflect.ValueOf(n1).Elem().Field(0).Interface().(binaryOpNode)
-		op2 = reflect.ValueOf(n2).Elem().Field(0).Interface().(binaryOpNode)
+		op1 = reflect.ValueOf(n1).Elem().Field(0).Interface().(ast.BinaryOpNode)
+		op2 = reflect.ValueOf(n2).Elem().Field(0).Interface().(ast.BinaryOpNode)
 	)
 	return eqTree(t, op1.Arg1, op2.Arg1) && eqTree(t, op1.Arg2, op2.Arg2)
 }
@@ -601,17 +613,17 @@ func eqNodes(t *testing.T, expected, actual interface{}) bool {
 		return false
 	}
 	for i := 0; i < a.Len(); i++ {
-		if !eqTree(t, e.Index(i).Interface().(Node), a.Index(i).Interface().(Node)) {
+		if !eqTree(t, e.Index(i).Interface().(ast.Node), a.Index(i).Interface().(ast.Node)) {
 			return false
 		}
 	}
 	return true
 }
 
-var nodeType = reflect.TypeOf((*Node)(nil)).Elem()
+var nodeType = reflect.TypeOf((*ast.Node)(nil)).Elem()
 
-func printTree(t *testing.T, n Node, depth int) {
-	if reflect.TypeOf(n) != reflect.TypeOf((*binaryOpNode)(nil)) {
+func printTree(t *testing.T, n ast.Node, depth int) {
+	if reflect.TypeOf(n) != reflect.TypeOf((*ast.BinaryOpNode)(nil)) {
 		t.Logf("%s--> %T", strings.Repeat("\t", depth), n)
 	}
 	val := reflect.ValueOf(n).Elem()
@@ -624,12 +636,12 @@ func printTree(t *testing.T, n Node, depth int) {
 		}
 		if ft.Kind() == reflect.Slice && ft.Elem().Implements(nodeType) {
 			for i := 0; i < f.Len(); i++ {
-				printTree(t, f.Index(i).Interface().(Node), depth+1)
+				printTree(t, f.Index(i).Interface().(ast.Node), depth+1)
 			}
 		} else if f.Type().Implements(nodeType) {
-			printTree(t, f.Interface().(Node), depth+1)
+			printTree(t, f.Interface().(ast.Node), depth+1)
 		} else if f.Addr().Type().Implements(nodeType) {
-			printTree(t, f.Addr().Interface().(Node), depth)
+			printTree(t, f.Addr().Interface().(ast.Node), depth)
 		} else {
 			//t.Logf("does not implement: %T", f.Interface())
 		}

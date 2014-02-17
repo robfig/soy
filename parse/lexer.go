@@ -5,6 +5,8 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/robfig/soy/ast"
 )
 
 // Lexer design from text/template
@@ -14,7 +16,7 @@ import (
 // item represents a token or text string returned from the scanner.
 type item struct {
 	typ itemType // The type of this item.
-	pos Pos      // The starting position, in bytes, of this item in the input string.
+	pos ast.Pos  // The starting position, in bytes, of this item in the input string.
 	val string   // The value of this item.
 }
 
@@ -301,8 +303,8 @@ type lexer struct {
 	name        string    // the name of the input; used only during errors.
 	input       string    // the string being scanned.
 	state       stateFn   // the next lexing function to enter.
-	pos         Pos       // current position in the input.
-	start       Pos       // start position of this item.
+	pos         ast.Pos   // current position in the input.
+	start       ast.Pos   // start position of this item.
 	width       int       // width of last rune read from input.
 	items       chan item // channel of scanned items.
 	doubleDelim bool      // flag for tags starting with double braces.
@@ -348,12 +350,12 @@ func (l *lexer) run() {
 
 // next returns the next rune in the input.
 func (l *lexer) next() (r rune) {
-	if l.pos >= Pos(len(l.input)) {
+	if l.pos >= ast.Pos(len(l.input)) {
 		l.width = 0
 		return eof
 	}
 	r, l.width = utf8.DecodeRuneInString(l.input[l.pos:])
-	l.pos += Pos(l.width)
+	l.pos += ast.Pos(l.width)
 	return r
 }
 
@@ -366,13 +368,13 @@ func (l *lexer) peek() rune {
 
 // backup steps back one rune. Can only be called once per call of next.
 func (l *lexer) backup() {
-	l.pos -= Pos(l.width)
+	l.pos -= ast.Pos(l.width)
 }
 
 // emit passes an item back to the client.
 func (l *lexer) emit(t itemType) {
-	if l.pos > Pos(len(l.input)) {
-		l.pos = Pos(len(l.input))
+	if l.pos > ast.Pos(len(l.input)) {
+		l.pos = ast.Pos(len(l.input))
 	}
 	l.lastEmit = item{t, l.pos, l.input[l.start:l.pos]}
 	l.items <- l.lastEmit
@@ -404,12 +406,12 @@ func (l *lexer) acceptRun(valid string) bool {
 
 // lineNumber reports which line we're on. Doing it this way
 // means we don't have to worry about peek double counting.
-func (l *lexer) lineNumber(pos Pos) int {
+func (l *lexer) lineNumber(pos ast.Pos) int {
 	return 1 + strings.Count(l.input[:pos], "\n")
 }
 
 // columnNumber reports which column in the current line we're on.
-func (l *lexer) columnNumber(pos Pos) int {
+func (l *lexer) columnNumber(pos ast.Pos) int {
 	n := strings.LastIndex(l.input[:pos], "\n")
 	if n == -1 {
 		n = 0
@@ -427,14 +429,14 @@ func (l *lexer) errorf(format string, args ...interface{}) stateFn {
 // State functions ------------------------------------------------------------
 
 func maybeEmitText(l *lexer, backup int) {
-	if l.pos-Pos(backup) > l.start {
-		l.pos -= Pos(backup)
+	if l.pos-ast.Pos(backup) > l.start {
+		l.pos -= ast.Pos(backup)
 		if allSpaceWithNewline(l.input[l.start:l.pos]) {
 			l.ignore()
 		} else {
 			l.emit(itemText)
 		}
-		l.pos += Pos(backup)
+		l.pos += ast.Pos(backup)
 	}
 }
 
@@ -676,7 +678,7 @@ func lexSoyDoc(l *lexer) stateFn {
 }
 
 func lexSoyDocParam(l *lexer) {
-	l.pos += Pos(len("@param"))
+	l.pos += ast.Pos(len("@param"))
 	switch ch := l.next(); {
 	case ch == '?':
 		if l.next() != ' ' {
@@ -878,11 +880,11 @@ func lexLiteral(l *lexer) stateFn {
 			if l.pos > l.start {
 				l.emit(itemText)
 			}
-			l.pos += Pos(delimLen)
+			l.pos += ast.Pos(delimLen)
 			l.emit(itemLeftDelim)
-			l.pos += Pos(len("/literal"))
+			l.pos += ast.Pos(len("/literal"))
 			l.emit(itemLiteralEnd)
-			l.pos += Pos(delimLen)
+			l.pos += ast.Pos(delimLen)
 			l.emit(itemRightDelim)
 			return lexText
 		}
@@ -925,7 +927,7 @@ func scanNumber(l *lexer) (typ itemType, ok bool) {
 	typ = itemInteger
 	// Optional leading sign.
 	hasSign := l.accept("+-")
-	if Pos(len(l.input)) >= l.pos+2 && l.input[l.pos:l.pos+2] == "0x" {
+	if ast.Pos(len(l.input)) >= l.pos+2 && l.input[l.pos:l.pos+2] == "0x" {
 		// Hexadecimal.
 		if hasSign {
 			// No signs for hexadecimals.

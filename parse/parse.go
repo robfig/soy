@@ -9,13 +9,14 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
 )
 
 // tree is the parsed representation of a single soy file.
 type tree struct {
 	name      string                // name provided for the input
-	root      *ListNode             // top-level root of the tree
+	root      *ast.ListNode         // top-level root of the tree
 	text      string                // the full input text
 	lex       *lexer                // lexer provides a sequence of tokens
 	token     [2]item               // two-token lookahead
@@ -27,7 +28,7 @@ type tree struct {
 
 // Soy parses the input into a SoyFileNode (the AST).
 // The result may be used as input to a soy backend to generate HTML or JS.
-func Soy(name, text string, globals data.Map) (node *SoyFileNode, err error) {
+func Soy(name, text string, globals data.Map) (node *ast.SoyFileNode, err error) {
 	var t = &tree{
 		name:    name,
 		text:    text,
@@ -38,7 +39,7 @@ func Soy(name, text string, globals data.Map) (node *SoyFileNode, err error) {
 	defer t.recover(&err)
 	t.root = t.itemList(itemEOF)
 	t.lex = nil
-	return &SoyFileNode{
+	return &ast.SoyFileNode{
 		Name: t.name,
 		Text: t.text,
 		Body: t.root.Nodes,
@@ -48,25 +49,25 @@ func Soy(name, text string, globals data.Map) (node *SoyFileNode, err error) {
 // itemList:
 //	textOrTag*
 // Terminates when it comes across the given end tag.
-func (t *tree) itemList(until ...itemType) *ListNode {
-	var list *ListNode
+func (t *tree) itemList(until ...itemType) *ast.ListNode {
+	var list *ast.ListNode
 	for {
 		var token = t.next()
 		if list == nil {
-			list = newList(token.pos)
+			list = &ast.ListNode{token.pos, nil}
 		}
 		var node, halt = t.textOrTag(token, until)
 		if halt {
 			return list
 		}
 		if node != nil {
-			list.append(node)
+			list.Nodes = append(list.Nodes, node)
 		}
 	}
 }
 
 // textOrTag reads raw text or recognizes the start of tags until the end tag.
-func (t *tree) textOrTag(token item, until []itemType) (node Node, halt bool) {
+func (t *tree) textOrTag(token item, until []itemType) (node ast.Node, halt bool) {
 	var seenComment = token.typ == itemComment
 	for token.typ == itemComment {
 		token = t.next() // skip any comments
@@ -101,7 +102,7 @@ func (t *tree) textOrTag(token item, until []itemType) (node Node, halt bool) {
 		if len(textvalue) == 0 {
 			return nil, false
 		}
-		return &RawTextNode{token.pos, textvalue}, false
+		return &ast.RawTextNode{token.pos, textvalue}, false
 	case itemLeftDelim:
 		return t.beginTag(), false
 	case itemSoyDocStart:
@@ -125,7 +126,7 @@ var specialChars = map[itemType]string{
 // beginTag parses the contents of delimiters (within a template)
 // The contents could be a command, variable, function call, expression, etc.
 // { already read.
-func (t *tree) beginTag() Node {
+func (t *tree) beginTag() ast.Node {
 	switch token := t.next(); token.typ {
 	case itemNamespace:
 		return t.parseNamespace(token)
@@ -144,7 +145,7 @@ func (t *tree) beginTag() Node {
 	case itemLiteral:
 		t.expect(itemRightDelim, "literal")
 		literalText := t.expect(itemText, "literal")
-		n := &RawTextNode{literalText.pos, []byte(literalText.val)}
+		n := &ast.RawTextNode{literalText.pos, []byte(literalText.val)}
 		t.expect(itemLeftDelim, "literal")
 		t.expect(itemLiteralEnd, "literal")
 		t.expect(itemRightDelim, "literal")
@@ -155,10 +156,10 @@ func (t *tree) beginTag() Node {
 		t.expect(itemRightDelim, "log")
 		logBody := t.itemList(itemLogEnd)
 		t.expect(itemRightDelim, "log")
-		return &LogNode{token.pos, logBody}
+		return &ast.LogNode{token.pos, logBody}
 	case itemDebugger:
 		t.expect(itemRightDelim, "debugger")
-		return &DebuggerNode{token.pos}
+		return &ast.DebuggerNode{token.pos}
 	case itemLet:
 		return t.parseLet(token)
 	case itemAlias:
@@ -166,7 +167,7 @@ func (t *tree) beginTag() Node {
 		return nil
 	case itemNil, itemSpace, itemTab, itemNewline, itemCarriageReturn, itemLeftBrace, itemRightBrace:
 		t.expect(itemRightDelim, "special char")
-		return newText(token.pos, specialChars[token.typ])
+		return &ast.RawTextNode{token.pos, []byte(specialChars[token.typ])}
 	case itemIdent, itemDollarIdent, itemNull, itemBool, itemFloat, itemInteger, itemString, itemNegate, itemNot, itemLeftBracket:
 		// print is implicit, so the tag may also begin with any value type or unary op.
 		t.backup()
@@ -180,17 +181,17 @@ func (t *tree) beginTag() Node {
 }
 
 // print has just been read (or inferred)
-func (t *tree) parsePrint(token item) Node {
+func (t *tree) parsePrint(token item) ast.Node {
 	var expr = t.parseExpr(0)
-	var directives []*PrintDirectiveNode
+	var directives []*ast.PrintDirectiveNode
 	for {
 		switch tok := t.next(); tok.typ {
 		case itemRightDelim:
-			return &PrintNode{token.pos, expr, directives}
+			return &ast.PrintNode{token.pos, expr, directives}
 		case itemPipe:
 			// read the directive name and see if there are arguments
 			var id = t.expect(itemIdent, "print directive")
-			var args []Node
+			var args []ast.Node
 			for {
 				// each argument is preceeded by a colon (first arg) or comma (subsequent)
 				switch next := t.next(); next.typ {
@@ -199,7 +200,7 @@ func (t *tree) parsePrint(token item) Node {
 					continue
 				}
 				t.backup()
-				directives = append(directives, &PrintDirectiveNode{tok.pos, id.val, args})
+				directives = append(directives, &ast.PrintDirectiveNode{tok.pos, id.val, args})
 				break
 			}
 		default:
@@ -229,15 +230,15 @@ func (t *tree) parseAlias(token item) {
 }
 
 // "let" has just been read.
-func (t *tree) parseLet(token item) Node {
+func (t *tree) parseLet(token item) ast.Node {
 	var name = t.expect(itemDollarIdent, "let")
 	switch next := t.next(); next.typ {
 	case itemColon:
-		var node = &LetValueNode{token.pos, name.val[1:], t.parseExpr(0)}
+		var node = &ast.LetValueNode{token.pos, name.val[1:], t.parseExpr(0)}
 		t.expect(itemRightDelimEnd, "let")
 		return node
 	case itemRightDelim:
-		var node = &LetContentNode{token.pos, name.val[1:], t.itemList(itemLetEnd)}
+		var node = &ast.LetContentNode{token.pos, name.val[1:], t.itemList(itemLetEnd)}
 		t.expect(itemRightDelim, "let")
 		return node
 	default:
@@ -247,15 +248,15 @@ func (t *tree) parseLet(token item) Node {
 }
 
 // "css" has just been read.
-func (t *tree) parseCss(token item) Node {
+func (t *tree) parseCss(token item) ast.Node {
 	var cmdText = t.expect(itemText, "css")
 	t.expect(itemRightDelim, "css")
 	var lastComma = strings.LastIndex(cmdText.val, ",")
 	if lastComma == -1 {
-		return &CssNode{token.pos, nil, strings.TrimSpace(cmdText.val)}
+		return &ast.CssNode{token.pos, nil, strings.TrimSpace(cmdText.val)}
 	}
 	var exprText = strings.TrimSpace(cmdText.val[:lastComma])
-	return &CssNode{
+	return &ast.CssNode{
 		token.pos,
 		t.parseQuotedExpr(exprText),
 		strings.TrimSpace(cmdText.val[lastComma+1:]),
@@ -263,7 +264,7 @@ func (t *tree) parseCss(token item) Node {
 }
 
 // "call" has just been read.
-func (t *tree) parseCall(token item) Node {
+func (t *tree) parseCall(token item) ast.Node {
 	var templateName string
 	switch tok := t.next(); tok.typ {
 	case itemDotIdent:
@@ -302,7 +303,7 @@ func (t *tree) parseCall(token item) Node {
 	}
 
 	var allData = false
-	var dataNode Node = nil
+	var dataNode ast.Node = nil
 	if data, ok := attrs["data"]; ok {
 		if data == "all" {
 			allData = true
@@ -313,13 +314,13 @@ func (t *tree) parseCall(token item) Node {
 
 	switch tok := t.next(); tok.typ {
 	case itemRightDelimEnd:
-		return &CallNode{token.pos, templateName, allData, dataNode, nil}
+		return &ast.CallNode{token.pos, templateName, allData, dataNode, nil}
 	case itemRightDelim:
 		body := t.parseCallParams()
 		t.expect(itemLeftDelim, "call")
 		t.expect(itemCallEnd, "call")
 		t.expect(itemRightDelim, "call")
-		return &CallNode{token.pos, templateName, allData, dataNode, body}
+		return &ast.CallNode{token.pos, templateName, allData, dataNode, body}
 	default:
 		t.unexpected(tok, "error scanning {call}")
 	}
@@ -333,12 +334,12 @@ func (t *tree) parseCall(token item) Node {
 // {param key="a" value="'expr'"/}
 // {param key="a"}expr{/param}
 // The closing delimiter of the {call} has just been read.
-func (t *tree) parseCallParams() []Node {
-	var params []Node
+func (t *tree) parseCallParams() []ast.Node {
+	var params []ast.Node
 	for {
 		var (
 			key   string
-			value Node
+			value ast.Node
 		)
 
 		var initial = t.nextNonComment()
@@ -370,13 +371,13 @@ func (t *tree) parseCallParams() []Node {
 			key = firstIdent.val
 			value = t.parseExpr(0)
 			t.expect(itemRightDelimEnd, "param")
-			params = append(params, &CallParamValueNode{initial.pos, key, value})
+			params = append(params, &ast.CallParamValueNode{initial.pos, key, value})
 			continue
 		case itemRightDelim:
 			key = firstIdent.val
 			value = t.itemList(itemParamEnd)
 			t.expect(itemRightDelim, "param")
-			params = append(params, &CallParamContentNode{initial.pos, key, value})
+			params = append(params, &ast.CallParamContentNode{initial.pos, key, value})
 			continue
 		case itemIdent:
 			key = firstIdent.val
@@ -399,23 +400,23 @@ func (t *tree) parseCallParams() []Node {
 			t.expect(itemRightDelim, "param")
 			value = t.itemList(itemParamEnd)
 			t.expect(itemRightDelim, "param")
-			params = append(params, &CallParamContentNode{initial.pos, key, value})
+			params = append(params, &ast.CallParamContentNode{initial.pos, key, value})
 		} else {
 			value = t.parseQuotedExpr(valueStr)
 			t.expect(itemRightDelimEnd, "param")
-			params = append(params, &CallParamValueNode{initial.pos, key, value})
+			params = append(params, &ast.CallParamValueNode{initial.pos, key, value})
 		}
 	}
 	return params
 }
 
 // "switch" has just been read.
-func (t *tree) parseSwitch(token item) Node {
+func (t *tree) parseSwitch(token item) ast.Node {
 	const ctx = "switch"
 	var switchValue = t.parseExpr(0)
 	t.expect(itemRightDelim, ctx)
 
-	var cases []*SwitchCaseNode
+	var cases []*ast.SwitchCaseNode
 	for {
 		switch tok := t.next(); tok.typ {
 		case itemLeftDelim:
@@ -428,14 +429,14 @@ func (t *tree) parseSwitch(token item) Node {
 			cases = append(cases, t.parseCase(tok))
 		case itemSwitchEnd:
 			t.expect(itemRightDelim, ctx)
-			return &SwitchNode{token.pos, switchValue, cases}
+			return &ast.SwitchNode{token.pos, switchValue, cases}
 		}
 	}
 }
 
 // "case" has just been read.
-func (t *tree) parseCase(token item) *SwitchCaseNode {
-	var values []Node
+func (t *tree) parseCase(token item) *ast.SwitchCaseNode {
+	var values []ast.Node
 	for {
 		if token.typ != itemDefault {
 			values = append(values, t.parseExpr(0))
@@ -446,7 +447,7 @@ func (t *tree) parseCase(token item) *SwitchCaseNode {
 		case itemRightDelim:
 			var body = t.itemList(itemCase, itemDefault, itemSwitchEnd)
 			t.backup()
-			return &SwitchCaseNode{token.pos, values, body}
+			return &ast.SwitchCaseNode{token.pos, values, body}
 		default:
 			t.unexpected(tok, "switch case")
 		}
@@ -454,7 +455,7 @@ func (t *tree) parseCase(token item) *SwitchCaseNode {
 }
 
 // "for" or "foreach" has just been read.
-func (t *tree) parseFor(token item) Node {
+func (t *tree) parseFor(token item) ast.Node {
 	var ctx = token.val
 	// for and foreach have the same syntax, differing only in the requirement they impose:
 	// - for requires the collection to be a function call to "range"
@@ -469,7 +470,7 @@ func (t *tree) parseFor(token item) Node {
 	var collection = t.parseExpr(0)
 	t.expect(itemRightDelim, "foreach")
 	if token.typ == itemFor {
-		f, ok := collection.(*FunctionNode)
+		f, ok := collection.(*ast.FunctionNode)
 		if !ok || f.Name != "range" {
 			t.errorf("for: expected to iterate through range()")
 		}
@@ -477,27 +478,27 @@ func (t *tree) parseFor(token item) Node {
 
 	var body = t.itemList(itemIfempty, itemForeachEnd, itemForEnd)
 	t.backup()
-	var ifempty Node
+	var ifempty ast.Node
 	if t.next().typ == itemIfempty {
 		t.expect(itemRightDelim, "ifempty")
 		ifempty = t.itemList(itemForeachEnd, itemForEnd)
 	}
 	t.expect(itemRightDelim, "/foreach")
-	return &ForNode{token.pos, vartoken.val[1:], collection, body, ifempty}
+	return &ast.ForNode{token.pos, vartoken.val[1:], collection, body, ifempty}
 }
 
 // "if" has just been read.
-func (t *tree) parseIf(token item) Node {
-	var conds []*IfCondNode
+func (t *tree) parseIf(token item) ast.Node {
+	var conds []*ast.IfCondNode
 	var isElse = false
 	for {
-		var condExpr Node
+		var condExpr ast.Node
 		if !isElse {
 			condExpr = t.parseExpr(0)
 		}
 		t.expect(itemRightDelim, "if")
 		var body = t.itemList(itemElseif, itemElse, itemIfEnd)
-		conds = append(conds, &IfCondNode{token.pos, condExpr, body})
+		conds = append(conds, &ast.IfCondNode{token.pos, condExpr, body})
 		t.backup()
 		switch t.next().typ {
 		case itemElseif:
@@ -506,13 +507,13 @@ func (t *tree) parseIf(token item) Node {
 			isElse = true
 		case itemIfEnd:
 			t.expect(itemRightDelim, "/if")
-			return &IfNode{token.pos, conds}
+			return &ast.IfNode{token.pos, conds}
 		}
 	}
 }
 
-func (t *tree) parseSoyDoc(token item) Node {
-	var params []*SoyDocParamNode
+func (t *tree) parseSoyDoc(token item) ast.Node {
+	var params []*ast.SoyDocParamNode
 	for {
 		var optional = false
 		switch next := t.next(); next.typ {
@@ -523,9 +524,9 @@ func (t *tree) parseSoyDoc(token item) Node {
 			fallthrough
 		case itemSoyDocParam:
 			var ident = t.expect(itemIdent, "soydoc param")
-			params = append(params, &SoyDocParamNode{next.pos, ident.val, optional})
+			params = append(params, &ast.SoyDocParamNode{next.pos, ident.val, optional})
 		case itemSoyDocEnd:
-			return &SoyDocNode{token.pos, params}
+			return &ast.SoyDocNode{token.pos, params}
 		default:
 			t.unexpected(next, "soydoc")
 		}
@@ -566,19 +567,19 @@ func (t *tree) parseAttrs(allowedNames ...string) map[string]string {
 }
 
 // "msg" has just been read.
-func (t *tree) parseMsg(token item) Node {
+func (t *tree) parseMsg(token item) ast.Node {
 	const ctx = "msg"
 	var attrs = t.parseAttrs("desc", "meaning", "hidden")
 	if _, ok := attrs["desc"]; !ok {
 		t.errorf("Tag 'msg' must have a 'desc' attribute")
 	}
 	t.expect(itemRightDelim, ctx)
-	var node = &MsgNode{token.pos, attrs["desc"], t.itemList(itemMsgEnd)}
+	var node = &ast.MsgNode{token.pos, attrs["desc"], t.itemList(itemMsgEnd)}
 	t.expect(itemRightDelim, ctx)
 	return node
 }
 
-func (t *tree) parseNamespace(token item) Node {
+func (t *tree) parseNamespace(token item) ast.Node {
 	if t.namespace != "" {
 		t.errorf("file may have only one namespace declaration")
 	}
@@ -593,37 +594,37 @@ func (t *tree) parseNamespace(token item) Node {
 			var autoescape = t.parseAutoescape(t.parseAttrs("autoescape"))
 			t.expect(itemRightDelim, ctx)
 			t.namespace = name
-			return &NamespaceNode{token.pos, name, autoescape}
+			return &ast.NamespaceNode{token.pos, name, autoescape}
 		}
 	}
 }
 
 // parseAutoescape returns the specified autoescape selection, or
 // AutoescapeContextual by default.
-func (t *tree) parseAutoescape(attrs map[string]string) AutoescapeType {
+func (t *tree) parseAutoescape(attrs map[string]string) ast.AutoescapeType {
 	switch val := attrs["autoescape"]; val {
 	case "":
-		return AutoescapeUnspecified
+		return ast.AutoescapeUnspecified
 	case "contextual":
-		return AutoescapeContextual
+		return ast.AutoescapeContextual
 	case "true":
-		return AutoescapeOn
+		return ast.AutoescapeOn
 	case "false":
-		return AutoescapeOff
+		return ast.AutoescapeOff
 	default:
 		t.errorf(`expected "true", "false", or "contextual" for autoescape, got %q`, val)
 	}
 	panic("unreachable")
 }
 
-func (t *tree) parseTemplate(token item) Node {
+func (t *tree) parseTemplate(token item) ast.Node {
 	const ctx = "template tag"
 	var id = t.expect(itemDotIdent, ctx)
 	var attrs = t.parseAttrs("autoescape", "private")
 	var autoescape = t.parseAutoescape(attrs)
 	var private = t.boolAttr(attrs, "private", false)
 	t.expect(itemRightDelim, ctx)
-	tmpl := &TemplateNode{
+	tmpl := &ast.TemplateNode{
 		token.pos,
 		t.namespace + id.val,
 		t.itemList(itemTemplateEnd),
@@ -636,7 +637,7 @@ func (t *tree) parseTemplate(token item) Node {
 
 // Expressions ----------
 
-func ParseExpr(str string) (node Node, err error) {
+func ParseExpr(str string) (node ast.Node, err error) {
 	var t = &tree{lex: lexExpr("", str)}
 	defer t.recover(&err)
 	node = t.parseExpr(0)
@@ -660,7 +661,7 @@ func (t *tree) boolAttr(attrs map[string]string, key string, defaultValue bool) 
 
 // parseQuotedExpr ignores the current lex/parse state and parses the given
 // string as a standalone expression.
-func (t *tree) parseQuotedExpr(str string) Node {
+func (t *tree) parseQuotedExpr(str string) ast.Node {
 	return (&tree{
 		lex: lexExpr("", str),
 	}).parseExpr(0)
@@ -690,7 +691,7 @@ var precedence = map[itemType]int{
 //
 // For handling binary operators, we use the Precedence Climbing algorithm described in:
 //   http://www.engr.mun.ca/~theo/Misc/exp_parsing.htm
-func (t *tree) parseExpr(prec int) Node {
+func (t *tree) parseExpr(prec int) ast.Node {
 	n := t.parseExprFirstTerm()
 	var tok item
 	for {
@@ -712,7 +713,7 @@ func (t *tree) parseExpr(prec int) Node {
 // Primary ->   "(" Expr ")"
 //            | u=UnaryOp PrecExpr(prec(u))
 //            | FunctionCall | DataRef | Global | ListLiteral | MapLiteral | Primitive
-func (t *tree) parseExprFirstTerm() Node {
+func (t *tree) parseExprFirstTerm() ast.Node {
 	switch tok := t.next(); {
 	case isUnaryOp(tok):
 		return newUnaryOpNode(tok, t.parseExpr(precedence[tok.typ]))
@@ -732,17 +733,17 @@ func (t *tree) parseExprFirstTerm() Node {
 //             (   DotIdent | QuestionDotIdent | DotIndex | QuestionDotIndex
 //               | "[" Expr "]" | "?[" Expr "]" )*
 // TODO: Injected data
-func (t *tree) parseDataRef(tok item) Node {
-	var ref = &DataRefNode{tok.pos, tok.val[1:], nil}
+func (t *tree) parseDataRef(tok item) ast.Node {
+	var ref = &ast.DataRefNode{tok.pos, tok.val[1:], nil}
 	for {
-		var accessNode Node
+		var accessNode ast.Node
 		var nullsafe = 0
 		switch tok := t.next(); tok.typ {
 		case itemQuestionDotIdent:
 			nullsafe = 1
 			fallthrough
 		case itemDotIdent:
-			accessNode = &DataRefKeyNode{tok.pos, nullsafe == 1, tok.val[nullsafe+1:]}
+			accessNode = &ast.DataRefKeyNode{tok.pos, nullsafe == 1, tok.val[nullsafe+1:]}
 		case itemQuestionDotIndex:
 			nullsafe = 1
 			fallthrough
@@ -751,12 +752,12 @@ func (t *tree) parseDataRef(tok item) Node {
 			if err != nil {
 				t.error(err)
 			}
-			accessNode = &DataRefIndexNode{tok.pos, nullsafe == 1, int(index)}
+			accessNode = &ast.DataRefIndexNode{tok.pos, nullsafe == 1, int(index)}
 		case itemQuestionKey:
 			nullsafe = 1
 			fallthrough
 		case itemLeftBracket:
-			accessNode = &DataRefExprNode{tok.pos, nullsafe == 1, t.parseExpr(0)}
+			accessNode = &ast.DataRefExprNode{tok.pos, nullsafe == 1, t.parseExpr(0)}
 			t.expect(itemRightBracket, "dataref")
 		default:
 			t.backup()
@@ -767,14 +768,14 @@ func (t *tree) parseDataRef(tok item) Node {
 }
 
 // "[" has just been read
-func (t *tree) parseListOrMap(token item) Node {
+func (t *tree) parseListOrMap(token item) ast.Node {
 	// check if it's empty
 	switch t.next().typ {
 	case itemColon:
 		t.expect(itemRightBracket, "map literal")
-		return &MapLiteralNode{token.pos, nil}
+		return &ast.MapLiteralNode{token.pos, nil}
 	case itemRightBracket:
-		return &ListLiteralNode{token.pos, nil}
+		return &ast.ListLiteralNode{token.pos, nil}
 	}
 	t.backup()
 
@@ -786,7 +787,7 @@ func (t *tree) parseListOrMap(token item) Node {
 	case itemComma:
 		return t.parseListLiteral(token, firstExpr)
 	case itemRightBracket:
-		return &ListLiteralNode{token.pos, []Node{firstExpr}}
+		return &ast.ListLiteralNode{token.pos, []ast.Node{firstExpr}}
 	default:
 		t.unexpected(tok, "list/map literal")
 	}
@@ -796,14 +797,14 @@ func (t *tree) parseListOrMap(token item) Node {
 // the first item in the list is provided.
 // "," has just been read.
 //  ListLiteral -> "[" [ Expr ( "," Expr )* [ "," ] ] "]"
-func (t *tree) parseListLiteral(first item, expr Node) Node {
-	var items []Node
+func (t *tree) parseListLiteral(first item, expr ast.Node) ast.Node {
+	var items []ast.Node
 	items = append(items, expr)
 	for {
 		items = append(items, t.parseExpr(0))
 		next := t.next()
 		if next.typ == itemRightBracket {
-			return &ListLiteralNode{first.pos, items}
+			return &ast.ListLiteralNode{first.pos, items}
 		}
 		if next.typ != itemComma {
 			t.unexpected(next, "parsing value list")
@@ -814,19 +815,19 @@ func (t *tree) parseListLiteral(first item, expr Node) Node {
 // the first key in the map is provided
 // ":" has just been read.
 // MapLiteral -> "[" ( ":" | Expr ":" Expr ( "," Expr ":" Expr )* [ "," ] ) "]"
-func (t *tree) parseMapLiteral(first item, expr Node) Node {
-	firstKey, ok := expr.(*StringNode)
+func (t *tree) parseMapLiteral(first item, expr ast.Node) ast.Node {
+	firstKey, ok := expr.(*ast.StringNode)
 	if !ok {
 		t.errorf("expected a string as map key, got: %T", expr)
 	}
 
-	var items = make(map[string]Node)
+	var items = make(map[string]ast.Node)
 	var key = firstKey.Value
 	for {
 		items[key] = t.parseExpr(0)
 		next := t.next()
 		if next.typ == itemRightBracket {
-			return &MapLiteralNode{first.pos, items}
+			return &ast.MapLiteralNode{first.pos, items}
 		}
 		if next.typ != itemComma {
 			t.unexpected(next, "map literal")
@@ -843,11 +844,11 @@ func (t *tree) parseMapLiteral(first item, expr Node) Node {
 
 // parseTernary parses the ternary operator within an expression.
 // itemTernIf has already been read, and the condition is provided.
-func (t *tree) parseTernary(cond Node) Node {
+func (t *tree) parseTernary(cond ast.Node) ast.Node {
 	n1 := t.parseExpr(0)
 	t.expect(itemColon, "ternary")
 	n2 := t.parseExpr(0)
-	result := &TernNode{cond.Position(), cond, n1, n2}
+	result := &ast.TernNode{cond.Position(), cond, n1, n2}
 	if t.peek().typ == itemColon {
 		t.next()
 		return t.parseTernary(result)
@@ -886,62 +887,62 @@ func isValue(t item) bool {
 	return false
 }
 
-func op(n binaryOpNode, name string) binaryOpNode {
+func op(n ast.BinaryOpNode, name string) ast.BinaryOpNode {
 	n.Name = name
 	return n
 }
 
-func newBinaryOpNode(t item, n1, n2 Node) Node {
-	var bin = binaryOpNode{"", t.pos, n1, n2}
+func newBinaryOpNode(t item, n1, n2 ast.Node) ast.Node {
+	var bin = ast.BinaryOpNode{"", t.pos, n1, n2}
 	switch t.typ {
 	case itemMul:
-		return &MulNode{op(bin, "*")}
+		return &ast.MulNode{op(bin, "*")}
 	case itemDiv:
-		return &DivNode{op(bin, "/")}
+		return &ast.DivNode{op(bin, "/")}
 	case itemMod:
-		return &ModNode{op(bin, "%")}
+		return &ast.ModNode{op(bin, "%")}
 	case itemAdd:
-		return &AddNode{op(bin, "+")}
+		return &ast.AddNode{op(bin, "+")}
 	case itemSub:
-		return &SubNode{op(bin, "-")}
+		return &ast.SubNode{op(bin, "-")}
 	case itemEq:
-		return &EqNode{op(bin, "=")}
+		return &ast.EqNode{op(bin, "=")}
 	case itemNotEq:
-		return &NotEqNode{op(bin, "!=")}
+		return &ast.NotEqNode{op(bin, "!=")}
 	case itemGt:
-		return &GtNode{op(bin, ">")}
+		return &ast.GtNode{op(bin, ">")}
 	case itemGte:
-		return &GteNode{op(bin, ">=")}
+		return &ast.GteNode{op(bin, ">=")}
 	case itemLt:
-		return &LtNode{op(bin, "<")}
+		return &ast.LtNode{op(bin, "<")}
 	case itemLte:
-		return &LteNode{op(bin, "<=")}
+		return &ast.LteNode{op(bin, "<=")}
 	case itemOr:
-		return &OrNode{op(bin, "or")}
+		return &ast.OrNode{op(bin, "or")}
 	case itemAnd:
-		return &AndNode{op(bin, "and")}
+		return &ast.AndNode{op(bin, "and")}
 	case itemElvis:
-		return &ElvisNode{op(bin, "?:")}
+		return &ast.ElvisNode{op(bin, "?:")}
 	}
 	panic("unimplemented")
 }
 
-func newUnaryOpNode(t item, n1 Node) Node {
+func newUnaryOpNode(t item, n1 ast.Node) ast.Node {
 	switch t.typ {
 	case itemNot:
-		return &NotNode{t.pos, n1}
+		return &ast.NotNode{t.pos, n1}
 	case itemNegate:
-		return &NegateNode{t.pos, n1}
+		return &ast.NegateNode{t.pos, n1}
 	}
 	panic("unreachable")
 }
 
-func (t *tree) newValueNode(tok item) Node {
+func (t *tree) newValueNode(tok item) ast.Node {
 	switch tok.typ {
 	case itemNull:
-		return &NullNode{tok.pos}
+		return &ast.NullNode{tok.pos}
 	case itemBool:
-		return &BoolNode{tok.pos, tok.val == "true"}
+		return &ast.BoolNode{tok.pos, tok.val == "true"}
 	case itemInteger:
 		var base = 10
 		if strings.HasPrefix(tok.val, "0x") {
@@ -951,20 +952,20 @@ func (t *tree) newValueNode(tok item) Node {
 		if err != nil {
 			t.error(err)
 		}
-		return &IntNode{tok.pos, value}
+		return &ast.IntNode{tok.pos, value}
 	case itemFloat:
 		// TODO: support scientific notation e.g. 6.02e23
 		value, err := strconv.ParseFloat(tok.val, 64)
 		if err != nil {
 			t.error(err)
 		}
-		return &FloatNode{tok.pos, value}
+		return &ast.FloatNode{tok.pos, value}
 	case itemString:
 		s, err := unquoteString(tok.val)
 		if err != nil {
 			t.errorf("error unquoting %s: %s", tok.val, err)
 		}
-		return &StringNode{tok.pos, s}
+		return &ast.StringNode{tok.pos, tok.val, s}
 	case itemLeftBracket:
 		return t.parseListOrMap(tok)
 	case itemDollarIdent:
@@ -979,7 +980,7 @@ func (t *tree) newValueNode(tok item) Node {
 	panic("unreachable")
 }
 
-func (t *tree) newGlobalNode(tok, next item) Node {
+func (t *tree) newGlobalNode(tok, next item) ast.Node {
 	var name = tok.val
 	for next.typ == itemDotIdent {
 		name += next.val
@@ -987,14 +988,14 @@ func (t *tree) newGlobalNode(tok, next item) Node {
 	}
 	t.backup()
 	if value, ok := t.globals[name]; ok {
-		return &GlobalNode{tok.pos, name, value}
+		return &ast.GlobalNode{tok.pos, name, value}
 	}
 	t.errorf("global %q is undefined", name)
 	return nil
 }
 
-func (t *tree) newFunctionNode(tok item) Node {
-	node := &FunctionNode{tok.pos, tok.val, nil}
+func (t *tree) newFunctionNode(tok item) ast.Node {
+	node := &ast.FunctionNode{tok.pos, tok.val, nil}
 	if t.peek().typ == itemRightParen {
 		t.next()
 		return node

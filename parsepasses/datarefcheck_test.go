@@ -3,6 +3,7 @@ package parsepasses
 import (
 	"testing"
 
+	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/parse"
 	"github.com/robfig/soy/template"
 )
@@ -383,7 +384,7 @@ func runCheckerTests(t *testing.T, tests []checkerTest) {
 	for _, test := range tests {
 		var (
 			reg  template.Registry
-			tree *parse.SoyFileNode
+			tree *ast.SoyFileNode
 			err  error
 		)
 		for _, body := range test.body {

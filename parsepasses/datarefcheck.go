@@ -4,7 +4,7 @@ package parsepasses
 import (
 	"fmt"
 
-	"github.com/robfig/soy/parse"
+	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/template"
 )
 
@@ -47,7 +47,7 @@ type templateChecker struct {
 	usedKeys []string
 }
 
-func newTemplateChecker(reg template.Registry, params []*parse.SoyDocParamNode) *templateChecker {
+func newTemplateChecker(reg template.Registry, params []*ast.SoyDocParamNode) *templateChecker {
 	var paramNames []string
 	for _, param := range params {
 		paramNames = append(paramNames, param.Name)
@@ -55,22 +55,22 @@ func newTemplateChecker(reg template.Registry, params []*parse.SoyDocParamNode) 
 	return &templateChecker{reg, paramNames, nil, nil, nil}
 }
 
-func (tc *templateChecker) checkTemplate(node parse.Node) {
+func (tc *templateChecker) checkTemplate(node ast.Node) {
 	switch node := node.(type) {
-	case *parse.LetValueNode:
+	case *ast.LetValueNode:
 		tc.checkLet(node.Name)
 		tc.letVars = append(tc.letVars, node.Name)
-	case *parse.LetContentNode:
+	case *ast.LetContentNode:
 		tc.checkLet(node.Name)
 		tc.letVars = append(tc.letVars, node.Name)
-	case *parse.CallNode:
+	case *ast.CallNode:
 		tc.checkCall(node)
-	case *parse.ForNode:
+	case *ast.ForNode:
 		tc.forVars = append(tc.forVars, node.Var)
-	case *parse.DataRefNode:
+	case *ast.DataRefNode:
 		tc.visitKey(node.Key)
 	}
-	if parent, ok := node.(parse.ParentNode); ok {
+	if parent, ok := node.(ast.ParentNode); ok {
 		tc.recurse(parent)
 	}
 }
@@ -82,7 +82,7 @@ func (tc *templateChecker) checkLet(varName string) {
 	}
 }
 
-func (tc *templateChecker) checkCall(node *parse.CallNode) {
+func (tc *templateChecker) checkCall(node *ast.CallNode) {
 	var callee = tc.registry.Template(node.Name)
 	if callee == nil {
 		panic(fmt.Errorf("{call}: template %q not found", node.Name))
@@ -112,9 +112,9 @@ func (tc *templateChecker) checkCall(node *parse.CallNode) {
 	// add the {param}'s
 	for _, callParam := range node.Params {
 		switch callParam := callParam.(type) {
-		case *parse.CallParamValueNode:
+		case *ast.CallParamValueNode:
 			callerParamNames = append(callerParamNames, callParam.Key)
-		case *parse.CallParamContentNode:
+		case *ast.CallParamContentNode:
 			callerParamNames = append(callerParamNames, callParam.Key)
 		default:
 			panic("unexpected call param type")
@@ -141,7 +141,7 @@ func (tc *templateChecker) checkCall(node *parse.CallNode) {
 	}
 }
 
-func (tc *templateChecker) recurse(parent parse.ParentNode) {
+func (tc *templateChecker) recurse(parent ast.ParentNode) {
 	var initialForVars = len(tc.forVars)
 	var initialLetVars = len(tc.letVars)
 	var initialUsedKeys = len(tc.usedKeys)

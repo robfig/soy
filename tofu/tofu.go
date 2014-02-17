@@ -5,8 +5,8 @@ import (
 	"errors"
 	"io"
 
+	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
-	"github.com/robfig/soy/parse"
 	"github.com/robfig/soy/template"
 )
 
@@ -42,8 +42,8 @@ func (t Renderer) Render(wr io.Writer, obj data.Map) (err error) {
 		return errors.New("no template found")
 	}
 	var autoescapeMode = t.Namespace.Autoescape
-	if autoescapeMode == parse.AutoescapeUnspecified {
-		autoescapeMode = parse.AutoescapeOn
+	if autoescapeMode == ast.AutoescapeUnspecified {
+		autoescapeMode = ast.AutoescapeOn
 	}
 	state := &state{
 		tmpl:       t.Template,

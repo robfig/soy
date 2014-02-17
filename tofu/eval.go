@@ -3,12 +3,12 @@ package tofu
 import (
 	"io/ioutil"
 
+	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
-	"github.com/robfig/soy/parse"
 )
 
 // EvalExpr evaluates the given expression node and returns the result.
-func EvalExpr(node parse.Node) (val data.Value, err error) {
+func EvalExpr(node ast.Node) (val data.Value, err error) {
 	state := &state{
 		wr: ioutil.Discard,
 	}

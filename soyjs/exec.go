@@ -8,26 +8,27 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
-	"github.com/robfig/soy/parse"
+
 	"github.com/robfig/soy/tofu"
 )
 
 type state struct {
 	wr           io.Writer
-	node         parse.Node // current node, for errors
+	node         ast.Node // current node, for errors
 	indentLevels int
 	namespace    string
 	bufferName   string
 	varnum       int
 	scope        scope
-	autoescape   parse.AutoescapeType
-	lastNode     parse.Node
+	autoescape   ast.AutoescapeType
+	lastNode     ast.Node
 }
 
 // Write writes the javascript represented by the given node to the given
 // writer.  The first error encountered is returned.
-func Write(out io.Writer, node parse.Node) (err error) {
+func Write(out io.Writer, node ast.Node) (err error) {
 	defer errRecover(&err)
 	var s = &state{wr: out}
 	s.scope.push()
@@ -36,7 +37,7 @@ func Write(out io.Writer, node parse.Node) (err error) {
 }
 
 // at marks the state to be on node n, for error reporting.
-func (s *state) at(node parse.Node) {
+func (s *state) at(node ast.Node) {
 	s.lastNode = s.node
 	s.node = node
 }
@@ -57,28 +58,28 @@ func errRecover(errp *error) {
 
 // walk recursively goes through each node and translates the nodes to
 // javascript, writing the result to s.wr
-func (s *state) walk(node parse.Node) {
+func (s *state) walk(node ast.Node) {
 	s.at(node)
 	switch node := node.(type) {
-	case *parse.SoyFileNode:
+	case *ast.SoyFileNode:
 		s.visitSoyFile(node)
-	case *parse.NamespaceNode:
+	case *ast.NamespaceNode:
 		s.visitNamespace(node)
-	case *parse.SoyDocNode:
+	case *ast.SoyDocNode:
 		return
-	case *parse.TemplateNode:
+	case *ast.TemplateNode:
 		s.visitTemplate(node)
-	case *parse.ListNode:
+	case *ast.ListNode:
 		s.visitChildren(node)
 
 		// Output nodes ----------
-	case *parse.RawTextNode:
+	case *ast.RawTextNode:
 		s.writeRawText(node.Text)
-	case *parse.PrintNode:
+	case *ast.PrintNode:
 		s.visitPrint(node)
-	case *parse.MsgNode:
+	case *ast.MsgNode:
 		s.walk(node.Body)
-	case *parse.CssNode:
+	case *ast.CssNode:
 		if node.Expr != nil {
 			s.indent()
 			s.js(s.bufferName, " += ")
@@ -86,9 +87,9 @@ func (s *state) walk(node parse.Node) {
 			s.js(" + '-';\n")
 		}
 		s.writeRawText([]byte(node.Suffix))
-	case *parse.DebuggerNode:
+	case *ast.DebuggerNode:
 		s.jsln("debugger;")
-	case *parse.LogNode:
+	case *ast.LogNode:
 		s.bufferName += "_"
 		s.jsln("var ", s.bufferName, " = '';")
 		s.walk(node.Body)
@@ -96,20 +97,20 @@ func (s *state) walk(node parse.Node) {
 		s.bufferName = s.bufferName[:len(s.bufferName)-1]
 
 	// Control flow ----------
-	case *parse.IfNode:
+	case *ast.IfNode:
 		s.visitIf(node)
-	case *parse.ForNode:
+	case *ast.ForNode:
 		s.visitFor(node)
-	case *parse.SwitchNode:
+	case *ast.SwitchNode:
 		s.visitSwitch(node)
-	case *parse.CallNode:
+	case *ast.CallNode:
 		s.visitCall(node)
-	case *parse.LetValueNode:
+	case *ast.LetValueNode:
 		s.indent()
 		s.js("var ", s.scope.makevar(node.Name), " = ")
 		s.walk(node.Expr)
 		s.js(";\n")
-	case *parse.LetContentNode:
+	case *ast.LetContentNode:
 		var oldBufferName = s.bufferName
 		s.bufferName = s.scope.makevar(node.Name)
 		s.jsln("var ", s.bufferName, " = '';")
@@ -117,21 +118,21 @@ func (s *state) walk(node parse.Node) {
 		s.bufferName = oldBufferName
 
 	// Values ----------
-	case *parse.NullNode:
+	case *ast.NullNode:
 		s.js("null")
-	case *parse.StringNode:
+	case *ast.StringNode:
 		s.js("'")
 		template.JSEscape(s.wr, []byte(node.Value))
 		s.js("'")
-	case *parse.IntNode:
+	case *ast.IntNode:
 		s.js(node.String())
-	case *parse.FloatNode:
+	case *ast.FloatNode:
 		s.js(node.String())
-	case *parse.BoolNode:
+	case *ast.BoolNode:
 		s.js(node.String())
-	case *parse.GlobalNode:
+	case *ast.GlobalNode:
 		s.visitGlobal(node)
-	case *parse.ListLiteralNode:
+	case *ast.ListLiteralNode:
 		s.js("[")
 		for i, item := range node.Items {
 			if i != 0 {
@@ -140,7 +141,7 @@ func (s *state) walk(node parse.Node) {
 			s.walk(item)
 		}
 		s.js("]")
-	case *parse.MapLiteralNode:
+	case *ast.MapLiteralNode:
 		s.js("{")
 		var first = true
 		for k, v := range node.Items {
@@ -152,51 +153,51 @@ func (s *state) walk(node parse.Node) {
 			s.walk(v)
 		}
 		s.js("}")
-	case *parse.FunctionNode:
+	case *ast.FunctionNode:
 		s.visitFunction(node)
-	case *parse.DataRefNode:
+	case *ast.DataRefNode:
 		s.visitDataRef(node)
 
 	// Arithmetic operators ----------
-	case *parse.NegateNode:
+	case *ast.NegateNode:
 		s.js("(-")
 		s.walk(node.Arg)
 		s.js(")")
-	case *parse.AddNode:
+	case *ast.AddNode:
 		s.op("+", node)
-	case *parse.SubNode:
+	case *ast.SubNode:
 		s.op("-", node)
-	case *parse.DivNode:
+	case *ast.DivNode:
 		s.op("/", node)
-	case *parse.MulNode:
+	case *ast.MulNode:
 		s.op("*", node)
-	case *parse.ModNode:
+	case *ast.ModNode:
 		s.op("%", node)
 
 		// Arithmetic comparisons ----------
-	case *parse.EqNode:
+	case *ast.EqNode:
 		s.op("==", node)
-	case *parse.NotEqNode:
+	case *ast.NotEqNode:
 		s.op("!=", node)
-	case *parse.LtNode:
+	case *ast.LtNode:
 		s.op("<", node)
-	case *parse.LteNode:
+	case *ast.LteNode:
 		s.op("<=", node)
-	case *parse.GtNode:
+	case *ast.GtNode:
 		s.op(">", node)
-	case *parse.GteNode:
+	case *ast.GteNode:
 		s.op(">=", node)
 
 	// Boolean operators ----------
-	case *parse.NotNode:
+	case *ast.NotNode:
 		s.js("!(")
 		s.walk(node.Arg)
 		s.js(")")
-	case *parse.AndNode:
+	case *ast.AndNode:
 		s.op("&&", node)
-	case *parse.OrNode:
+	case *ast.OrNode:
 		s.op("||", node)
-	case *parse.ElvisNode:
+	case *ast.ElvisNode:
 		// ?: is specified to check for null.
 		s.js("(")
 		s.walk(node.Arg1)
@@ -205,7 +206,7 @@ func (s *state) walk(node parse.Node) {
 		s.js(" : ")
 		s.walk(node.Arg2)
 		s.js(")")
-	case *parse.TernNode:
+	case *ast.TernNode:
 		s.js("(")
 		s.walk(node.Arg1)
 		s.js("?")
@@ -219,20 +220,20 @@ func (s *state) walk(node parse.Node) {
 	}
 }
 
-func (s *state) visitSoyFile(node *parse.SoyFileNode) {
+func (s *state) visitSoyFile(node *ast.SoyFileNode) {
 	s.jsln("// This file was automatically generated from ", node.Name, ".")
 	s.jsln("// Please don't edit this file by hand.")
 	s.jsln("")
 	s.visitChildren(node)
 }
 
-func (s *state) visitChildren(parent parse.ParentNode) {
+func (s *state) visitChildren(parent ast.ParentNode) {
 	for _, child := range parent.Children() {
 		s.walk(child)
 	}
 }
 
-func (s *state) visitNamespace(node *parse.NamespaceNode) {
+func (s *state) visitNamespace(node *ast.NamespaceNode) {
 	s.namespace = node.Name
 	s.autoescape = node.Autoescape
 
@@ -254,15 +255,15 @@ func (s *state) visitNamespace(node *parse.NamespaceNode) {
 	}
 }
 
-func (s *state) visitTemplate(node *parse.TemplateNode) {
+func (s *state) visitTemplate(node *ast.TemplateNode) {
 	var oldAutoescape = s.autoescape
-	if node.Autoescape != parse.AutoescapeUnspecified {
+	if node.Autoescape != ast.AutoescapeUnspecified {
 		s.autoescape = node.Autoescape
 	}
 
 	// Determine if we need nullsafe initialization for opt_data
 	var allOptionalParams = false
-	if soydoc, ok := s.lastNode.(*parse.SoyDocNode); ok {
+	if soydoc, ok := s.lastNode.(*ast.SoyDocNode); ok {
 		allOptionalParams = len(soydoc.Params) > 0
 		for _, param := range soydoc.Params {
 			if !param.Optional {
@@ -287,17 +288,17 @@ func (s *state) visitTemplate(node *parse.TemplateNode) {
 }
 
 // TODO: unify print directives
-func (s *state) visitPrint(node *parse.PrintNode) {
+func (s *state) visitPrint(node *ast.PrintNode) {
 	var escape = s.autoescape
 	var explicitEscape = false
-	var directives []*parse.PrintDirectiveNode
+	var directives []*ast.PrintDirectiveNode
 	for _, dir := range node.Directives {
 		var directive, ok = tofu.PrintDirectives[dir.Name]
 		if !ok {
 			s.errorf("Print directive %q not found", dir.Name)
 		}
 		if directive.CancelAutoescape {
-			escape = parse.AutoescapeOff
+			escape = ast.AutoescapeOff
 		}
 		switch dir.Name {
 		case "id", "noAutoescape":
@@ -309,8 +310,8 @@ func (s *state) visitPrint(node *parse.PrintNode) {
 			directives = append(directives, dir)
 		}
 	}
-	if escape != parse.AutoescapeOff && !explicitEscape {
-		directives = append([]*parse.PrintDirectiveNode{{0, "escapeHtml", nil}}, directives...)
+	if escape != ast.AutoescapeOff && !explicitEscape {
+		directives = append([]*ast.PrintDirectiveNode{{0, "escapeHtml", nil}}, directives...)
 	}
 
 	s.indent()
@@ -335,7 +336,7 @@ func (s *state) visitPrint(node *parse.PrintNode) {
 	s.js(";\n")
 }
 
-func (s *state) visitFunction(node *parse.FunctionNode) {
+func (s *state) visitFunction(node *ast.FunctionNode) {
 	switch node.Name {
 	case "length":
 		s.walk(node.Args[0])
@@ -401,7 +402,7 @@ func (s *state) visitFunction(node *parse.FunctionNode) {
 	s.js(")")
 }
 
-func (s *state) visitDataRef(node *parse.DataRefNode) {
+func (s *state) visitDataRef(node *ast.DataRefNode) {
 	var expr string
 	if node.Key == "ij" {
 		expr = "opt_ijData"
@@ -415,17 +416,17 @@ func (s *state) visitDataRef(node *parse.DataRefNode) {
 	// FOO.BAR?.BAZ => (FOO.BAR == null ? null : FOO.BAR.BAZ)
 	for _, accessNode := range node.Access {
 		switch node := accessNode.(type) {
-		case *parse.DataRefIndexNode:
+		case *ast.DataRefIndexNode:
 			if node.NullSafe {
 				s.js("(", expr, " == null) ? null : ")
 			}
 			expr += "[" + strconv.Itoa(node.Index) + "]"
-		case *parse.DataRefKeyNode:
+		case *ast.DataRefKeyNode:
 			if node.NullSafe {
 				s.js("(", expr, " == null) ? null : ")
 			}
 			expr += "." + node.Key
-		case *parse.DataRefExprNode:
+		case *ast.DataRefExprNode:
 			if node.NullSafe {
 				s.js("(", expr, " == null) ? null : ")
 			}
@@ -435,7 +436,7 @@ func (s *state) visitDataRef(node *parse.DataRefNode) {
 	s.js(expr)
 }
 
-func (s *state) visitCall(node *parse.CallNode) {
+func (s *state) visitCall(node *ast.CallNode) {
 	var dataExpr = "{}"
 	if node.Data != nil {
 		dataExpr = s.block(node.Data)
@@ -450,9 +451,9 @@ func (s *state) visitCall(node *parse.CallNode) {
 				dataExpr += ", "
 			}
 			switch param := param.(type) {
-			case *parse.CallParamValueNode:
+			case *ast.CallParamValueNode:
 				dataExpr += param.Key + ": " + s.block(param.Value)
-			case *parse.CallParamContentNode:
+			case *ast.CallParamContentNode:
 				var oldBufferName = s.bufferName
 				s.bufferName = s.scope.makevar("param")
 				s.jsln("var ", s.bufferName, " = '';")
@@ -466,7 +467,7 @@ func (s *state) visitCall(node *parse.CallNode) {
 	s.jsln(s.bufferName, " += ", node.Name, "(", dataExpr, ", opt_sb, opt_ijData);")
 }
 
-func (s *state) visitIf(node *parse.IfNode) {
+func (s *state) visitIf(node *ast.IfNode) {
 	s.indent()
 	for i, branch := range node.Conds {
 		if i > 0 {
@@ -487,20 +488,20 @@ func (s *state) visitIf(node *parse.IfNode) {
 	s.js("\n")
 }
 
-func (s *state) visitFor(node *parse.ForNode) {
-	if _, isForeach := node.List.(*parse.DataRefNode); isForeach {
+func (s *state) visitFor(node *ast.ForNode) {
+	if _, isForeach := node.List.(*ast.DataRefNode); isForeach {
 		s.visitForeach(node)
 	} else {
 		s.visitForRange(node)
 	}
 }
 
-func (s *state) visitForRange(node *parse.ForNode) {
-	var rangeNode = node.List.(*parse.FunctionNode)
+func (s *state) visitForRange(node *ast.ForNode) {
+	var rangeNode = node.List.(*ast.FunctionNode)
 	var (
-		increment parse.Node = &parse.IntNode{0, 1}
-		init      parse.Node = &parse.IntNode{0, 0}
-		limit     parse.Node
+		increment ast.Node = &ast.IntNode{0, 1}
+		init      ast.Node = &ast.IntNode{0, 0}
+		limit     ast.Node
 	)
 	switch len(rangeNode.Args) {
 	case 3:
@@ -532,7 +533,7 @@ func (s *state) visitForRange(node *parse.ForNode) {
 	s.jsln("}")
 }
 
-func (s *state) visitForeach(node *parse.ForNode) {
+func (s *state) visitForeach(node *ast.ForNode) {
 	var itemData,
 		itemList,
 		itemListLen,
@@ -563,7 +564,7 @@ func (s *state) visitForeach(node *parse.ForNode) {
 	}
 }
 
-func (s *state) visitSwitch(node *parse.SwitchNode) {
+func (s *state) visitSwitch(node *ast.SwitchNode) {
 	s.indent()
 	s.js("switch (")
 	s.walk(node.Value)
@@ -591,36 +592,36 @@ func (s *state) visitSwitch(node *parse.SwitchNode) {
 
 // visitGlobal constructs a primitive node from its value and uses walk to
 // render the right thing.
-func (s *state) visitGlobal(node *parse.GlobalNode) {
+func (s *state) visitGlobal(node *ast.GlobalNode) {
 	s.walk(s.nodeFromValue(node.Pos, node.Value))
 }
 
-func (s *state) nodeFromValue(pos parse.Pos, val data.Value) parse.Node {
+func (s *state) nodeFromValue(pos ast.Pos, val data.Value) ast.Node {
 	switch val := val.(type) {
 	case data.Undefined:
 		s.errorf("undefined value can not be converted to node")
 	case data.Null:
-		return &parse.NullNode{pos}
+		return &ast.NullNode{pos}
 	case data.Bool:
-		return &parse.BoolNode{pos, bool(val)}
+		return &ast.BoolNode{pos, bool(val)}
 	case data.Int:
-		return &parse.IntNode{pos, int64(val)}
+		return &ast.IntNode{pos, int64(val)}
 	case data.Float:
-		return &parse.FloatNode{pos, float64(val)}
+		return &ast.FloatNode{pos, float64(val)}
 	case data.String:
-		return &parse.StringNode{pos, string(val)}
+		return &ast.StringNode{pos, "<unused>", string(val)}
 	case data.List:
-		var items = make([]parse.Node, len(val))
+		var items = make([]ast.Node, len(val))
 		for i, item := range val {
 			items[i] = s.nodeFromValue(pos, item)
 		}
-		return &parse.ListLiteralNode{pos, items}
+		return &ast.ListLiteralNode{pos, items}
 	case data.Map:
-		var items = make(map[string]parse.Node, len(val))
+		var items = make(map[string]ast.Node, len(val))
 		for k, v := range val {
 			items[k] = s.nodeFromValue(pos, v)
 		}
-		return &parse.MapLiteralNode{pos, items}
+		return &ast.MapLiteralNode{pos, items}
 	}
 	panic("unreachable")
 }
@@ -633,13 +634,13 @@ func (s *state) writeRawText(text []byte) {
 }
 
 // block renders the given node to a temporary buffer and returns the string.
-func (s *state) block(node parse.Node) string {
+func (s *state) block(node ast.Node) string {
 	var buf bytes.Buffer
 	(&state{wr: &buf, scope: s.scope}).walk(node)
 	return buf.String()
 }
 
-func (s *state) op(symbol string, node parse.ParentNode) {
+func (s *state) op(symbol string, node ast.ParentNode) {
 	var children = node.Children()
 	s.js("(")
 	s.walk(children[0])
