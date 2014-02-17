@@ -762,8 +762,9 @@ func runExecTests(t *testing.T, tests []execTest) {
 }
 
 func runNsExecTests(t *testing.T, tests []nsExecTest) {
+	var js = initJs(t)
 	for _, test := range tests {
-		var js = initJs(t)
+		var js = js.Copy()
 
 		// Parse the templates, generate and run the compiled javascript.
 		var source bytes.Buffer

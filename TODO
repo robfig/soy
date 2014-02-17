@@ -1,4 +1,5 @@
 - soy watcher / hotreload
+- simplesoy
 - content "kind": text, html, uri, js (code), js (str chars), html attributes
 - Contextual autoescape
 - js: figure out / unify print directives / funcs
@@ -19,4 +20,3 @@
 - Message extractor (placeholders/phname)
 - "private" templates (and optimizations)
 - parse.TemplateNode -> ast.TemplateNode or node.Template
-- simplesoy
