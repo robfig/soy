@@ -1,5 +1,5 @@
 /*
-soyweb is a simple development server that serves the given template.
+Package soyweb is a simple development server that serves the given template.
 
 Invoke it like so:
 

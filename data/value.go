@@ -1,3 +1,4 @@
+// Package data contains the definitions for the Soy data types.
 package data
 
 import (
@@ -8,7 +9,6 @@ import (
 )
 
 // Value represents a Soy data value, which may be one of the enumerated types.
-// The zero value represents an Undefined value.
 type Value interface {
 	// Truthy returns true according to the Soy definition of truthy and falsy values.
 	Truthy() bool
@@ -24,7 +24,6 @@ type Value interface {
 	Equals(other Value) bool
 }
 
-// Value types
 type (
 	Undefined struct{}
 	Null      struct{}

@@ -1,3 +1,4 @@
+// Package parse converts a soy template into its in-memory representation (AST)
 package parse
 
 import (

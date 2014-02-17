@@ -1,3 +1,4 @@
+// Package parsepasses contains routines that validate or rewrite a Soy AST.
 package parsepasses
 
 import (
