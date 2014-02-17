@@ -1,13 +1,18 @@
 package soy
 
 import (
+	"bufio"
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"os"
 	"testing"
 
+	"github.com/robertkrimen/otto"
 	"github.com/robfig/soy/data"
+	"github.com/robfig/soy/soyjs"
 )
 
 type d map[string]interface{}
@@ -220,6 +225,83 @@ func BenchmarkExecuteFeatures(b *testing.B) {
 			}
 		}
 	}
+}
+
+// TestFeaturesJavascript runs the javascript compiled by this implementation
+// against that compiled by the reference implementation.
+func TestFeaturesJavascript(t *testing.T) {
+	rand.Seed(14)
+	var tofu, err = NewBundle().
+		AddGlobalsFile("testdata/FeaturesUsage_globals.txt").
+		AddTemplateFile("testdata/simple.soy").
+		AddTemplateFile("testdata/features.soy").
+		CompileToTofu()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	var otto = initJs(t)
+	for _, soyfile := range tofu.SoyFiles {
+		var buf bytes.Buffer
+		var err = soyjs.Write(&buf, soyfile)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		_, err = otto.Run(buf.String())
+		if err != nil {
+			t.Error(err)
+			return
+		}
+	}
+
+	// Now run all the tests.
+	for _, test := range featureTests {
+		var jsonData, _ = json.Marshal(test.data)
+		var renderStatement = fmt.Sprintf("%s(JSON.parse(%q));",
+			"soy.examples.features."+test.name, string(jsonData))
+		var actual, err = otto.Run(renderStatement)
+		if err != nil {
+			t.Errorf("render error: %v\n%v", err, string(jsonData))
+			continue
+		}
+
+		if actual.String() != test.output {
+			t.Errorf("%s\nexpected\n%q\n\ngot\n%q", test.name, test.output, actual.String())
+		}
+	}
+}
+
+func initJs(t *testing.T) *otto.Otto {
+	var otto = otto.New()
+	soyutilsFile, err := os.Open("soyjs/lib/soyutils.js")
+	if err != nil {
+		panic(err)
+	}
+	// remove any non-otto compatible regular expressions
+	var soyutilsBuf bytes.Buffer
+	var scanner = bufio.NewScanner(soyutilsFile)
+	var i = 1
+	for scanner.Scan() {
+		switch i {
+		case 2565, 2579, 2586:
+			// skip these regexes
+			// soy.esc.$$FILTER_FOR_FILTER_CSS_VALUE_
+			// soy.esc.$$FILTER_FOR_FILTER_HTML_ATTRIBUTES_
+			// soy.esc.$$FILTER_FOR_FILTER_HTML_ELEMENT_NAME_
+		default:
+			soyutilsBuf.Write(scanner.Bytes())
+			soyutilsBuf.Write([]byte("\n"))
+		}
+		i++
+	}
+	// load the soyutils library
+	_, err = otto.Run(soyutilsBuf.String())
+	if err != nil {
+		t.Errorf("soyutils error: %v", err)
+		panic(err)
+	}
+	return otto
 }
 
 func runFeatureTests(t *testing.T, tests []featureTest) {

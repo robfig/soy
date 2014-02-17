@@ -28,6 +28,8 @@ var PrintDirectives = map[string]PrintDirective{
 	"escapeHtml":        {directiveEscapeHtml, []int{0}, true},
 	"escapeUri":         {directiveEscapeUri, []int{0}, true},
 	"escapeJsString":    {directiveEscapeJsString, []int{0}, true},
+	"bidiSpanWrap":      {nil, []int{0}, false},
+	"bidiUnicodeWrap":   {nil, []int{0}, false},
 }
 
 func directiveInsertWordBreaks(value data.Value, args []data.Value) data.Value {

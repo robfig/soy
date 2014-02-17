@@ -1,14 +1,13 @@
 - soy watcher / hotreload
 - content "kind": text, html, uri, js (code), js (str chars), html attributes
 - Contextual autoescape
-- js: command line tool to compile
-- js: combine nodes into expressions for output when possible
 - js: figure out / unify print directives / funcs
 - js: implement / test all functions
+- js: command line tool to compile
+- js: combine nodes into expressions for output when possible
 - js: generate goog.provide/goog.require
 - js: generate jsdoc
 - js: goog.getCssName
-- js: benchmark / features_test
 - {msg}
 - Delegates (delpackage, delcall, deltemplate)
 - parsepasses (optimizations) (Simplify, CombineConsecutiveRawText, Prerender)
@@ -20,3 +19,4 @@
 - Message extractor (placeholders/phname)
 - "private" templates (and optimizations)
 - parse.TemplateNode -> ast.TemplateNode or node.Template
+- simplesoy

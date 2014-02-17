@@ -354,7 +354,40 @@ func (s *state) visitFunction(node *parse.FunctionNode) {
 	case "round":
 		s.js("Math.round(")
 		s.walk(node.Args[0])
+		if len(node.Args) == 2 {
+			s.js("* Math.pow(10, ")
+			s.walk(node.Args[1])
+			s.js(")) / Math.pow(10, ")
+			s.walk(node.Args[1])
+		}
 		s.js(")")
+		return
+	case "hasData":
+		s.js("true")
+		return
+	case "randomInt":
+		s.js("Math.floor(Math.random() * ")
+		s.walk(node.Args[0])
+		s.js(")")
+		return
+	case "ceiling":
+		s.js("Math.ceil(")
+		s.walk(node.Args[0])
+		s.js(")")
+		return
+	case "bidiGlobalDir":
+		s.js("1")
+		return
+	case "bidiDirAttr":
+		s.js("soy.$$bidiDirAttr(0, ")
+		s.walk(node.Args[0])
+		s.js(")")
+		return
+	case "bidiStartEdge":
+		s.js("'left'")
+		return
+	case "bidiEndEdge":
+		s.js("'right'")
 		return
 	}
 	s.errorf("unimplemented function: %v", node.Name)
@@ -418,7 +451,6 @@ func (s *state) visitCall(node *parse.CallNode) {
 			}
 			switch param := param.(type) {
 			case *parse.CallParamValueNode:
-				s.js(param.Key, ": ")
 				dataExpr += param.Key + ": " + s.block(param.Value)
 			case *parse.CallParamContentNode:
 				var oldBufferName = s.bufferName
