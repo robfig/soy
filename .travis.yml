@@ -4,5 +4,6 @@ go:
 install:
   - go get code.google.com/p/go.tools/cmd/cover
   - go get github.com/robertkrimen/otto
+  - go get code.google.com/p/go.exp/fsnotify
 script:
   - go test -cover github.com/robfig/soy/...
