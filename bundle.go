@@ -3,16 +3,22 @@ package soy
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"code.google.com/p/go.exp/fsnotify"
 	"github.com/robfig/soy/data"
 	"github.com/robfig/soy/parse"
 	"github.com/robfig/soy/parsepasses"
 	"github.com/robfig/soy/template"
 	"github.com/robfig/soy/tofu"
 )
+
+// Logger is used to print soy compile error messages when using the
+// "WatchFiles" feature.
+var Logger = log.New(os.Stderr, "[soy] ", 0)
 
 type soyFile struct{ name, content string }
 
@@ -22,10 +28,21 @@ type Bundle struct {
 	files   []soyFile
 	globals data.Map
 	err     error
+	watcher *fsnotify.Watcher
 }
 
 func NewBundle() *Bundle {
 	return &Bundle{globals: make(data.Map)}
+}
+
+// WatchFiles tells soy to watch any template files added to this bundle,
+// re-compile as necessary, and propagate the updates to your tofu.  It should
+// be called once, before adding any files.
+func (b *Bundle) WatchFiles(watch bool) *Bundle {
+	if watch && b.err == nil && b.watcher == nil {
+		b.watcher, b.err = fsnotify.NewWatcher()
+	}
+	return b
 }
 
 // AddTemplateDir adds all *.soy files found within the given directory
@@ -55,6 +72,9 @@ func (b *Bundle) AddTemplateFile(filename string) *Bundle {
 	content, err := ioutil.ReadFile(filename)
 	if err != nil {
 		b.err = err
+	}
+	if b.err == nil && b.watcher != nil {
+		b.err = b.watcher.Watch(filename)
 	}
 	return b.AddTemplateString(filename, string(content))
 }
@@ -111,5 +131,44 @@ func (b *Bundle) CompileToTofu() (*tofu.Tofu, error) {
 		return nil, err
 	}
 
-	return &tofu.Tofu{registry}, nil
+	var tofu = &tofu.Tofu{registry}
+	if b.watcher != nil {
+		go b.tofuUpdater(tofu)
+	}
+	return tofu, nil
+}
+
+func (b *Bundle) tofuUpdater(tofu *tofu.Tofu) {
+	for {
+		select {
+		case <-b.watcher.Event:
+			// Drain any queued events before rebuilding.
+			for {
+				select {
+				case <-b.watcher.Event:
+					continue
+				default:
+				}
+				break
+			}
+
+			// Recompile all the soy.
+			var bundle = NewBundle().
+				AddGlobalsMap(b.globals)
+			for _, soyfile := range b.files {
+				bundle.AddTemplateFile(soyfile.name)
+			}
+			var newTofu, err = bundle.CompileToTofu()
+			if err != nil {
+				Logger.Println(err)
+				continue
+			}
+			// update the existing tofu's template registry.
+			tofu.Registry = newTofu.Registry
+
+		case err := <-b.watcher.Error:
+			// Nothing to do with errors
+			Logger.Println(err)
+		}
+	}
 }
