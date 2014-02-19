@@ -47,26 +47,25 @@ func TestBasicExec(t *testing.T) {
 			"Hello Rob!",
 			d{"name": "Rob"}, true},
 
-		// {"call w/ line join", "test.callLine",
-		// 	`{namespace test}
+		{"call w/ line join", "test.callLine",
+			`{namespace test}
 
-		// {template .callLine}
-		// Hello <a>{call .guy/}</a>!
-		// {/template}
+		{template .callLine}
+		Hello <a>{call .guy/}</a>!
+		{/template}
 
-		// {template .guy}
-		//   Rob
-		// {/template}
-		// `,
-		// 	" Hello <a>Rob</a>! ",
-		// 	nil, true},
+		{template .guy}
+		  Rob
+		{/template}
+		`,
+			"Hello <a>Rob</a>!",
+			nil, true},
 
-		// // Invalid
-		// {"missing namespace", ".sayHello",
-		// 	"{template .sayHello}Hello world!{/template}",
-		// 	"",
-		// 	nil, false},
-
+		// Invalid
+		{"missing namespace", ".sayHello",
+			"{template .sayHello}Hello world!{/template}",
+			"",
+			nil, false},
 	})
 }
 
@@ -702,7 +701,9 @@ func runNsExecTests(t *testing.T, tests []nsExecTest) {
 		b.Reset()
 		tmpl := tofu.Template(test.templateName)
 		if tmpl == nil {
-			t.Errorf("couldn't find template %q", test.templateName)
+			if test.ok {
+				t.Errorf("couldn't find template %q", test.templateName)
+			}
 			continue
 		}
 		var datamap data.Map
