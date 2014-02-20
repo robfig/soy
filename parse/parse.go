@@ -468,15 +468,10 @@ func (t *tree) parseFor(token item) Node {
 	// get the collection to iterate through and enforce the requirements
 	var collection = t.parseExpr(0)
 	t.expect(itemRightDelim, "foreach")
-	switch token.typ {
-	case itemFor:
+	if token.typ == itemFor {
 		f, ok := collection.(*FunctionNode)
 		if !ok || f.Name != "range" {
 			t.errorf("for: expected to iterate through range()")
-		}
-	case itemForeach:
-		if _, ok := collection.(*DataRefNode); !ok {
-			t.errorf("foreach: expected to iterate through a variable")
 		}
 	}
 

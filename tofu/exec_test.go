@@ -164,6 +164,13 @@ func TestForeach(t *testing.T) {
 		{d{"foo": d{"booze": true}}},    // $foo.booze must be list
 		{d{"foo": d{"booze": []d{{}}}}}, // $boo.name fails
 	}))
+
+	runExecTests(t, multidatatest("foreachkeys", `
+{foreach $var in keys($map)}
+  {$var}
+{/foreach}`, []datatest{
+		{d{"map": d{"a": nil, "b": nil, "c": nil}}, "abc"},
+	}, nil))
 }
 
 func TestFor(t *testing.T) {
