@@ -200,7 +200,10 @@ type PrintDirectiveNode struct {
 }
 
 func (n *PrintDirectiveNode) String() string {
-	var expr = "|" + n.Name
+	if len(n.Args) == 0 {
+		return "|" + n.Name
+	}
+	var expr = "|" + n.Name + ":"
 	var first = false
 	for _, arg := range n.Args {
 		if first {
