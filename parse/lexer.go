@@ -816,8 +816,9 @@ func lexIdent(l *lexer) stateFn {
 	}
 	// if not a builtin, it shouldn't start with / or \
 	if itemType == itemCommandEnd || itemType == itemSpecialChar {
+		var str = l.input[l.start:l.pos]
 		l.pos = l.start
-		return l.errorf("unrecognized identifier %#U", l.input[l.start:l.pos])
+		return l.errorf("unrecognized identifier %q", str)
 	}
 
 	// else, use the type determined at the beginning.

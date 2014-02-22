@@ -174,7 +174,7 @@ func (t *tree) beginTag() Node {
 	case itemPrint:
 		return t.parsePrint(token)
 	default:
-		t.errorf("not implemented: %#v", token)
+		t.unexpected(token, "tag")
 	}
 	return nil
 }
