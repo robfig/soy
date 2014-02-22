@@ -33,9 +33,6 @@ var PrintDirectives = map[string]PrintDirective{
 }
 
 func directiveInsertWordBreaks(value data.Value, args []data.Value) data.Value {
-	if !isInt(args[0]) {
-		panic(fmt.Errorf("Parameter of '|insertWordBreaks' is not an integer: %v", args[0]))
-	}
 	var (
 		input    = template.HTMLEscapeString(value.String())
 		maxChars = int(args[0].(data.Int))

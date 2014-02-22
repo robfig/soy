@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"runtime/debug"
 	"text/template"
 
 	"github.com/robfig/soy/data"
@@ -298,6 +299,14 @@ func (s *state) evalPrint(node *parse.PrintNode) {
 		for _, arg := range directiveNode.Args {
 			args = append(args, s.eval(arg))
 		}
+		defer func() {
+			if err := recover(); err != nil {
+				s.errorf("panic in %v: %v\nexecuted: %v(%q, %v)\n%v",
+					directiveNode, err,
+					directiveNode.Name, result, args,
+					string(debug.Stack()))
+			}
+		}()
 		result = directive.Apply(result, args)
 		if directive.CancelAutoescape {
 			escapeHtml = false
@@ -385,7 +394,7 @@ func (s *state) evalFunc(node *parse.FunctionNode) data.Value {
 	}
 	if fn, ok := Funcs[node.Name]; ok {
 		if !checkNumArgs(fn.ValidArgLengths, len(node.Args)) {
-			s.errorf("Function %q called with %v args, expected one of: %v",
+			s.errorf("Function %q called with %v args, expected: %v",
 				node.Name, len(node.Args), fn.ValidArgLengths)
 		}
 
@@ -393,6 +402,11 @@ func (s *state) evalFunc(node *parse.FunctionNode) data.Value {
 		for _, arg := range node.Args {
 			args = append(args, s.eval(arg))
 		}
+		defer func() {
+			if err := recover(); err != nil {
+				s.errorf("panic in %s(%v): %v\n%v", node.Name, args, err, string(debug.Stack()))
+			}
+		}()
 		return fn.Apply(args)
 	}
 	s.errorf("unrecognized function name: %s", node.Name)
