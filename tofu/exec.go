@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"runtime"
 	"runtime/debug"
 	"text/template"
 
@@ -44,9 +45,17 @@ func (s *state) errorf(format string, args ...interface{}) {
 // errRecover is the handler that turns panics into returns from the top
 // level of Parse.
 func (s *state) errRecover(errp *error) {
-	e := recover()
-	if e != nil {
-		*errp = fmt.Errorf("%v", e)
+	if e := recover(); e != nil {
+		switch e := e.(type) {
+		case runtime.Error:
+			*errp = fmt.Errorf("template %s:%d: %v\n%v", s.tmpl.Name,
+				s.registry.LineNumber(s.tmpl.Name, s.node), e, string(debug.Stack()))
+		case error:
+			*errp = e
+		default:
+			*errp = fmt.Errorf("template %s:%d: %v", s.tmpl.Name,
+				s.registry.LineNumber(s.tmpl.Name, s.node), e)
+		}
 	}
 }
 
@@ -173,7 +182,7 @@ func (s *state) walk(node parse.Node) {
 
 		// Arithmetic operators ----------
 	case *parse.NegateNode:
-		switch arg := s.eval(node.Arg).(type) {
+		switch arg := s.evaldef(node.Arg).(type) {
 		case data.Int:
 			s.val = data.Int(-arg)
 		case data.Float:
@@ -182,7 +191,7 @@ func (s *state) walk(node parse.Node) {
 			s.errorf("can not negate non-number: %q", arg.String())
 		}
 	case *parse.AddNode:
-		var arg1, arg2 = s.eval2(node.Arg1, node.Arg2)
+		var arg1, arg2 = s.eval2def(node.Arg1, node.Arg2)
 		switch {
 		case isInt(arg1) && isInt(arg2):
 			s.val = data.Int(arg1.(data.Int) + arg2.(data.Int))
@@ -192,7 +201,7 @@ func (s *state) walk(node parse.Node) {
 			s.val = data.Float(toFloat(arg1) + toFloat(arg2))
 		}
 	case *parse.SubNode:
-		var arg1, arg2 = s.eval2(node.Arg1, node.Arg2)
+		var arg1, arg2 = s.eval2def(node.Arg1, node.Arg2)
 		switch {
 		case isInt(arg1) && isInt(arg2):
 			s.val = data.Int(arg1.(data.Int) - arg2.(data.Int))
@@ -200,10 +209,10 @@ func (s *state) walk(node parse.Node) {
 			s.val = data.Float(toFloat(arg1) - toFloat(arg2))
 		}
 	case *parse.DivNode:
-		var arg1, arg2 = s.eval2(node.Arg1, node.Arg2)
+		var arg1, arg2 = s.eval2def(node.Arg1, node.Arg2)
 		s.val = data.Float(toFloat(arg1) / toFloat(arg2))
 	case *parse.MulNode:
-		var arg1, arg2 = s.eval2(node.Arg1, node.Arg2)
+		var arg1, arg2 = s.eval2def(node.Arg1, node.Arg2)
 		switch {
 		case isInt(arg1) && isInt(arg2):
 			s.val = data.Int(arg1.(data.Int) * arg2.(data.Int))
@@ -211,7 +220,7 @@ func (s *state) walk(node parse.Node) {
 			s.val = data.Float(toFloat(arg1) * toFloat(arg2))
 		}
 	case *parse.ModNode:
-		var arg1, arg2 = s.eval2(node.Arg1, node.Arg2)
+		var arg1, arg2 = s.eval2def(node.Arg1, node.Arg2)
 		s.val = data.Int(arg1.(data.Int) % arg2.(data.Int))
 
 		// Arithmetic comparisons ----------
@@ -220,13 +229,13 @@ func (s *state) walk(node parse.Node) {
 	case *parse.NotEqNode:
 		s.val = data.Bool(!s.eval(node.Arg1).Equals(s.eval(node.Arg2)))
 	case *parse.LtNode:
-		s.val = data.Bool(toFloat(s.eval(node.Arg1)) < toFloat(s.eval(node.Arg2)))
+		s.val = data.Bool(toFloat(s.evaldef(node.Arg1)) < toFloat(s.evaldef(node.Arg2)))
 	case *parse.LteNode:
-		s.val = data.Bool(toFloat(s.eval(node.Arg1)) <= toFloat(s.eval(node.Arg2)))
+		s.val = data.Bool(toFloat(s.evaldef(node.Arg1)) <= toFloat(s.evaldef(node.Arg2)))
 	case *parse.GtNode:
-		s.val = data.Bool(toFloat(s.eval(node.Arg1)) > toFloat(s.eval(node.Arg2)))
+		s.val = data.Bool(toFloat(s.evaldef(node.Arg1)) > toFloat(s.evaldef(node.Arg2)))
 	case *parse.GteNode:
-		s.val = data.Bool(toFloat(s.eval(node.Arg1)) >= toFloat(s.eval(node.Arg2)))
+		s.val = data.Bool(toFloat(s.evaldef(node.Arg1)) >= toFloat(s.evaldef(node.Arg2)))
 
 		// Boolean operators ----------
 	case *parse.NotNode:
@@ -271,9 +280,10 @@ func toFloat(v data.Value) float64 {
 		return float64(v)
 	case data.Float:
 		return float64(v)
+	case data.Undefined:
+		panic("not a number: undefined")
 	default:
-		panic(fmt.Errorf("not a number: %q", v))
-		return 0
+		panic(fmt.Sprintf("not a number: %v (%T)", v, v))
 	}
 }
 
@@ -494,12 +504,23 @@ func isNullSafeAccess(n parse.Node) bool {
 	panic("unexpected")
 }
 
-// eval2 is a helper for binary ops.  it evaluates the two given nodes.
-func (s *state) eval2(n1, n2 parse.Node) (data.Value, data.Value) {
-	return s.eval(n1), s.eval(n2)
+// eval2def is a helper for binary ops.  it evaluates the two given nodes and
+// requires the result of each to not be Undefined.
+func (s *state) eval2def(n1, n2 parse.Node) (data.Value, data.Value) {
+	return s.evaldef(n1), s.evaldef(n2)
 }
 
 func (s *state) eval(n parse.Node) data.Value {
+	var prev = s.node
 	s.walk(n)
+	s.node = prev
 	return s.val
+}
+
+func (s *state) evaldef(n parse.Node) data.Value {
+	var val = s.eval(n)
+	if _, ok := val.(data.Undefined); ok {
+		s.errorf("%v is undefined", n)
+	}
+	return val
 }
