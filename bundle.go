@@ -141,15 +141,9 @@ func (b *Bundle) CompileToTofu() (*tofu.Tofu, error) {
 func (b *Bundle) tofuUpdater(tofu *tofu.Tofu) {
 	for {
 		select {
-		case <-b.watcher.Event:
-			// Drain any queued events before rebuilding.
-			for {
-				select {
-				case <-b.watcher.Event:
-					continue
-				default:
-				}
-				break
+		case ev := <-b.watcher.Event:
+			if ev.IsAttrib() {
+				continue
 			}
 
 			// Recompile all the soy.
@@ -163,8 +157,12 @@ func (b *Bundle) tofuUpdater(tofu *tofu.Tofu) {
 				Logger.Println(err)
 				continue
 			}
+
 			// update the existing tofu's template registry.
+			// (this is not goroutine-safe, but that seems ok for a development aid,
+			// as long as it works in practice)
 			tofu.Registry = newTofu.Registry
+			Logger.Printf("update successful (%v)", ev)
 
 		case err := <-b.watcher.Error:
 			// Nothing to do with errors
