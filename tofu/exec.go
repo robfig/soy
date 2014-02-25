@@ -374,6 +374,7 @@ func (s *state) evalCall(node *parse.CallNode) {
 		autoescape: calledTmpl.Namespace.Autoescape,
 		wr:         s.wr,
 		context:    callData,
+		ij:         s.ij,
 	}
 	state.walk(state.tmpl.TemplateNode)
 }
