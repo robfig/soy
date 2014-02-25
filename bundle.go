@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"code.google.com/p/go.exp/fsnotify"
 	"github.com/robfig/soy/data"
@@ -142,8 +143,13 @@ func (b *Bundle) tofuUpdater(tofu *tofu.Tofu) {
 	for {
 		select {
 		case ev := <-b.watcher.Event:
-			if ev.IsAttrib() {
-				continue
+			// If it's a rename, then fsnotify has removed the watch.
+			// Add it back, after a delay.
+			if ev.IsRename() {
+				time.Sleep(10 * time.Millisecond)
+				if err := b.watcher.Watch(ev.Name); err != nil {
+					Logger.Println(err)
+				}
 			}
 
 			// Recompile all the soy.
