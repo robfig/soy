@@ -214,6 +214,10 @@ func (n *PrintDirectiveNode) String() string {
 	return expr
 }
 
+func (n *PrintDirectiveNode) Children() []Node {
+	return n.Args
+}
+
 type LiteralNode struct {
 	Pos
 	Body string
