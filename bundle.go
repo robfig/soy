@@ -145,7 +145,7 @@ func (b *Bundle) tofuUpdater(tofu *tofu.Tofu) {
 		case ev := <-b.watcher.Event:
 			// If it's a rename, then fsnotify has removed the watch.
 			// Add it back, after a delay.
-			if ev.IsRename() {
+			if ev.IsRename() || ev.IsDelete() {
 				time.Sleep(10 * time.Millisecond)
 				if err := b.watcher.Watch(ev.Name); err != nil {
 					Logger.Println(err)
