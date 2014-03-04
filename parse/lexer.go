@@ -611,7 +611,8 @@ func lexNegative(l *lexer) stateFn {
 	// is it unary or binary op?
 	// unary if it starts a group ('{' or '(') or an op came just before.
 	var lastType = l.lastEmit.typ
-	if lastType.isOp() ||
+	if lastType == itemInvalid ||
+		lastType.isOp() ||
 		lastType == itemLeftDelim ||
 		lastType == itemCase ||
 		lastType == itemComma ||

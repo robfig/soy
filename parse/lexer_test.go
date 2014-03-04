@@ -646,39 +646,43 @@ func TestScanNumber(t *testing.T) {
 	}
 
 	for _, v := range validIntegers {
-		l := lex("", v)
-		typ, ok := scanNumber(l)
-		res := l.input[l.start:l.pos]
-		if !ok || typ != itemInteger {
-			t.Fatalf("Expected a valid integer for %q", v)
+		l := lexExpr("", v)
+		item := <-l.items
+		if item.typ != itemInteger {
+			t.Fatalf("Expected a valid integer for %q, got %v", v, item.val)
 		}
-		if res != v {
-			t.Fatalf("Expected %q, got %q", v, res)
+		if item.val != v {
+			t.Fatalf("Expected %q, got %q", v, item.val)
+		}
+		if err := <-l.items; err.typ != itemError {
+			t.Fatalf("Expected EOF, got %v", err)
 		}
 	}
 	for _, v := range invalidIntegers {
-		l := lex("", v)
-		_, ok := scanNumber(l)
-		if ok {
-			t.Fatalf("Expected an invalid integer for %q", v)
+		l := lexExpr("", v)
+		item := <-l.items
+		if item.typ != itemError {
+			t.Fatalf("Expected an invalid integer for %q, got %v", v, item)
 		}
 	}
 	for _, v := range validFloats {
-		l := lex("", v)
-		typ, ok := scanNumber(l)
-		res := l.input[l.start:l.pos]
-		if !ok || typ != itemFloat {
+		l := lexExpr("", v)
+		item := <-l.items
+		if item.typ != itemFloat {
 			t.Fatalf("Expected a valid float for %q", v)
 		}
-		if res != v {
-			t.Fatalf("Expected %q, got %q", v, res)
+		if item.val != v {
+			t.Fatalf("Expected %q, got %q", v, item.val)
+		}
+		if err := <-l.items; err.typ != itemError {
+			t.Fatalf("Expected EOF, got %v", err)
 		}
 	}
 	for _, v := range invalidFloats {
-		l := lex("", v)
-		_, ok := scanNumber(l)
-		if ok {
-			t.Fatalf("Expected an invalid float for %q", v)
+		l := lexExpr("", v)
+		item := <-l.items
+		if item.typ == itemFloat {
+			t.Fatalf("Expected an invalid float for %q, got %v", v, item.typ)
 		}
 	}
 }
