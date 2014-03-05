@@ -703,21 +703,16 @@ func runNsExecTests(t *testing.T, tests []nsExecTest) {
 			}
 			registry.Add(tree)
 		}
-		var tofu = Tofu{registry}
 
 		b.Reset()
-		tmpl := tofu.Template(test.templateName)
-		if tmpl == nil {
-			if test.ok {
-				t.Errorf("couldn't find template %q", test.templateName)
-			}
-			continue
-		}
+		var tofu = Tofu{registry}
 		var datamap data.Map
 		if test.data != nil {
 			datamap = data.New(test.data).(data.Map)
 		}
-		err := tmpl.InjectData(ij).Render(b, datamap)
+		err := tofu.Template(test.templateName).
+			InjectData(ij).
+			Render(b, datamap)
 		switch {
 		case !test.ok && err == nil:
 			t.Errorf("%s: expected error; got none", test.name)

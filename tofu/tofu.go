@@ -10,19 +10,21 @@ import (
 	"github.com/robfig/soy/template"
 )
 
-// Tofu aggregates your soy.
+var ErrTemplateNotFound = errors.New("template not found")
+
+// Tofu provides access to all your parsed soy templates for rendering into HTML
 type Tofu struct {
 	template.Registry
 }
 
+// Template returns a Renderer that can convert the named template to HTML.
+// This method never returns nil and is safe to chain.
 func (t Tofu) Template(name string) *Renderer {
-	var tmpl, ok = t.Registry.Template(name)
-	if !ok {
-		return nil
-	}
+	var tmpl, _ = t.Registry.Template(name)
 	return &Renderer{tmpl, t, nil}
 }
 
+// Renderer is the context for execution of a single template.
 type Renderer struct {
 	template.Template
 	tofu Tofu
@@ -39,7 +41,7 @@ func (t *Renderer) InjectData(ij data.Map) *Renderer {
 // and writes the output to wr.
 func (t Renderer) Render(wr io.Writer, obj data.Map) (err error) {
 	if t.Node == nil {
-		return errors.New("no template found")
+		return ErrTemplateNotFound
 	}
 	var autoescapeMode = t.Namespace.Autoescape
 	if autoescapeMode == ast.AutoescapeUnspecified {

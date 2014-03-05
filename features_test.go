@@ -215,11 +215,8 @@ func BenchmarkExecuteFeatures(b *testing.B) {
 			// 	continue
 			// }
 			buf.Reset()
-			tmpl := tofu.Template("soy.examples.features." + test.name)
-			if tmpl == nil {
-				b.Errorf("couldn't find template for test: %s", test.name)
-			}
-			err := tmpl.Render(buf, data.New(test.data).(data.Map))
+			tofu.Template("soy.examples.features."+test.name).
+				Render(buf, data.New(test.data).(data.Map))
 			if err != nil {
 				b.Error(err)
 			}
@@ -319,12 +316,8 @@ func runFeatureTests(t *testing.T, tests []featureTest) {
 	b := new(bytes.Buffer)
 	for _, test := range tests {
 		b.Reset()
-		tmpl := tofu.Template("soy.examples.features." + test.name)
-		if tmpl == nil {
-			t.Errorf("couldn't find template for test: %s", test.name)
-			continue
-		}
-		err := tmpl.Render(b, data.New(test.data).(data.Map))
+		tofu.Template("soy.examples.features."+test.name).
+			Render(b, data.New(test.data).(data.Map))
 		if err != nil {
 			t.Error(err)
 			continue
