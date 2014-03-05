@@ -59,7 +59,7 @@ func TestNew(t *testing.T) {
 	}
 }
 
-func TestStructConverter(t *testing.T) {
+func TestStructOptions(t *testing.T) {
 	var testStruct = struct {
 		CaseFormat int
 		Time       time.Time
@@ -76,7 +76,7 @@ func TestStructConverter(t *testing.T) {
 		NestedSlice: []interface{}{
 			"a",
 			2,
-			DefaultStructConverter,
+			DefaultStructOptions,
 			true,
 			nil,
 			5.0,
@@ -94,16 +94,16 @@ func TestStructConverter(t *testing.T) {
 			"float":  5.0,
 			"nil":    nil,
 			"slice":  []*int{pInt(1), pInt(2), pInt(3)},
-			"Struct": DefaultStructConverter,
+			"Struct": DefaultStructOptions,
 		},
 	}
 
 	tests := []struct {
 		input    interface{}
-		convert  StructConverter
+		convert  StructOptions
 		expected Map
 	}{
-		{testStruct, DefaultStructConverter, Map{
+		{testStruct, DefaultStructOptions, Map{
 			"caseFormat": Int(5),
 			"time":       String(jan1.Format(time.RFC3339)),
 			"nested": Map{
@@ -136,7 +136,7 @@ func TestStructConverter(t *testing.T) {
 				}},
 		}},
 
-		{testStruct, StructConverter{false, time.Stamp}, Map{
+		{testStruct, StructOptions{false, time.Stamp}, Map{
 			"CaseFormat": Int(5),
 			"Time":       String(jan1.Format(time.Stamp)),
 			"Nested": Map{
@@ -178,7 +178,7 @@ func TestStructConverter(t *testing.T) {
 	}
 }
 
-func BenchmarkStructConverter(b *testing.B) {
+func BenchmarkStructOptions(b *testing.B) {
 	var testStruct = struct {
 		CaseFormat int
 		Time       time.Time
@@ -195,7 +195,7 @@ func BenchmarkStructConverter(b *testing.B) {
 		NestedSlice: []interface{}{
 			"a",
 			2,
-			DefaultStructConverter,
+			DefaultStructOptions,
 			true,
 			nil,
 			5.0,
@@ -215,12 +215,12 @@ func BenchmarkStructConverter(b *testing.B) {
 			"float":  5.0,
 			"nil":    nil,
 			"slice":  []*int{pInt(1), pInt(2), pInt(3)},
-			"Struct": DefaultStructConverter,
+			"Struct": DefaultStructOptions,
 		},
 	}
 
 	for i := 0; i < b.N; i++ {
-		var output = NewWith(DefaultStructConverter, testStruct).(Map)
+		var output = NewWith(DefaultStructOptions, testStruct).(Map)
 		if len(output) != 5 {
 			b.Errorf("unexpected output")
 		}

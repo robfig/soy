@@ -11,14 +11,14 @@ import (
 var timeType = reflect.TypeOf(time.Time{})
 
 // New converts the given data into a soy data value, using
-// DefaultStructConverter for structs.
+// DefaultStructOptions for structs.
 func New(value interface{}) Value {
-	return NewWith(DefaultStructConverter, value)
+	return NewWith(DefaultStructOptions, value)
 }
 
 // NewWith converts the given data value soy data value, using the provided
-// StructConverter for any structs encountered.
-func NewWith(convert StructConverter, value interface{}) Value {
+// StructOptions for any structs encountered.
+func NewWith(convert StructOptions, value interface{}) Value {
 	// quick return if we're passed an existing data.Value
 	if val, ok := value.(Value); ok {
 		return val
@@ -74,19 +74,19 @@ func NewWith(convert StructConverter, value interface{}) Value {
 	}
 }
 
-var DefaultStructConverter = StructConverter{
+var DefaultStructOptions = StructOptions{
 	LowerCamel: true,
 	TimeFormat: time.RFC3339,
 }
 
-// StructConverter provides flexible conversion of arbitrary structs to soy's
+// StructOptions provides flexibility in conversion of structs to soy's
 // data.Map format.
-type StructConverter struct {
+type StructOptions struct {
 	LowerCamel bool   // if true, convert field names to lowerCamel.
 	TimeFormat string // format string for time.Time. (if empty, use ISO-8601)
 }
 
-func (c StructConverter) Data(obj interface{}) Map {
+func (c StructOptions) Data(obj interface{}) Map {
 	var m = make(map[string]Value)
 	var v = reflect.ValueOf(obj)
 	var valType = v.Type()
