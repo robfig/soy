@@ -1,3 +1,5 @@
+// Package ast contains definitions for the in-memory representation of a Soy
+// template.
 package ast
 
 import (
@@ -8,24 +10,28 @@ import (
 	"github.com/robfig/soy/data"
 )
 
-var textFormat = "%s" // Changed to "%q" in tests for better error messages.
-
-// Pos represents a byte position in the original input text from which
-// this template was parsed.
-type Pos int
-
-func (p Pos) Position() Pos {
-	return p
-}
-
+// Node represents any singular piece of a soy template.  For example, a
+// sequence of raw text or a print tag.
 type Node interface {
 	String() string // String returns the soy source representation of this node.
 	Position() Pos  // byte position of start of node in full original input string
 }
 
+// ParentNode is any Node that has descendent nodes.  For example, the Children
+// of a AddNode are the two nodes that should be added.
 type ParentNode interface {
 	Node
 	Children() []Node
+}
+
+// Pos represents a byte position in the original input text from which this
+// template was parsed.  It is useful to construct helpful error messages.
+type Pos int
+
+// Position returns this position.  It is implemented as a method so that Nodes
+// may embed a Pos and fulfill this part of the Node interface for free.
+func (p Pos) Position() Pos {
+	return p
 }
 
 // SoyFileNode represents a soy file.
@@ -57,10 +63,6 @@ type ListNode struct {
 	Nodes []Node // The element nodes in lexical order.
 }
 
-func (l *ListNode) append(n Node) {
-	l.Nodes = append(l.Nodes, n)
-}
-
 func (l *ListNode) String() string {
 	b := new(bytes.Buffer)
 	for _, n := range l.Nodes {
@@ -79,7 +81,7 @@ type RawTextNode struct {
 }
 
 func (t *RawTextNode) String() string {
-	return fmt.Sprintf(textFormat, t.Text)
+	return string(t.Text)
 }
 
 // NamespaceNode registers the namespace of the soy file.

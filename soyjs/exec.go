@@ -10,7 +10,6 @@ import (
 
 	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
-
 	"github.com/robfig/soy/tofu"
 )
 
