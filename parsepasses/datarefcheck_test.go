@@ -405,7 +405,7 @@ func runCheckerTests(t *testing.T, tests []checkerTest) {
 			t.Error(err)
 		} else if !test.success && err == nil {
 			t.Errorf("%s: expected to fail validation, but no error was raised.",
-				reg.Templates[0].Name)
+				reg.Templates[0].Node.Name)
 		}
 	}
 }

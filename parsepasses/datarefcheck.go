@@ -25,9 +25,9 @@ func CheckDataRefs(reg template.Registry) (err error) {
 	}()
 
 	for _, t := range reg.Templates {
-		currentTemplate = t.Name
-		tc := newTemplateChecker(reg, t.Params)
-		tc.checkTemplate(t.Body)
+		currentTemplate = t.Node.Name
+		tc := newTemplateChecker(reg, t.Doc.Params)
+		tc.checkTemplate(t.Node.Body)
 
 		// check that all params appear in the usedKeys
 		for _, param := range tc.params {
@@ -83,14 +83,14 @@ func (tc *templateChecker) checkLet(varName string) {
 }
 
 func (tc *templateChecker) checkCall(node *ast.CallNode) {
-	var callee = tc.registry.Template(node.Name)
-	if callee == nil {
+	var callee, ok = tc.registry.Template(node.Name)
+	if !ok {
 		panic(fmt.Errorf("{call}: template %q not found", node.Name))
 	}
 
 	// collect callee's list of required/allowed params
 	var allCalleeParamNames, requiredCalleeParamNames []string
-	for _, param := range callee.Params {
+	for _, param := range callee.Doc.Params {
 		allCalleeParamNames = append(allCalleeParamNames, param.Name)
 		if !param.Optional {
 			requiredCalleeParamNames = append(requiredCalleeParamNames, param.Name)

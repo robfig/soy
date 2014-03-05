@@ -16,11 +16,11 @@ type Tofu struct {
 }
 
 func (t Tofu) Template(name string) *Renderer {
-	var tmpl = t.Registry.Template(name)
-	if tmpl == nil {
+	var tmpl, ok = t.Registry.Template(name)
+	if !ok {
 		return nil
 	}
-	return &Renderer{*tmpl, t, nil}
+	return &Renderer{tmpl, t, nil}
 }
 
 type Renderer struct {
@@ -38,7 +38,7 @@ func (t *Renderer) InjectData(ij data.Map) *Renderer {
 // Render applies a parsed template to the specified data object,
 // and writes the output to wr.
 func (t Renderer) Render(wr io.Writer, obj data.Map) (err error) {
-	if t.TemplateNode == nil {
+	if t.Node == nil {
 		return errors.New("no template found")
 	}
 	var autoescapeMode = t.Namespace.Autoescape
@@ -55,6 +55,6 @@ func (t Renderer) Render(wr io.Writer, obj data.Map) (err error) {
 		ij:         t.ij,
 	}
 	defer state.errRecover(&err)
-	state.walk(t.TemplateNode)
+	state.walk(t.Node)
 	return
 }

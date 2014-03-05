@@ -1,3 +1,4 @@
+// Package template provides convenient access to groups of parsed soy files.
 package template
 
 import (
@@ -61,13 +62,14 @@ func (r *Registry) Add(soyfile *ast.SoyFileNode) error {
 }
 
 // Template allows lookup by (fully-qualified) template name
-func (r *Registry) Template(name string) *Template {
+// If the template is not found, the zero value for Template is returned.
+func (r *Registry) Template(name string) (Template, bool) {
 	for _, t := range r.Templates {
-		if t.Name == name {
-			return &t
+		if t.Node.Name == name {
+			return t, true
 		}
 	}
-	return nil
+	return Template{}, false
 }
 
 // LineNumber computes the line number in the input source for the given node

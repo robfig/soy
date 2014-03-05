@@ -37,8 +37,8 @@ func (s *state) at(node ast.Node) {
 
 // errorf formats the error and terminates processing.
 func (s *state) errorf(format string, args ...interface{}) {
-	format = fmt.Sprintf("template %s:%d: %s", s.tmpl.Name,
-		s.registry.LineNumber(s.tmpl.Name, s.node), format)
+	format = fmt.Sprintf("template %s:%d: %s", s.tmpl.Node.Name,
+		s.registry.LineNumber(s.tmpl.Node.Name, s.node), format)
 	panic(fmt.Errorf(format, args...))
 }
 
@@ -48,13 +48,13 @@ func (s *state) errRecover(errp *error) {
 	if e := recover(); e != nil {
 		switch e := e.(type) {
 		case runtime.Error:
-			*errp = fmt.Errorf("template %s:%d: %v\n%v", s.tmpl.Name,
-				s.registry.LineNumber(s.tmpl.Name, s.node), e, string(debug.Stack()))
+			*errp = fmt.Errorf("template %s:%d: %v\n%v", s.tmpl.Node.Name,
+				s.registry.LineNumber(s.tmpl.Node.Name, s.node), e, string(debug.Stack()))
 		case error:
 			*errp = e
 		default:
-			*errp = fmt.Errorf("template %s:%d: %v", s.tmpl.Name,
-				s.registry.LineNumber(s.tmpl.Name, s.node), e)
+			*errp = fmt.Errorf("template %s:%d: %v", s.tmpl.Node.Name,
+				s.registry.LineNumber(s.tmpl.Node.Name, s.node), e)
 		}
 	}
 }
@@ -334,8 +334,8 @@ func (s *state) evalPrint(node *ast.PrintNode) {
 
 func (s *state) evalCall(node *ast.CallNode) {
 	// get template node we're calling
-	var calledTmpl = s.registry.Template(node.Name)
-	if calledTmpl == nil {
+	var calledTmpl, ok = s.registry.Template(node.Name)
+	if !ok {
 		s.errorf("failed to find template: %s", node.Name)
 	}
 
@@ -368,7 +368,7 @@ func (s *state) evalCall(node *ast.CallNode) {
 	}
 
 	state := &state{
-		tmpl:       *calledTmpl,
+		tmpl:       calledTmpl,
 		registry:   s.registry,
 		namespace:  calledTmpl.Namespace.Name,
 		autoescape: calledTmpl.Namespace.Autoescape,
@@ -376,7 +376,7 @@ func (s *state) evalCall(node *ast.CallNode) {
 		context:    callData,
 		ij:         s.ij,
 	}
-	state.walk(calledTmpl.TemplateNode)
+	state.walk(calledTmpl.Node)
 }
 
 // renderBlock is a helper that renders the given node to a temporary output
