@@ -8,7 +8,7 @@ import (
 
 	"github.com/robfig/soy/data"
 	"github.com/robfig/soy/parse"
-	"github.com/robfig/soy/tofu"
+	"github.com/robfig/soy/soyhtml"
 )
 
 // ParseGlobals parses the given input, expecting the form:
@@ -38,7 +38,7 @@ func ParseGlobals(input io.Reader) (data.Map, error) {
 		if err != nil {
 			return nil, err
 		}
-		exprValue, err := tofu.EvalExpr(node)
+		exprValue, err := soyhtml.EvalExpr(node)
 		if err != nil {
 			return nil, err
 		}

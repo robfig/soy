@@ -1,4 +1,4 @@
-package tofu
+package soyhtml
 
 import (
 	"bytes"
@@ -705,14 +705,15 @@ func runNsExecTests(t *testing.T, tests []nsExecTest) {
 		}
 
 		b.Reset()
-		var tofu = Tofu{registry}
 		var datamap data.Map
 		if test.data != nil {
 			datamap = data.New(test.data).(data.Map)
 		}
-		err := tofu.Template(test.templateName).
-			InjectData(ij).
-			Render(b, datamap)
+		err := Renderer{
+			Registry:   &registry,
+			Template:   test.templateName,
+			InjectData: ij,
+		}.Render(b, datamap)
 		switch {
 		case !test.ok && err == nil:
 			t.Errorf("%s: expected error; got none", test.name)

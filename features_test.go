@@ -12,6 +12,7 @@ import (
 
 	"github.com/robertkrimen/otto"
 	"github.com/robfig/soy/data"
+	"github.com/robfig/soy/soyhtml"
 	"github.com/robfig/soy/soyjs"
 )
 
@@ -186,7 +187,7 @@ func BenchmarkLexParseFeatures(b *testing.B) {
 			AddGlobalsFile("testdata/FeaturesUsage_globals.txt").
 			AddTemplateString("", features).
 			AddTemplateString("", simple).
-			CompileToTofu()
+			Compile()
 		if err != nil {
 			b.Error(err)
 		}
@@ -198,11 +199,11 @@ func BenchmarkExecuteFeatures(b *testing.B) {
 		features = mustReadFile("testdata/features.soy")
 		simple   = mustReadFile("testdata/simple.soy")
 	)
-	var tofu, err = NewBundle().
+	var registry, err = NewBundle().
 		AddGlobalsFile("testdata/FeaturesUsage_globals.txt").
 		AddTemplateString("", features).
 		AddTemplateString("", simple).
-		CompileToTofu()
+		Compile()
 	if err != nil {
 		panic(err)
 	}
@@ -215,8 +216,10 @@ func BenchmarkExecuteFeatures(b *testing.B) {
 			// 	continue
 			// }
 			buf.Reset()
-			tofu.Template("soy.examples.features."+test.name).
-				Render(buf, data.New(test.data).(data.Map))
+			err = soyhtml.Renderer{
+				Registry: registry,
+				Template: "soy.examples.features." + test.name,
+			}.Render(buf, data.New(test.data).(data.Map))
 			if err != nil {
 				b.Error(err)
 			}
@@ -228,17 +231,17 @@ func BenchmarkExecuteFeatures(b *testing.B) {
 // against that compiled by the reference implementation.
 func TestFeaturesJavascript(t *testing.T) {
 	rand.Seed(14)
-	var tofu, err = NewBundle().
+	var registry, err = NewBundle().
 		AddGlobalsFile("testdata/FeaturesUsage_globals.txt").
 		AddTemplateFile("testdata/simple.soy").
 		AddTemplateFile("testdata/features.soy").
-		CompileToTofu()
+		Compile()
 	if err != nil {
 		t.Error(err)
 		return
 	}
 	var otto = initJs(t)
-	for _, soyfile := range tofu.SoyFiles {
+	for _, soyfile := range registry.SoyFiles {
 		var buf bytes.Buffer
 		var err = soyjs.Write(&buf, soyfile)
 		if err != nil {
@@ -303,11 +306,11 @@ func initJs(t *testing.T) *otto.Otto {
 
 func runFeatureTests(t *testing.T, tests []featureTest) {
 	var features = mustReadFile("testdata/features.soy")
-	var tofu, err = NewBundle().
+	var reg, err = NewBundle().
 		AddGlobalsFile("testdata/FeaturesUsage_globals.txt").
 		AddTemplateString("", features).
 		AddTemplateFile("testdata/simple.soy").
-		CompileToTofu()
+		Compile()
 	if err != nil {
 		t.Error(err)
 		return
@@ -316,8 +319,10 @@ func runFeatureTests(t *testing.T, tests []featureTest) {
 	b := new(bytes.Buffer)
 	for _, test := range tests {
 		b.Reset()
-		tofu.Template("soy.examples.features."+test.name).
-			Render(b, data.New(test.data).(data.Map))
+		err = soyhtml.Renderer{
+			Registry: reg,
+			Template: "soy.examples.features." + test.name,
+		}.Render(b, data.New(test.data).(data.Map))
 		if err != nil {
 			t.Error(err)
 			continue

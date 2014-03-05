@@ -1,4 +1,4 @@
-package tofu
+package soyhtml
 
 import "github.com/robfig/soy/data"
 

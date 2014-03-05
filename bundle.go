@@ -14,7 +14,6 @@ import (
 	"github.com/robfig/soy/parse"
 	"github.com/robfig/soy/parsepasses"
 	"github.com/robfig/soy/template"
-	"github.com/robfig/soy/tofu"
 )
 
 // Logger is used to print soy compile error messages when using the
@@ -109,7 +108,7 @@ func (b *Bundle) AddGlobalsMap(globals data.Map) *Bundle {
 	return b
 }
 
-func (b *Bundle) CompileToTofu() (*tofu.Tofu, error) {
+func (b *Bundle) Compile() (*template.Registry, error) {
 	if b.err != nil {
 		return nil, b.err
 	}
@@ -132,14 +131,13 @@ func (b *Bundle) CompileToTofu() (*tofu.Tofu, error) {
 		return nil, err
 	}
 
-	var tofu = &tofu.Tofu{registry}
 	if b.watcher != nil {
-		go b.tofuUpdater(tofu)
+		go b.recompiler(&registry)
 	}
-	return tofu, nil
+	return &registry, nil
 }
 
-func (b *Bundle) tofuUpdater(tofu *tofu.Tofu) {
+func (b *Bundle) recompiler(reg *template.Registry) {
 	for {
 		select {
 		case ev := <-b.watcher.Event:
@@ -158,16 +156,16 @@ func (b *Bundle) tofuUpdater(tofu *tofu.Tofu) {
 			for _, soyfile := range b.files {
 				bundle.AddTemplateFile(soyfile.name)
 			}
-			var newTofu, err = bundle.CompileToTofu()
+			var registry, err = bundle.Compile()
 			if err != nil {
 				Logger.Println(err)
 				continue
 			}
 
-			// update the existing tofu's template registry.
+			// update the existing template registry.
 			// (this is not goroutine-safe, but that seems ok for a development aid,
 			// as long as it works in practice)
-			tofu.Registry = newTofu.Registry
+			*registry = *registry
 			Logger.Printf("update successful (%v)", ev)
 
 		case err := <-b.watcher.Error:
