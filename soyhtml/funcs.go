@@ -35,9 +35,8 @@ type Func struct {
 	ValidArgLengths []int
 }
 
-// Funcs contains the builtin soy functions.
-// Callers may add funcs at any point prior to parsing templates that use them.
-var Funcs = map[string]Func{
+// DefaultFuncs contains the builtin soy functions.
+var DefaultFuncs = map[string]Func{
 	"isNonnull":   {funcIsNonnull, []int{1}},
 	"length":      {funcLength, []int{1}},
 	"keys":        {funcKeys, []int{1}},

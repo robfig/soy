@@ -18,8 +18,8 @@ type PrintDirective struct {
 	CancelAutoescape bool
 }
 
-// PrintDirectives are the builtin print directives.
-var PrintDirectives = map[string]PrintDirective{
+// DefaultPrintDirectives are the builtin print directives.
+var DefaultPrintDirectives = map[string]PrintDirective{
 	"insertWordBreaks":  {directiveInsertWordBreaks, []int{1}, true},
 	"changeNewlineToBr": {directiveChangeNewlineToBr, []int{0}, true},
 	"truncate":          {directiveTruncate, []int{1, 2}, false},
