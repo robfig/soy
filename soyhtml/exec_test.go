@@ -710,10 +710,10 @@ func runNsExecTests(t *testing.T, tests []nsExecTest) {
 			datamap = data.New(test.data).(data.Map)
 		}
 		err := Renderer{
-			Registry:   &registry,
-			Template:   test.templateName,
-			InjectData: ij,
-		}.Render(b, datamap)
+			Registry: &registry,
+			Template: test.templateName,
+			Inject:   ij,
+		}.Execute(b, datamap)
 		switch {
 		case !test.ok && err == nil:
 			t.Errorf("%s: expected error; got none", test.name)

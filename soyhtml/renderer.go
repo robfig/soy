@@ -14,14 +14,14 @@ var ErrTemplateNotFound = errors.New("template not found")
 
 // Renderer provides parameters to template execution.
 type Renderer struct {
-	Registry   *template.Registry // a registry of all templates in a bundle
-	Template   string             // fully-qualified name of the template to render
-	InjectData data.Map           // data for the $ij map
+	Registry *template.Registry // a registry of all templates in a bundle
+	Template string             // fully-qualified name of the template to render
+	Inject   data.Map           // data for the $ij map
 }
 
-// Render applies a parsed template to the specified data object,
+// Execute applies a parsed template to the specified data object,
 // and writes the output to wr.
-func (t Renderer) Render(wr io.Writer, obj data.Map) (err error) {
+func (t Renderer) Execute(wr io.Writer, obj data.Map) (err error) {
 	var tmpl, ok = t.Registry.Template(t.Template)
 	if !ok {
 		return ErrTemplateNotFound
@@ -37,7 +37,7 @@ func (t Renderer) Render(wr io.Writer, obj data.Map) (err error) {
 		autoescape: autoescapeMode,
 		wr:         wr,
 		context:    scope{obj},
-		ij:         t.InjectData,
+		ij:         t.Inject,
 	}
 	defer state.errRecover(&err)
 	state.walk(tmpl.Node)

@@ -21,10 +21,11 @@ declared template.  (Error checking is skipped.)
 
 On startup:
 
-  tofu, _ := soy.NewBundle().
+  registry, _ := soy.NewBundle().
+      WatchFiles(mode == "dev")             // watch soy files and reload on changes in dev
       AddGlobalsFile("views/globals.txt").  // parse a file of globals
       AddTemplateDir("views").              // load *.soy in all sub-directories
-      CompileToTofu()
+      Compile()
 
 To render a page:
 
@@ -32,14 +33,15 @@ To render a page:
     "user":    user,
     "account": account,
   }
-  tofu.Template("acme.account.overview").
-      Render(resp, obj)
+  soyhtml.Renderer{
+    Registry: registry,
+    Template: "acme.account.overview",
+  }.Execute(resp, obj)
 
 If you prefer to prepare your data in non-soy-specific data structures ahead of
 time, you can easily convert it using soy/data.New():
 
-  tofu.Template("acme.account.overview").
-      Render(resp, data.New(obj))
+   .Execute(resp, data.New(obj))
 
 Advanced Usage
 
@@ -49,9 +51,9 @@ e.g. soy/parse directly.
 
 Project Status
 
-This project is in alpha status.  The server-side templating functionality is
-well tested and pretty complete (as compared to the reference implementation).
-However, the API may still change in backwards-incompatible ways without notice.
+This project is in beta.  The server-side templating functionality is well
+tested and pretty complete.  However, the API may still change in
+backwards-incompatible ways without notice.
 
 Please see the TODO file for features that have yet to be implemented.
 

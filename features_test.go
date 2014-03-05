@@ -219,7 +219,7 @@ func BenchmarkExecuteFeatures(b *testing.B) {
 			err = soyhtml.Renderer{
 				Registry: registry,
 				Template: "soy.examples.features." + test.name,
-			}.Render(buf, data.New(test.data).(data.Map))
+			}.Execute(buf, data.New(test.data).(data.Map))
 			if err != nil {
 				b.Error(err)
 			}
@@ -322,7 +322,7 @@ func runFeatureTests(t *testing.T, tests []featureTest) {
 		err = soyhtml.Renderer{
 			Registry: reg,
 			Template: "soy.examples.features." + test.name,
-		}.Render(b, data.New(test.data).(data.Map))
+		}.Execute(b, data.New(test.data).(data.Map))
 		if err != nil {
 			t.Error(err)
 			continue
