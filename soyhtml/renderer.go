@@ -13,6 +13,7 @@ import (
 var ErrTemplateNotFound = errors.New("template not found")
 
 // Renderer provides parameters to template execution.
+// At minimum, Registry and Template are required to render a template..
 type Renderer struct {
 	Registry   *template.Registry        // a registry of all templates in a bundle
 	Template   string                    // fully-qualified name of the template to render
@@ -24,6 +25,13 @@ type Renderer struct {
 // Execute applies a parsed template to the specified data object,
 // and writes the output to wr.
 func (t Renderer) Execute(wr io.Writer, obj data.Map) (err error) {
+	if t.Registry == nil {
+		return errors.New("Template Registry required")
+	}
+	if t.Template == "" {
+		return errors.New("Template name required")
+	}
+
 	var tmpl, ok = t.Registry.Template(t.Template)
 	if !ok {
 		return ErrTemplateNotFound

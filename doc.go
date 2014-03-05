@@ -22,7 +22,7 @@ declared template.  (Error checking is skipped.)
 On startup:
 
   registry, _ := soy.NewBundle().
-      WatchFiles(mode == "dev")             // watch soy files and reload on changes in dev
+      WatchFiles(mode == "dev").            // watch soy files, reload on changes (in dev)
       AddGlobalsFile("views/globals.txt").  // parse a file of globals
       AddTemplateDir("views").              // load *.soy in all sub-directories
       Compile()
