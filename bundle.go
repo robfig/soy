@@ -117,7 +117,7 @@ func (b *Bundle) CompileToTofu() (*tofu.Tofu, error) {
 	// Compile all the soy (globals are already parsed)
 	var registry = template.Registry{}
 	for _, soyfile := range b.files {
-		var tree, err = parse.Soy(soyfile.name, soyfile.content, b.globals)
+		var tree, err = parse.SoyFile(soyfile.name, soyfile.content, b.globals)
 		if err != nil {
 			return nil, err
 		}

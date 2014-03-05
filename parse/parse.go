@@ -26,9 +26,9 @@ type tree struct {
 	globals   map[string]data.Value // global (compile-time constants) values by name
 }
 
-// Soy parses the input into a SoyFileNode (the AST).
+// SoyFile parses the input into a SoyFileNode (the AST).
 // The result may be used as input to a soy backend to generate HTML or JS.
-func Soy(name, text string, globals data.Map) (node *ast.SoyFileNode, err error) {
+func SoyFile(name, text string, globals data.Map) (node *ast.SoyFileNode, err error) {
 	var t = &tree{
 		name:    name,
 		text:    text,
@@ -637,11 +637,13 @@ func (t *tree) parseTemplate(token item) ast.Node {
 
 // Expressions ----------
 
-func ParseExpr(str string) (node ast.Node, err error) {
+// Expr returns the parsed representation of the given soy expression.
+// An expression is basically anything that you can put inside a print tag.
+// For example, string, list or map literals, arithmetic, boolean operations, etc.
+func Expr(str string) (node ast.Node, err error) {
 	var t = &tree{lex: lexExpr("", str)}
 	defer t.recover(&err)
-	node = t.parseExpr(0)
-	return
+	return t.parseExpr(0), err
 }
 
 // boolAttr returns a boolean value from the given attribute map.

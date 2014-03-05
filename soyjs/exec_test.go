@@ -715,7 +715,7 @@ soy.$$escapeHtml = function(arg) { return arg; };
 		t.Error(err)
 		return
 	}
-	soyfile, err := parse.Soy("", `
+	soyfile, err := parse.SoyFile("", `
 {namespace test}
 {template .log}
 {log}Hello {$name}.{/log}
@@ -769,7 +769,7 @@ func runNsExecTests(t *testing.T, tests []nsExecTest) {
 		// Parse the templates, generate and run the compiled javascript.
 		var source bytes.Buffer
 		for _, input := range test.input {
-			soyfile, err := parse.Soy(test.name, input, globals)
+			soyfile, err := parse.SoyFile(test.name, input, globals)
 			if err != nil {
 				t.Error(err)
 				continue

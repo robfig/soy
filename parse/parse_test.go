@@ -403,7 +403,7 @@ var globals = data.Map{
 
 func TestParse(t *testing.T) {
 	for _, test := range parseTests {
-		tmpl, err := Soy(test.name, test.input, globals)
+		tmpl, err := SoyFile(test.name, test.input, globals)
 
 		switch {
 		// case err == nil && !test.ok:
@@ -811,14 +811,14 @@ func TestRecognizeComments(t *testing.T) {
 }
 
 func works(t *testing.T, body string) {
-	_, err := Soy("", body, nil)
+	_, err := SoyFile("", body, nil)
 	if err != nil {
 		t.Error(err)
 	}
 }
 
 func fails(t *testing.T, body string) {
-	_, err := Soy("", body, nil)
+	_, err := SoyFile("", body, nil)
 	if err == nil {
 		t.Errorf("should fail: %s", body)
 	}

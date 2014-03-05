@@ -34,7 +34,7 @@ func ParseGlobals(input io.Reader) (data.Map, error) {
 			name = strings.TrimSpace(line[:eq])
 			expr = strings.TrimSpace(line[eq+1:])
 		)
-		var node, err = parse.ParseExpr(expr)
+		var node, err = parse.Expr(expr)
 		if err != nil {
 			return nil, err
 		}
