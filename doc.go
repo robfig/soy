@@ -17,47 +17,57 @@ your pages.  For example:
 
 This code snippet will parse a file of globals, all soy templates within
 app/views, and provide back a Tofu intance that can be used to render any
-declared template.  (Error checking is skipped.)
+declared template.  Additionally, if "mode == dev", it will watch the soy files
+for changes and update your compiled templates in the background (or log compile
+errors to soy.Logger).  Error checking is omitted.
 
 On startup:
 
-  registry, _ := soy.NewBundle().
+  tofu, _ := soy.NewBundle().
       WatchFiles(mode == "dev").            // watch soy files, reload on changes (in dev)
       AddGlobalsFile("views/globals.txt").  // parse a file of globals
       AddTemplateDir("views").              // load *.soy in all sub-directories
-      Compile()
+      CompileToTofu()
 
 To render a page:
 
-  var obj = data.Map{
+  var obj = map[string]interface{}{
     "user":    user,
     "account": account,
   }
-  soyhtml.Renderer{
-    Registry: registry,
-    Template: "acme.account.overview",
-  }.Execute(resp, obj)
+  tofu.Render(resp, "acme.account.overview", obj)
 
-If you prefer to prepare your data in non-soy-specific data structures ahead of
-time, you can easily convert it using soy/data.New():
+Structs may be used as the data context too, but keep in mind that they are
+converted to data maps -- unlike html/template, the context is pure data, and
+you can not call methods on it.
 
-   .Execute(resp, data.New(obj))
+  var obj = HomepageContext{
+    User:    user,
+    Account: account,
+  }
+  tofu.Render(resp, "acme.account.overview", obj)
 
-Advanced Usage
-
-The soy package provides a friendly interface to its sub-packages.  Advanced
-usages like automated template rewriting will be better served by using
-e.g. soy/parse directly.
+See soyhtml.StructOptions for knobs to control how your structs get converted to
+data maps.
 
 Project Status
 
-This project is in beta.  The server-side templating functionality is well
-tested and pretty complete.  However, the API may still change in
-backwards-incompatible ways without notice.
+The goal is to be fully compatible and at feature parity with the official
+Closure Templates project.
+
+The server-side templating functionality is well tested and pretty complete,
+except for two notable areas: contextual autoescaping and
+internationalization/bidi support and workflow.  Contributions welcome.
+
+The Javascript generation is primitive and lacks support for user functions, but
+it successfully passes the server-side template test suite. Note that it is
+possible to run the official Soy compiler to generate your javascript templates
+at build time, even if you use this package for server-side templates.
 
 Please see the TODO file for features that have yet to be implemented.
 
-Please open a Github Issue for any bugs / problems / comments.
+Please open a Github Issue for any bugs / problems / comments, or if you find a
+template that renders differently than with the official compiler.
 
 */
 package soy

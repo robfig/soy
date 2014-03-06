@@ -7,7 +7,6 @@ import (
 
 	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
-	"github.com/robfig/soy/template"
 )
 
 var ErrTemplateNotFound = errors.New("template not found")
@@ -15,24 +14,28 @@ var ErrTemplateNotFound = errors.New("template not found")
 // Renderer provides parameters to template execution.
 // At minimum, Registry and Template are required to render a template..
 type Renderer struct {
-	Registry   *template.Registry        // a registry of all templates in a bundle
-	Template   string                    // fully-qualified name of the template to render
-	Inject     data.Map                  // data for the $ij map
-	Funcs      map[string]Func           // augments default funcs.
-	Directives map[string]PrintDirective // augments default print directives
+	tofu *Tofu    // a registry of all templates in a bundle
+	name string   // fully-qualified name of the template to render
+	ij   data.Map // data for the $ij map
+}
+
+// Inject sets the given data map as the $ij injected data.
+func (r *Renderer) Inject(ij data.Map) *Renderer {
+	r.ij = ij
+	return r
 }
 
 // Execute applies a parsed template to the specified data object,
 // and writes the output to wr.
 func (t Renderer) Execute(wr io.Writer, obj data.Map) (err error) {
-	if t.Registry == nil {
+	if t.tofu == nil || t.tofu.registry == nil {
 		return errors.New("Template Registry required")
 	}
-	if t.Template == "" {
+	if t.name == "" {
 		return errors.New("Template name required")
 	}
 
-	var tmpl, ok = t.Registry.Template(t.Template)
+	var tmpl, ok = t.tofu.registry.Template(t.name)
 	if !ok {
 		return ErrTemplateNotFound
 	}
@@ -42,38 +45,16 @@ func (t Renderer) Execute(wr io.Writer, obj data.Map) (err error) {
 		autoescapeMode = ast.AutoescapeOn
 	}
 
-	var funcs = DefaultFuncs
-	if t.Funcs != nil {
-		funcs = make(map[string]Func)
-		for k, v := range DefaultFuncs {
-			funcs[k] = v
-		}
-		for k, v := range t.Funcs {
-			funcs[k] = v
-		}
-	}
-
-	var directives = DefaultPrintDirectives
-	if t.Directives != nil {
-		directives = make(map[string]PrintDirective)
-		for k, v := range DefaultPrintDirectives {
-			directives[k] = v
-		}
-		for k, v := range t.Directives {
-			directives[k] = v
-		}
-	}
-
 	state := &state{
 		tmpl:       tmpl,
-		registry:   *t.Registry,
+		registry:   *t.tofu.registry,
 		namespace:  tmpl.Namespace.Name,
 		autoescape: autoescapeMode,
 		wr:         wr,
 		context:    scope{obj},
-		ij:         t.Inject,
-		funcs:      funcs,
-		directives: directives,
+		ij:         t.ij,
+		funcs:      t.tofu.funcs,
+		directives: t.tofu.directives,
 	}
 	defer state.errRecover(&err)
 	state.walk(tmpl.Node)

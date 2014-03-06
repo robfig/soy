@@ -13,17 +13,18 @@ import (
 	"github.com/robfig/soy/data"
 	"github.com/robfig/soy/parse"
 	"github.com/robfig/soy/parsepasses"
+	"github.com/robfig/soy/soyhtml"
 	"github.com/robfig/soy/template"
 )
 
-// Logger is used to print soy compile error messages when using the
+// Logger is used to print notifications and compile errors when using the
 // "WatchFiles" feature.
 var Logger = log.New(os.Stderr, "[soy] ", 0)
 
 type soyFile struct{ name, content string }
 
 // Bundle is a collection of soy content (templates and globals).  It acts as
-// input for the soy parser.
+// input for the soy compiler.
 type Bundle struct {
 	files   []soyFile
 	globals data.Map
@@ -68,6 +69,7 @@ func (b *Bundle) AddTemplateDir(root string) *Bundle {
 }
 
 // AddTemplateFile adds the given soy template file text to this bundle.
+// If WatchFiles is on, it will be subsequently watched for updates.
 func (b *Bundle) AddTemplateFile(filename string) *Bundle {
 	content, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -79,11 +81,16 @@ func (b *Bundle) AddTemplateFile(filename string) *Bundle {
 	return b.AddTemplateString(filename, string(content))
 }
 
+// AddTemplateString adds the given template to the bundle. The name is only
+// used for error messages - it does not need to be provided nor does it need to
+// be a real filename.
 func (b *Bundle) AddTemplateString(filename, soyfile string) *Bundle {
 	b.files = append(b.files, soyFile{filename, soyfile})
 	return b
 }
 
+// AddGlobalsFile opens and parses the given filename for Soy globals, and adds
+// the resulting data map to the bundle.
 func (b *Bundle) AddGlobalsFile(filename string) *Bundle {
 	var f, err = os.Open(filename)
 	if err != nil {
@@ -108,6 +115,8 @@ func (b *Bundle) AddGlobalsMap(globals data.Map) *Bundle {
 	return b
 }
 
+// Compile parses all of the soy files in this bundle, verifies a number of
+// rules about data references, and returns the completed template registry.
 func (b *Bundle) Compile() (*template.Registry, error) {
 	if b.err != nil {
 		return nil, b.err
@@ -135,6 +144,13 @@ func (b *Bundle) Compile() (*template.Registry, error) {
 		go b.recompiler(&registry)
 	}
 	return &registry, nil
+}
+
+// CompileToTofu returns a soyhtml.Tofu object that allows you to render soy
+// templates to HTML.
+func (b *Bundle) CompileToTofu() (*soyhtml.Tofu, error) {
+	var registry, err = b.Compile()
+	return soyhtml.NewTofu(registry), err
 }
 
 func (b *Bundle) recompiler(reg *template.Registry) {

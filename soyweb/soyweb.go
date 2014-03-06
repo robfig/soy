@@ -44,19 +44,13 @@ func handler(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var tmpl = tofu.Template("soyweb.soyweb")
-	if tmpl == nil {
-		http.Error(res, "Template soyweb.soyweb not found", 500)
-		return
-	}
-
 	var m = make(data.Map)
 	for k, v := range req.URL.Query() {
 		m[k] = data.String(v[0])
 	}
 
 	var buf bytes.Buffer
-	err = tmpl.Render(&buf, m)
+	err = tofu.Render(&buf, "soyweb.soyweb", m)
 	if err != nil {
 		http.Error(res, err.Error(), 500)
 		return
