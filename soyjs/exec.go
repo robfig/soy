@@ -336,11 +336,12 @@ func (s *state) visitPrint(node *ast.PrintNode) {
 }
 
 func (s *state) visitFunction(node *ast.FunctionNode) {
-	switch node.Name {
-	case "length":
-		s.walk(node.Args[0])
-		s.js(".length")
+	if fn, ok := DefaultFuncs[node.Name]; ok {
+		fn.Apply(s, node.Args)
 		return
+	}
+
+	switch node.Name {
 	case "isFirst":
 		// TODO: Add compile-time check that this is only called on loop variable.
 		s.js("(", s.scope.loopindex(), " == 0)")
@@ -351,54 +352,8 @@ func (s *state) visitFunction(node *ast.FunctionNode) {
 	case "index":
 		s.js(s.scope.loopindex())
 		return
-	case "round":
-		s.js("Math.round(")
-		s.walk(node.Args[0])
-		if len(node.Args) == 2 {
-			s.js("* Math.pow(10, ")
-			s.walk(node.Args[1])
-			s.js(")) / Math.pow(10, ")
-			s.walk(node.Args[1])
-		}
-		s.js(")")
-		return
-	case "hasData":
-		s.js("true")
-		return
-	case "randomInt":
-		s.js("Math.floor(Math.random() * ")
-		s.walk(node.Args[0])
-		s.js(")")
-		return
-	case "ceiling":
-		s.js("Math.ceil(")
-		s.walk(node.Args[0])
-		s.js(")")
-		return
-	case "bidiGlobalDir":
-		s.js("1")
-		return
-	case "bidiDirAttr":
-		s.js("soy.$$bidiDirAttr(0, ")
-		s.walk(node.Args[0])
-		s.js(")")
-		return
-	case "bidiStartEdge":
-		s.js("'left'")
-		return
-	case "bidiEndEdge":
-		s.js("'right'")
-		return
 	}
 	s.errorf("unimplemented function: %v", node.Name)
-	s.js("soy.", node.Name, "(")
-	for i, arg := range node.Args {
-		if i != 0 {
-			s.js(",")
-		}
-		s.walk(arg)
-	}
-	s.js(")")
 }
 
 func (s *state) visitDataRef(node *ast.DataRefNode) {

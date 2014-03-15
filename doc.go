@@ -52,14 +52,14 @@ data maps.
 
 Project Status
 
-The goal is to be fully compatible and at feature parity with the official
-Closure Templates project.
+The goal is full compatibility and feature parity with the official Closure
+Templates project.
 
-The server-side templating functionality is well tested and pretty complete,
+The server-side templating functionality is well tested and nearly complete,
 except for two notable areas: contextual autoescaping and
-internationalization/bidi support and workflow.  Contributions welcome.
+internationalization/bidi support.  Contributions welcome.
 
-The Javascript generation is primitive and lacks support for user functions, but
+The Javascript generation is early and lacks many generation options, but
 it successfully passes the server-side template test suite. Note that it is
 possible to run the official Soy compiler to generate your javascript templates
 at build time, even if you use this package for server-side templates.
@@ -68,6 +68,5 @@ Please see the TODO file for features that have yet to be implemented.
 
 Please open a Github Issue for any bugs / problems / comments, or if you find a
 template that renders differently than with the official compiler.
-
 */
 package soy
