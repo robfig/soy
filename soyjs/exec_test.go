@@ -725,7 +725,7 @@ soy.$$escapeHtml = function(arg) { return arg; };
 		return
 	}
 	var buf bytes.Buffer
-	err = Write(&buf, soyfile)
+	err = Write(&buf, soyfile, Options{})
 	if err != nil {
 		t.Error(err)
 		return
@@ -776,7 +776,7 @@ func runNsExecTests(t *testing.T, tests []nsExecTest) {
 			}
 
 			var buf bytes.Buffer
-			err = Write(&buf, soyfile)
+			err = Write(&buf, soyfile, Options{})
 			if err != nil {
 				t.Error(err)
 				continue

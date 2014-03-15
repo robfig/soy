@@ -239,7 +239,7 @@ func TestFeaturesJavascript(t *testing.T) {
 	var otto = initJs(t)
 	for _, soyfile := range registry.SoyFiles {
 		var buf bytes.Buffer
-		var err = soyjs.Write(&buf, soyfile)
+		var err = soyjs.Write(&buf, soyfile, soyjs.Options{})
 		if err != nil {
 			t.Error(err)
 			return

@@ -23,13 +23,14 @@ type state struct {
 	scope        scope
 	autoescape   ast.AutoescapeType
 	lastNode     ast.Node
+	options      Options
 }
 
 // Write writes the javascript represented by the given node to the given
 // writer.  The first error encountered is returned.
-func Write(out io.Writer, node ast.Node) (err error) {
+func Write(out io.Writer, node ast.Node, options Options) (err error) {
 	defer errRecover(&err)
-	var s = &state{wr: out}
+	var s = &state{wr: out, options: options}
 	s.scope.push()
 	s.walk(node)
 	return nil
@@ -314,7 +315,11 @@ func (s *state) visitPrint(node *ast.PrintNode) {
 }
 
 func (s *state) visitFunction(node *ast.FunctionNode) {
-	if fn, ok := DefaultFuncs[node.Name]; ok {
+	var funcs = DefaultFuncs
+	if s.options.Funcs != nil {
+		funcs = s.options.Funcs
+	}
+	if fn, ok := funcs[node.Name]; ok {
 		fn.Apply(s, node.Args)
 		return
 	}
