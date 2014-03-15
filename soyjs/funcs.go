@@ -1,10 +1,6 @@
 package soyjs
 
-import (
-	"fmt"
-
-	"github.com/robfig/soy/ast"
-)
+import "github.com/robfig/soy/ast"
 
 // JSWriter is provided to functions to write to the generated javascript.
 type JSWriter interface {
@@ -15,16 +11,7 @@ type JSWriter interface {
 }
 
 func (s *state) Write(args ...interface{}) {
-	for _, arg := range args {
-		switch arg := arg.(type) {
-		case string:
-			s.js(arg)
-		case ast.Node:
-			s.walk(arg)
-		default:
-			fmt.Fprintf(s.wr, "%v", arg)
-		}
-	}
+	s.js(args...)
 }
 
 // Func represents a soy function that may invoked within a template.

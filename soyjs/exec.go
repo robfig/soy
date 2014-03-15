@@ -80,10 +80,7 @@ func (s *state) walk(node ast.Node) {
 		s.walk(node.Body)
 	case *ast.CssNode:
 		if node.Expr != nil {
-			s.indent()
-			s.js(s.bufferName, " += ")
-			s.walk(node.Expr)
-			s.js(" + '-';\n")
+			s.jsln(s.bufferName, " += ", node.Expr, " + '-';")
 		}
 		s.writeRawText([]byte(node.Suffix))
 	case *ast.DebuggerNode:
@@ -105,10 +102,7 @@ func (s *state) walk(node ast.Node) {
 	case *ast.CallNode:
 		s.visitCall(node)
 	case *ast.LetValueNode:
-		s.indent()
-		s.js("var ", s.scope.makevar(node.Name), " = ")
-		s.walk(node.Expr)
-		s.js(";\n")
+		s.jsln("var ", s.scope.makevar(node.Name), " = ", node.Expr, ";")
 	case *ast.LetContentNode:
 		var oldBufferName = s.bufferName
 		s.bufferName = s.scope.makevar(node.Name)
@@ -159,9 +153,7 @@ func (s *state) walk(node ast.Node) {
 
 	// Arithmetic operators ----------
 	case *ast.NegateNode:
-		s.js("(-")
-		s.walk(node.Arg)
-		s.js(")")
+		s.js("(-", node.Arg, ")")
 	case *ast.AddNode:
 		s.op("+", node)
 	case *ast.SubNode:
@@ -189,30 +181,16 @@ func (s *state) walk(node ast.Node) {
 
 	// Boolean operators ----------
 	case *ast.NotNode:
-		s.js("!(")
-		s.walk(node.Arg)
-		s.js(")")
+		s.js("!(", node.Arg, ")")
 	case *ast.AndNode:
 		s.op("&&", node)
 	case *ast.OrNode:
 		s.op("||", node)
 	case *ast.ElvisNode:
 		// ?: is specified to check for null.
-		s.js("(")
-		s.walk(node.Arg1)
-		s.js(" != null ? ")
-		s.walk(node.Arg1)
-		s.js(" : ")
-		s.walk(node.Arg2)
-		s.js(")")
+		s.js("(", node.Arg1, " != null ? ", node.Arg1, " : ", node.Arg2, ")")
 	case *ast.TernNode:
-		s.js("(")
-		s.walk(node.Arg1)
-		s.js("?")
-		s.walk(node.Arg2)
-		s.js(":")
-		s.walk(node.Arg3)
-		s.js(")")
+		s.js("(", node.Arg1, "?", node.Arg2, ":", node.Arg3, ")")
 
 	default:
 		s.errorf("unknown node (%T): %v", node, node)
@@ -345,15 +323,13 @@ func (s *state) visitFunction(node *ast.FunctionNode) {
 	case "isFirst":
 		// TODO: Add compile-time check that this is only called on loop variable.
 		s.js("(", s.scope.loopindex(), " == 0)")
-		return
 	case "isLast":
 		s.js("(", s.scope.loopindex(), " == ", s.scope.looplimit(), " - 1)")
-		return
 	case "index":
 		s.js(s.scope.loopindex())
-		return
+	default:
+		s.errorf("unimplemented function: %v", node.Name)
 	}
-	s.errorf("unimplemented function: %v", node.Name)
 }
 
 func (s *state) visitDataRef(node *ast.DataRefNode) {
@@ -428,9 +404,7 @@ func (s *state) visitIf(node *ast.IfNode) {
 			s.js(" else ")
 		}
 		if branch.Cond != nil {
-			s.js("if (")
-			s.walk(branch.Cond)
-			s.js(") ")
+			s.js("if (", branch.Cond, ") ")
 		}
 		s.js("{\n")
 		s.indentLevels++
@@ -471,16 +445,10 @@ func (s *state) visitForRange(node *ast.ForNode) {
 	var varIndex,
 		varLimit = s.scope.pushForRange(node.Var)
 	defer s.scope.pop()
-	s.indent()
-	s.js("var ", varLimit, " = ")
-	s.walk(limit)
-	s.js(";\n")
-	s.indent()
-	s.js("for (var ", varIndex, " = ")
-	s.walk(init)
-	s.js("; ", varIndex, " < ", varLimit, "; ", varIndex, " += ")
-	s.walk(increment)
-	s.js(") {\n")
+	s.jsln("var ", varLimit, " = ", limit, ";")
+	s.jsln("for (var ", varIndex, " = ", init, "; ",
+		varIndex, " < ", varLimit, "; ",
+		varIndex, " += ", increment, ") {")
 	s.indentLevels++
 	s.walk(node.Body)
 	s.indentLevels--
@@ -493,10 +461,7 @@ func (s *state) visitForeach(node *ast.ForNode) {
 		itemListLen,
 		itemIndex = s.scope.pushForEach(node.Var)
 	defer s.scope.pop()
-	s.indent()
-	s.js("var ", itemList, " = ")
-	s.walk(node.List)
-	s.js(";\n")
+	s.jsln("var ", itemList, " = ", node.List, ";")
 	s.jsln("var ", itemListLen, " = ", itemList, ".length;")
 	if node.IfEmpty != nil {
 		s.jsln("if (", itemListLen, " > 0) {")
@@ -519,21 +484,14 @@ func (s *state) visitForeach(node *ast.ForNode) {
 }
 
 func (s *state) visitSwitch(node *ast.SwitchNode) {
-	s.indent()
-	s.js("switch (")
-	s.walk(node.Value)
-	s.js(") {\n")
+	s.jsln("switch (", node.Value, ") {")
 	s.indentLevels++
 	for _, switchCase := range node.Cases {
 		for _, switchCaseValue := range switchCase.Values {
-			s.indent()
-			s.js("case ")
-			s.walk(switchCaseValue)
-			s.js(":\n")
+			s.jsln("case ", switchCaseValue, ":")
 		}
 		if len(switchCase.Values) == 0 {
-			s.indent()
-			s.js("default:\n")
+			s.jsln("default:")
 		}
 		s.indentLevels++
 		s.walk(switchCase.Body)
@@ -596,17 +554,7 @@ func (s *state) block(node ast.Node) string {
 
 func (s *state) op(symbol string, node ast.ParentNode) {
 	var children = node.Children()
-	s.js("(")
-	s.walk(children[0])
-	s.js(" ", symbol, " ")
-	s.walk(children[1])
-	s.js(")")
-}
-
-func (s *state) js(args ...string) {
-	for _, arg := range args {
-		s.wr.Write([]byte(arg))
-	}
+	s.js("(", children[0], " ", symbol, " ", children[1], ")")
 }
 
 func (s *state) indent() {
@@ -615,10 +563,21 @@ func (s *state) indent() {
 	}
 }
 
-func (s *state) jsln(args ...string) {
-	s.indent()
+func (s *state) js(args ...interface{}) {
 	for _, arg := range args {
-		s.wr.Write([]byte(arg))
+		switch arg := arg.(type) {
+		case string:
+			s.wr.Write([]byte(arg))
+		case ast.Node:
+			s.walk(arg)
+		default:
+			fmt.Fprintf(s.wr, "%v", arg)
+		}
 	}
+}
+
+func (s *state) jsln(args ...interface{}) {
+	s.indent()
+	s.js(args...)
 	s.wr.Write([]byte("\n"))
 }
