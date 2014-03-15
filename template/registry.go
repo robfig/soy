@@ -18,8 +18,7 @@ type Registry struct {
 	sourceByTemplateName map[string]string
 }
 
-// Add the given soy file node to the registry.
-// Every soyfile must begin with a {namespace} (except for leading SoyDoc)
+// Add the given soy file node (and all contained templates) to this registry.
 func (r *Registry) Add(soyfile *ast.SoyFileNode) error {
 	if r.sourceByTemplateName == nil {
 		r.sourceByTemplateName = make(map[string]string)
@@ -61,8 +60,8 @@ func (r *Registry) Add(soyfile *ast.SoyFileNode) error {
 	return nil
 }
 
-// Template allows lookup by (fully-qualified) template name
-// If the template is not found, the zero value for Template is returned.
+// Template allows lookup by (fully-qualified) template name.
+// The resulting template is returned and a boolean indicating if it was found.
 func (r *Registry) Template(name string) (Template, bool) {
 	for _, t := range r.Templates {
 		if t.Node.Name == name {

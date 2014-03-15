@@ -29,7 +29,7 @@ func funcIsLast(s *state, key string) data.Value {
 		s.context.lookup(key+"__index").(data.Int) == s.context.lookup(key+"__lastIndex").(data.Int))
 }
 
-// Func represents a soy function that may invoked within a template.
+// Func represents a soy function that may be invoked within a soy template.
 type Func struct {
 	Apply           func([]data.Value) data.Value
 	ValidArgLengths []int
