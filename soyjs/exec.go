@@ -268,7 +268,6 @@ func (s *state) visitTemplate(node *ast.TemplateNode) {
 // TODO: unify print directives
 func (s *state) visitPrint(node *ast.PrintNode) {
 	var escape = s.autoescape
-	var explicitEscape = false
 	var directives []*ast.PrintDirectiveNode
 	for _, dir := range node.Directives {
 		var directive, ok = soyhtml.PrintDirectives[dir.Name]
@@ -281,14 +280,11 @@ func (s *state) visitPrint(node *ast.PrintNode) {
 		switch dir.Name {
 		case "id", "noAutoescape":
 			// no implementation, they just serve as a marker to cancel autoescape.
-		case "escapeHtml":
-			explicitEscape = true
-			fallthrough
 		default:
 			directives = append(directives, dir)
 		}
 	}
-	if escape != ast.AutoescapeOff && !explicitEscape {
+	if escape != ast.AutoescapeOff {
 		directives = append([]*ast.PrintDirectiveNode{{0, "escapeHtml", nil}}, directives...)
 	}
 
