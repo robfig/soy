@@ -13,11 +13,7 @@ import (
 //
 // This is useful for evaluating Globals, or anything returned from parse.Expr.
 func EvalExpr(node ast.Node) (val data.Value, err error) {
-	state := &state{
-		wr:         ioutil.Discard,
-		funcs:      DefaultFuncs,
-		directives: DefaultPrintDirectives,
-	}
+	state := &state{wr: ioutil.Discard}
 	defer state.errRecover(&err)
 	state.walk(node)
 	return state.val, nil

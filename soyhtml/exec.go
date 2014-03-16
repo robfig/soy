@@ -22,14 +22,12 @@ type state struct {
 	namespace  string
 	tmpl       soyt.Template
 	wr         io.Writer
-	node       ast.Node                  // current node, for errors
-	registry   soyt.Registry             // the entire bundle of templates
-	val        data.Value                // temp value for expression being computed
-	context    scope                     // variable scope
-	autoescape ast.AutoescapeType        // escaping mode
-	ij         data.Map                  // injected data available to all templates.
-	funcs      map[string]Func           // func lookup
-	directives map[string]PrintDirective // print directive lookup
+	node       ast.Node           // current node, for errors
+	registry   soyt.Registry      // the entire bundle of templates
+	val        data.Value         // temp value for expression being computed
+	context    scope              // variable scope
+	autoescape ast.AutoescapeType // escaping mode
+	ij         data.Map           // injected data available to all templates.
 }
 
 // at marks the state to be on node n, for error reporting.
@@ -297,7 +295,7 @@ func (s *state) evalPrint(node *ast.PrintNode) {
 	var escapeHtml = s.autoescape != ast.AutoescapeOff
 	var result = s.val
 	for _, directiveNode := range node.Directives {
-		var directive, ok = s.directives[directiveNode.Name]
+		var directive, ok = PrintDirectives[directiveNode.Name]
 		if !ok {
 			s.errorf("Print directive %q does not exist", directiveNode.Name)
 		}
@@ -377,8 +375,6 @@ func (s *state) evalCall(node *ast.CallNode) {
 		wr:         s.wr,
 		context:    callData,
 		ij:         s.ij,
-		funcs:      s.funcs,
-		directives: s.directives,
 	}
 	state.walk(calledTmpl.Node)
 }
@@ -407,7 +403,7 @@ func (s *state) evalFunc(node *ast.FunctionNode) data.Value {
 	if fn, ok := loopFuncs[node.Name]; ok {
 		return fn(s, node.Args[0].(*ast.DataRefNode).Key)
 	}
-	if fn, ok := s.funcs[node.Name]; ok {
+	if fn, ok := Funcs[node.Name]; ok {
 		if !checkNumArgs(fn.ValidArgLengths, len(node.Args)) {
 			s.errorf("Function %q called with %v args, expected: %v",
 				node.Name, len(node.Args), fn.ValidArgLengths)

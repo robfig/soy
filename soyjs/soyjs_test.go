@@ -21,6 +21,11 @@ soy.$$escapeHtml = function(arg) { return arg; };
 		return
 	}
 
+	Funcs["capitalize"] = Func{func(js JSWriter, args []ast.Node) {
+		js.Write("(", args[0], ".charAt(0).toUpperCase() + ", args[0], ".slice(1))")
+	}, []int{1}}
+	defer delete(Funcs, "capitalize")
+
 	soyfile, err := parse.SoyFile("name.soy", `
 {namespace test}
 {template .funcs}
@@ -39,11 +44,6 @@ soy.$$escapeHtml = function(arg) { return arg; };
 	}
 
 	var gen = NewGenerator(&registry)
-	gen.AddFuncs(map[string]Func{
-		"capitalize": {func(js JSWriter, args []ast.Node) {
-			js.Write("(", args[0], ".charAt(0).toUpperCase() + ", args[0], ".slice(1))")
-		}, []int{1}}})
-
 	var buf bytes.Buffer
 	err = gen.WriteFile(&buf, "name.soy")
 	if err != nil {

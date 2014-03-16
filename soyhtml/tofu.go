@@ -10,42 +10,14 @@ import (
 
 // Tofu is a bundle of compiled soy, ready to render to HTML.
 type Tofu struct {
-	registry   *template.Registry
-	funcs      map[string]Func           // functions by name
-	directives map[string]PrintDirective // print directives by name
+	registry *template.Registry
 }
 
 // NewTofu returns a new instance that is ready to provide HTML rendering
 // services for the given templates, with the default functions and print
 // directives.
 func NewTofu(registry *template.Registry) *Tofu {
-	return &Tofu{registry, DefaultFuncs, DefaultPrintDirectives}
-}
-
-// AddFuncs makes funcs available to the template under the given names.
-func (tofu *Tofu) AddFuncs(funcs map[string]Func) *Tofu {
-	var newfuncs = make(map[string]Func)
-	for k, v := range tofu.funcs {
-		newfuncs[k] = v
-	}
-	for k, v := range funcs {
-		newfuncs[k] = v
-	}
-	tofu.funcs = newfuncs
-	return tofu
-}
-
-// AddDirectives adds print directives
-func (tofu *Tofu) AddDirectives(directives map[string]PrintDirective) *Tofu {
-	var newdirectives = make(map[string]PrintDirective)
-	for k, v := range tofu.directives {
-		newdirectives[k] = v
-	}
-	for k, v := range directives {
-		newdirectives[k] = v
-	}
-	tofu.directives = newdirectives
-	return tofu
+	return &Tofu{registry}
 }
 
 // Render is a convenience function that executes the soy template of the given
@@ -68,7 +40,8 @@ func (tofu Tofu) Render(wr io.Writer, name string, obj interface{}) error {
 	return tofu.NewRenderer(name).Execute(wr, m)
 }
 
-// NewRenderer returns a new instance of a soy html renderer.
+// NewRenderer returns a new instance of a soy html renderer, given the
+// fully-qualified name of the template to render.
 func (tofu *Tofu) NewRenderer(name string) *Renderer {
 	return &Renderer{
 		tofu: tofu,

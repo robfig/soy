@@ -53,8 +53,6 @@ func (t Renderer) Execute(wr io.Writer, obj data.Map) (err error) {
 		wr:         wr,
 		context:    scope{obj},
 		ij:         t.ij,
-		funcs:      t.tofu.funcs,
-		directives: t.tofu.directives,
 	}
 	defer state.errRecover(&err)
 	state.walk(tmpl.Node)

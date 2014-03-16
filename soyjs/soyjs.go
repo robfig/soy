@@ -8,33 +8,19 @@ import (
 )
 
 // Options for js source generation.
-type Options struct {
-	Funcs map[string]Func // if set, this function map is used instead of the default.
-}
+type Options struct{}
 
 // Generator provides an interface to a template registry capable of generating
 // javascript to execute the embodied templates.
 // The generated javascript requires lib/soyutils.js to already have been loaded.
 type Generator struct {
 	registry *template.Registry
-	funcs    map[string]Func // functions by name
 }
 
+// NewGenerator returns a new javascript generator capable of producing
+// javascript for the templates contained in the given registry.
 func NewGenerator(registry *template.Registry) *Generator {
-	return &Generator{registry, DefaultFuncs}
-}
-
-// AddFuncs registers the given map of func name to func implementation.
-func (gen *Generator) AddFuncs(funcs map[string]Func) *Generator {
-	var newfuncs = make(map[string]Func)
-	for k, v := range gen.funcs {
-		newfuncs[k] = v
-	}
-	for k, v := range funcs {
-		newfuncs[k] = v
-	}
-	gen.funcs = newfuncs
-	return gen
+	return &Generator{registry}
 }
 
 var ErrNotFound = errors.New("file not found")
@@ -43,7 +29,7 @@ var ErrNotFound = errors.New("file not found")
 func (gen *Generator) WriteFile(out io.Writer, filename string) error {
 	for _, soyfile := range gen.registry.SoyFiles {
 		if soyfile.Name == filename {
-			return Write(out, soyfile, Options{Funcs: gen.funcs})
+			return Write(out, soyfile, Options{})
 		}
 	}
 	return ErrNotFound

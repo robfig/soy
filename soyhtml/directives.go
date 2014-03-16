@@ -18,8 +18,9 @@ type PrintDirective struct {
 	CancelAutoescape bool
 }
 
-// DefaultPrintDirectives are the builtin print directives.
-var DefaultPrintDirectives = map[string]PrintDirective{
+// PrintDirectives are the builtin print directives.
+// Callers may add their own print directives to this map.
+var PrintDirectives = map[string]PrintDirective{
 	"insertWordBreaks":  {directiveInsertWordBreaks, []int{1}, true},
 	"changeNewlineToBr": {directiveChangeNewlineToBr, []int{0}, true},
 	"truncate":          {directiveTruncate, []int{1, 2}, false},
@@ -28,8 +29,8 @@ var DefaultPrintDirectives = map[string]PrintDirective{
 	"escapeHtml":        {directiveEscapeHtml, []int{0}, true},
 	"escapeUri":         {directiveEscapeUri, []int{0}, true},
 	"escapeJsString":    {directiveEscapeJsString, []int{0}, true},
-	"bidiSpanWrap":      {nil, []int{0}, false},
-	"bidiUnicodeWrap":   {nil, []int{0}, false},
+	"bidiSpanWrap":      {nil, []int{0}, false}, // unimplemented
+	"bidiUnicodeWrap":   {nil, []int{0}, false}, // unimplemented
 }
 
 func directiveInsertWordBreaks(value data.Value, args []data.Value) data.Value {

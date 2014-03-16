@@ -271,7 +271,7 @@ func (s *state) visitPrint(node *ast.PrintNode) {
 	var explicitEscape = false
 	var directives []*ast.PrintDirectiveNode
 	for _, dir := range node.Directives {
-		var directive, ok = soyhtml.DefaultPrintDirectives[dir.Name]
+		var directive, ok = soyhtml.PrintDirectives[dir.Name]
 		if !ok {
 			s.errorf("Print directive %q not found", dir.Name)
 		}
@@ -315,11 +315,7 @@ func (s *state) visitPrint(node *ast.PrintNode) {
 }
 
 func (s *state) visitFunction(node *ast.FunctionNode) {
-	var funcs = DefaultFuncs
-	if s.options.Funcs != nil {
-		funcs = s.options.Funcs
-	}
-	if fn, ok := funcs[node.Name]; ok {
+	if fn, ok := Funcs[node.Name]; ok {
 		fn.Apply(s, node.Args)
 		return
 	}

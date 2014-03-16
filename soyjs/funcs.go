@@ -20,8 +20,9 @@ type Func struct {
 	ValidArgLengths []int
 }
 
-// DefaultFuncs contains the builtin soy functions.
-var DefaultFuncs = map[string]Func{
+// Funcs contains the available soy functions.
+// Callers may add custom functions to this map.
+var Funcs = map[string]Func{
 	"isNonnull":     {funcIsNonnull, []int{1}},
 	"length":        {funcLength, []int{1}},
 	"keys":          {builtinFunc("getMapKeys"), []int{1}},

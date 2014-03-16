@@ -10,12 +10,10 @@ import (
 	"time"
 
 	"code.google.com/p/go.exp/fsnotify"
-	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
 	"github.com/robfig/soy/parse"
 	"github.com/robfig/soy/parsepasses"
 	"github.com/robfig/soy/soyhtml"
-	"github.com/robfig/soy/soyjs"
 	"github.com/robfig/soy/template"
 )
 
@@ -25,14 +23,6 @@ var Logger = log.New(os.Stderr, "[soy] ", 0)
 
 type soyFile struct{ name, content string }
 
-// Func represents a function that may be called within a soy template.
-// It may support one or more soy backends.
-type Func struct {
-	HTML func([]data.Value) data.Value
-	JS   func(js soyjs.JSWriter, args []ast.Node)
-	Args []int // valid arg lengths
-}
-
 // Bundle is a collection of soy content (templates and globals).  It acts as
 // input for the soy compiler.
 type Bundle struct {
@@ -40,7 +30,6 @@ type Bundle struct {
 	globals data.Map
 	err     error
 	watcher *fsnotify.Watcher
-	funcs   []map[string]Func
 }
 
 // NewBundle returns an empty bundle.
@@ -127,12 +116,6 @@ func (b *Bundle) AddGlobalsMap(globals data.Map) *Bundle {
 	return b
 }
 
-// AddFuncs adds the given funcs.
-func (b *Bundle) AddFuncs(funcs map[string]Func) *Bundle {
-	b.funcs = append(b.funcs, funcs)
-	return b
-}
-
 // Compile parses all of the soy files in this bundle, verifies a number of
 // rules about data references, and returns the completed template registry.
 func (b *Bundle) Compile() (*template.Registry, error) {
@@ -168,27 +151,8 @@ func (b *Bundle) Compile() (*template.Registry, error) {
 // templates to HTML.
 func (b *Bundle) CompileToTofu() (*soyhtml.Tofu, error) {
 	var registry, err = b.Compile()
-	if err != nil {
-		return nil, err
-	}
-
-	var htmlFuncs = make(map[string]soyhtml.Func)
-	for _, fmap := range b.funcs {
-		for name, fn := range fmap {
-			if fn.HTML != nil {
-				htmlFuncs[name] = soyhtml.Func{fn.HTML, fn.Args}
-			}
-		}
-	}
-
 	// TODO: Verify all used funcs exist and have the right # args.
-
-	var tofu = soyhtml.NewTofu(registry)
-	if len(htmlFuncs) > 0 {
-		tofu.AddFuncs(htmlFuncs)
-	}
-
-	return tofu, err
+	return soyhtml.NewTofu(registry), err
 }
 
 func (b *Bundle) recompiler(reg *template.Registry) {
