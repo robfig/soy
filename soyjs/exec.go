@@ -265,7 +265,6 @@ func (s *state) visitTemplate(node *ast.TemplateNode) {
 	s.autoescape = oldAutoescape
 }
 
-// TODO: unify print directives
 func (s *state) visitPrint(node *ast.PrintNode) {
 	var escape = s.autoescape
 	var directives []*ast.PrintDirectiveNode

@@ -63,23 +63,25 @@ var parseTests = []parseTest{
 	{"variable template", "{template .name}\nHello {$name}!\n{/template}",
 		tFile(tTemplate(".name",
 			newText(0, "Hello "),
-			&ast.PrintNode{0, &ast.DataRefNode{0, "name", nil}, nil}, // implicit print
+			&ast.PrintNode{0, &ast.DataRefNode{0, "name", nil}}, // implicit print
 			newText(0, "!"),
 		))},
-	{"not", "{not $var}", tFile(&ast.PrintNode{0, &ast.NotNode{0, &ast.DataRefNode{0, "var", nil}}, nil})},
-	{"negate", "{-$var}", tFile(&ast.PrintNode{0, &ast.NegateNode{0, &ast.DataRefNode{0, "var", nil}}, nil})},
+	{"not", "{not $var}", tFile(&ast.PrintNode{0, &ast.NotNode{0, &ast.DataRefNode{0, "var", nil}}})},
+	{"negate", "{-$var}", tFile(&ast.PrintNode{0, &ast.NegateNode{0, &ast.DataRefNode{0, "var", nil}}})},
 	{"concat", `{'hello' + 'world'}`, tFile(&ast.PrintNode{0, &ast.AddNode{bin(
 		str("hello"),
-		str("world"))}, nil})},
-	{"explicit print", `{print 'hello'}`, tFile(&ast.PrintNode{0, str("hello"), nil})},
-	{"print directive", `{print 'hello'|id}`, tFile(&ast.PrintNode{0, str("hello"),
-		[]*ast.PrintDirectiveNode{{0, "id", nil}}})},
-	{"print directives", `{'hello'|noAutoescape|truncate:5,false}`, tFile(&ast.PrintNode{0, str("hello"),
-		[]*ast.PrintDirectiveNode{
-			{0, "noAutoescape", nil},
-			{0, "truncate", []ast.Node{
+		str("world"))}})},
+	{"explicit print", `{print 'hello'}`, tFile(&ast.PrintNode{0, str("hello")})},
+	{"print directive", `{print 'hello'|id}`, tFile(&ast.PrintNode{0,
+		&ast.PrintDirectiveNode{0, "id", str("hello"), nil}})},
+	{"print directives", `{'hello'|noAutoescape|truncate:5,false}`, tFile(&ast.PrintNode{0,
+		&ast.PrintDirectiveNode{0, "truncate",
+			&ast.PrintDirectiveNode{0, "noAutoescape", str("hello"), nil},
+			[]ast.Node{
 				&ast.IntNode{0, 5},
-				&ast.BoolNode{0, false}}}}})},
+				&ast.BoolNode{0, false},
+			},
+		}})},
 
 	{"soydoc", `/**
  * Text
@@ -102,21 +104,21 @@ var parseTests = []parseTest{
 	)},
 	{"rawtext+tag", "a {$foo}\t {$baz}\n\t  b\r\n\n  {$bar} c", tFile(
 		newText(0, "a "),
-		&ast.PrintNode{0, &ast.DataRefNode{0, "foo", nil}, nil},
+		&ast.PrintNode{0, &ast.DataRefNode{0, "foo", nil}},
 		newText(0, "\t "),
-		&ast.PrintNode{0, &ast.DataRefNode{0, "baz", nil}, nil},
+		&ast.PrintNode{0, &ast.DataRefNode{0, "baz", nil}},
 		newText(0, "b"),
-		&ast.PrintNode{0, &ast.DataRefNode{0, "bar", nil}, nil},
+		&ast.PrintNode{0, &ast.DataRefNode{0, "bar", nil}},
 		newText(0, " c"),
 	)},
 	{"rawtext+tag+html+comment", `
   {$italicHtml}<br>  // a {comment}
   {$italicHtml |noAutoescape}<br>  /* {a }comment */
   abc`, tFile(
-		&ast.PrintNode{0, &ast.DataRefNode{0, "italicHtml", nil}, nil},
+		&ast.PrintNode{0, &ast.DataRefNode{0, "italicHtml", nil}},
 		newText(0, "<br>"),
-		&ast.PrintNode{0, &ast.DataRefNode{0, "italicHtml", nil}, []*ast.PrintDirectiveNode{
-			{0, "noAutoescape", nil}}},
+		&ast.PrintNode{0, &ast.PrintDirectiveNode{0, "noAutoescape",
+			&ast.DataRefNode{0, "italicHtml", nil}, nil}},
 		newText(0, "<br>"),
 		newText(0, "abc"),
 	)},
@@ -131,7 +133,7 @@ var parseTests = []parseTest{
 		newText(0, "}"),
 	)},
 	{"specialchars inside string", `{'abc\ndef'}`, tFile(
-		&ast.PrintNode{0, str("abc\ndef"), nil},
+		&ast.PrintNode{0, str("abc\ndef")},
 	)},
 
 	{"literal", "{literal} {/call}\n {sp} // comment {/literal}", tFile(
@@ -147,20 +149,20 @@ var parseTests = []parseTest{
 	{"log", "{log}Hello {$name}{/log}", tFile(
 		&ast.LogNode{0, tList(
 			newText(0, "Hello "),
-			&ast.PrintNode{0, &ast.DataRefNode{0, "name", nil}, nil},
+			&ast.PrintNode{0, &ast.DataRefNode{0, "name", nil}},
 		)},
 	)},
 	{"log+comment", "{log}Hello {$name} // comment\n{/log}", tFile(
 		&ast.LogNode{0, tList(
 			newText(0, "Hello "),
-			&ast.PrintNode{0, &ast.DataRefNode{0, "name", nil}, nil},
+			&ast.PrintNode{0, &ast.DataRefNode{0, "name", nil}},
 		)},
 	)},
 
 	{"debugger", "{debugger}", tFile(&ast.DebuggerNode{0})},
 	{"global", "{GLOBAL_STR}{app.GLOBAL}", tFile(
-		&ast.PrintNode{0, &ast.GlobalNode{0, "GLOBAL_STR", data.String("a")}, nil},
-		&ast.PrintNode{0, &ast.GlobalNode{0, "app.GLOBAL", data.String("b")}, nil},
+		&ast.PrintNode{0, &ast.GlobalNode{0, "GLOBAL_STR", data.String("a")}},
+		&ast.PrintNode{0, &ast.GlobalNode{0, "app.GLOBAL", data.String("b")}},
 	)},
 
 	{"expression1", "{not false and (isFirst($foo) or (-$x - 5) > 3.1)}", tFile(&ast.PrintNode{0, &ast.AndNode{bin(
@@ -171,7 +173,7 @@ var parseTests = []parseTest{
 				&ast.SubNode{bin(
 					&ast.NegateNode{0, &ast.DataRefNode{0, "x", nil}},
 					&ast.IntNode{0, 5})},
-				&ast.FloatNode{0, 3.1})})})}, nil})},
+				&ast.FloatNode{0, 3.1})})})}})},
 
 	{"expression2", `{null or ('foo' == 'f'+true ? -3 <= 5 : not $foo ?: bar(5))}`, tFile(&ast.PrintNode{0, &ast.OrNode{bin(
 		&ast.NullNode{0},
@@ -186,7 +188,7 @@ var parseTests = []parseTest{
 				&ast.IntNode{0, 5})},
 			&ast.ElvisNode{bin(
 				&ast.NotNode{0, &ast.DataRefNode{0, "foo", nil}},
-				&ast.FunctionNode{0, "bar", []ast.Node{&ast.IntNode{0, 5}}})}})}, nil})},
+				&ast.FunctionNode{0, "bar", []ast.Node{&ast.IntNode{0, 5}}})}})}})},
 
 	{"expression3", `{'a'+'b' != 'ab' and (2 >= -5.0 or (null ?: true))}`, tFile(&ast.PrintNode{0, &ast.AndNode{bin(
 		&ast.NotEqNode{bin(
@@ -198,16 +200,16 @@ var parseTests = []parseTest{
 			&ast.GteNode{bin(&ast.IntNode{0, 2}, &ast.FloatNode{0, -5.0})},
 			&ast.ElvisNode{bin(
 				&ast.NullNode{0},
-				&ast.BoolNode{0, true})})})}, nil})},
+				&ast.BoolNode{0, true})})})}})},
 
 	{"sub", `{1.0-0.5}`, tFile(&ast.PrintNode{0, &ast.SubNode{bin(
 		&ast.FloatNode{0, 1.0},
 		&ast.FloatNode{0, 0.5},
-	)}, nil})},
+	)}})},
 
-	{"function", `{hasData()}`, tFile(&ast.PrintNode{0, &ast.FunctionNode{0, "hasData", nil}, nil})},
+	{"function", `{hasData()}`, tFile(&ast.PrintNode{0, &ast.FunctionNode{0, "hasData", nil}})},
 
-	{"empty list", `{[]}`, tFile(&ast.PrintNode{0, &ast.ListLiteralNode{0, nil}, nil})},
+	{"empty list", `{[]}`, tFile(&ast.PrintNode{0, &ast.ListLiteralNode{0, nil}})},
 
 	{"list", `{[1, 'two', [3, false]]}`, tFile(&ast.PrintNode{0, &ast.ListLiteralNode{0, []ast.Node{
 		&ast.IntNode{0, 1},
@@ -216,15 +218,15 @@ var parseTests = []parseTest{
 			&ast.IntNode{0, 3},
 			&ast.BoolNode{0, false},
 		}},
-	}}, nil})},
+	}}})},
 
-	{"empty map", `{[:]}`, tFile(&ast.PrintNode{0, &ast.MapLiteralNode{0, make(map[string]ast.Node)}, nil})},
+	{"empty map", `{[:]}`, tFile(&ast.PrintNode{0, &ast.MapLiteralNode{0, make(map[string]ast.Node)}})},
 
 	{"map", `{['aaa': 42, 'bbb': 'hello', 'ccc':[1]]}`, tFile(&ast.PrintNode{0, &ast.MapLiteralNode{0, map[string]ast.Node{
 		"aaa": &ast.IntNode{0, 42},
 		"bbb": str("hello"),
 		"ccc": &ast.ListLiteralNode{0, []ast.Node{&ast.IntNode{0, 1}}},
-	}}, nil})},
+	}}})},
 
 	{"if", `
 {if $zoo}{$zoo}{/if}
@@ -236,7 +238,7 @@ var parseTests = []parseTest{
   Blah {$moo}
 {/if}`, tFile(
 		&ast.IfNode{0, []*ast.IfCondNode{
-			&ast.IfCondNode{0, &ast.DataRefNode{0, "zoo", nil}, tList(&ast.PrintNode{0, &ast.DataRefNode{0, "zoo", nil}, nil})},
+			&ast.IfCondNode{0, &ast.DataRefNode{0, "zoo", nil}, tList(&ast.PrintNode{0, &ast.DataRefNode{0, "zoo", nil}})},
 		}},
 		&ast.IfNode{0, []*ast.IfCondNode{
 			&ast.IfCondNode{0, &ast.DataRefNode{0, "boo", nil}, tList(newText(0, "Blah"))},
@@ -244,10 +246,10 @@ var parseTests = []parseTest{
 				&ast.GtNode{bin(
 					&ast.DataRefNode{0, "foo", []ast.Node{&ast.DataRefKeyNode{0, false, "goo"}}},
 					&ast.IntNode{0, 2})},
-				tList(&ast.PrintNode{0, &ast.DataRefNode{0, "boo", nil}, nil})},
+				tList(&ast.PrintNode{0, &ast.DataRefNode{0, "boo", nil}})},
 			&ast.IfCondNode{0,
 				nil,
-				tList(newText(0, "Blah "), &ast.PrintNode{0, &ast.DataRefNode{0, "moo", nil}, nil})},
+				tList(newText(0, "Blah "), &ast.PrintNode{0, &ast.DataRefNode{0, "moo", nil}})},
 		}},
 	)},
 
@@ -283,14 +285,14 @@ var parseTests = []parseTest{
   Sorry, no booze.
 {/foreach}`, tFile(
 		&ast.ForNode{0, "goo", &ast.DataRefNode{0, "goose", nil}, tList(
-			&ast.PrintNode{0, &ast.DataRefNode{0, "goose", []ast.Node{&ast.DataRefKeyNode{0, false, "numKids"}}}, nil},
+			&ast.PrintNode{0, &ast.DataRefNode{0, "goose", []ast.Node{&ast.DataRefKeyNode{0, false, "numKids"}}}},
 			newText(0, " goslings."),
 			newText(0, "\n"),
 		), nil},
 		&ast.ForNode{0, "boo", &ast.DataRefNode{0, "foo", []ast.Node{&ast.DataRefKeyNode{0, false, "booze"}}},
 			tList(
 				newText(0, "Scary drink "),
-				&ast.PrintNode{0, &ast.DataRefNode{0, "boo", []ast.Node{&ast.DataRefKeyNode{0, false, "name"}}}, nil},
+				&ast.PrintNode{0, &ast.DataRefNode{0, "boo", []ast.Node{&ast.DataRefKeyNode{0, false, "name"}}}},
 				newText(0, "!"),
 				&ast.IfNode{0,
 					[]*ast.IfCondNode{&ast.IfCondNode{0,
@@ -314,13 +316,13 @@ var parseTests = []parseTest{
 					&ast.IntNode{0, 1})}}},
 			tList(
 				&ast.MsgNode{0, "Numbered item.", tList(
-					&ast.PrintNode{0, &ast.DataRefNode{0, "i", nil}, nil},
+					&ast.PrintNode{0, &ast.DataRefNode{0, "i", nil}},
 					newText(0, ": "),
 					&ast.PrintNode{0, &ast.DataRefNode{0, "items", []ast.Node{
 						&ast.DataRefExprNode{0, false,
 							&ast.SubNode{bin(
 								&ast.DataRefNode{0, "i", nil},
-								&ast.IntNode{0, 1})}}}}, nil},
+								&ast.IntNode{0, 1})}}}}},
 
 					newText(0, "\n"), // {\n}
 				)}),
@@ -336,7 +338,7 @@ var parseTests = []parseTest{
 				str("bar"))}},
 		&ast.DataRefExprNode{0, false, &ast.IntNode{0, 5}},
 		&ast.DataRefKeyNode{0, true, "goo"}},
-	}, nil})},
+	}})},
 
 	{"call", `
 {call name=".booTemplate_" /}
@@ -532,6 +534,9 @@ func eqTree(t *testing.T, expected, actual ast.Node) bool {
 			eqbool(t, "soydocparam", expected.(*ast.SoyDocParamNode).Optional, actual.(*ast.SoyDocParamNode).Optional)
 	case *ast.PrintNode:
 		return eqTree(t, expected.(*ast.PrintNode).Arg, actual.(*ast.PrintNode).Arg)
+	case *ast.PrintDirectiveNode:
+		return eqTree(t, expected.(*ast.PrintDirectiveNode).Value, actual.(*ast.PrintDirectiveNode).Value) &&
+			eqNodes(t, expected.(*ast.PrintDirectiveNode).Args, actual.(*ast.PrintDirectiveNode).Args)
 	case *ast.MsgNode:
 		return eqstr(t, "msg", expected.(*ast.MsgNode).Desc, actual.(*ast.MsgNode).Desc) &&
 			eqTree(t, expected.(*ast.MsgNode).Body, actual.(*ast.MsgNode).Body)

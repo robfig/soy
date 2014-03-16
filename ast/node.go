@@ -167,37 +167,30 @@ func (n *SoyDocParamNode) String() string {
 
 type PrintNode struct {
 	Pos
-	Arg        Node
-	Directives []*PrintDirectiveNode
+	Arg Node
 }
 
 func (n *PrintNode) String() string {
-	var expr = "{" + n.Arg.String()
-	for _, d := range n.Directives {
-		expr += d.String()
-	}
-	return expr + "}"
+	return "{" + n.Arg.String() + "}"
 }
 
 func (n *PrintNode) Children() []Node {
-	var nodes = []Node{n.Arg}
-	for _, child := range n.Directives {
-		nodes = append(nodes, child)
-	}
-	return nodes
+	return []Node{n.Arg}
 }
 
+// PrintDirectiveNode is a filter or function applied to the given Value node.
 type PrintDirectiveNode struct {
 	Pos
-	Name string
-	Args []Node
+	Name  string
+	Value Node
+	Args  []Node
 }
 
 func (n *PrintDirectiveNode) String() string {
 	if len(n.Args) == 0 {
-		return "|" + n.Name
+		return n.Value.String() + "|" + n.Name
 	}
-	var expr = "|" + n.Name + ":"
+	var expr = n.Value.String() + "|" + n.Name + ":"
 	var first = false
 	for _, arg := range n.Args {
 		if first {
@@ -209,7 +202,7 @@ func (n *PrintDirectiveNode) String() string {
 }
 
 func (n *PrintDirectiveNode) Children() []Node {
-	return n.Args
+	return append([]Node{n.Value}, n.Args...)
 }
 
 type LiteralNode struct {

@@ -183,11 +183,10 @@ func (t *tree) beginTag() ast.Node {
 // print has just been read (or inferred)
 func (t *tree) parsePrint(token item) ast.Node {
 	var expr = t.parseExpr(0)
-	var directives []*ast.PrintDirectiveNode
 	for {
 		switch tok := t.next(); tok.typ {
 		case itemRightDelim:
-			return &ast.PrintNode{token.pos, expr, directives}
+			return &ast.PrintNode{token.pos, expr}
 		case itemPipe:
 			// read the directive name and see if there are arguments
 			var id = t.expect(itemIdent, "print directive")
@@ -200,7 +199,7 @@ func (t *tree) parsePrint(token item) ast.Node {
 					continue
 				}
 				t.backup()
-				directives = append(directives, &ast.PrintDirectiveNode{tok.pos, id.val, args})
+				expr = &ast.PrintDirectiveNode{tok.pos, id.val, expr, args}
 				break
 			}
 		default:

@@ -288,13 +288,25 @@ func toFloat(v data.Value) float64 {
 }
 
 func (s *state) evalPrint(node *ast.PrintNode) {
-	s.walk(node.Arg)
+	// Collect a slice of the applied print directives and the value node.
+	var directives []*ast.PrintDirectiveNode
+	var value ast.Node = node.Arg
+	for {
+		if d, ok := value.(*ast.PrintDirectiveNode); ok {
+			directives = append(directives, d)
+			value = d.Value
+		} else {
+			break
+		}
+	}
+
+	s.walk(value)
 	if _, ok := s.val.(data.Undefined); ok {
-		s.errorf("In 'print' tag, expression %q evaluates to undefined.", node.Arg.String())
+		s.errorf("In 'print' tag, expression %q evaluates to undefined.", value.String())
 	}
 	var escapeHtml = s.autoescape != ast.AutoescapeOff
 	var result = s.val
-	for _, directiveNode := range node.Directives {
+	for _, directiveNode := range directives {
 		var directive, ok = PrintDirectives[directiveNode.Name]
 		if !ok {
 			s.errorf("Print directive %q does not exist", directiveNode.Name)
