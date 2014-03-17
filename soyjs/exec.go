@@ -213,7 +213,6 @@ func (s *state) visitChildren(parent ast.ParentNode) {
 
 func (s *state) visitNamespace(node *ast.NamespaceNode) {
 	s.namespace = node.Name
-	s.autoescape = node.Autoescape
 
 	// iterate through the dot segments.
 	var i = 0
@@ -234,11 +233,6 @@ func (s *state) visitNamespace(node *ast.NamespaceNode) {
 }
 
 func (s *state) visitTemplate(node *ast.TemplateNode) {
-	var oldAutoescape = s.autoescape
-	if node.Autoescape != ast.AutoescapeUnspecified {
-		s.autoescape = node.Autoescape
-	}
-
 	// Determine if we need nullsafe initialization for opt_data
 	var allOptionalParams = false
 	if soydoc, ok := s.lastNode.(*ast.SoyDocNode); ok {
@@ -262,20 +256,15 @@ func (s *state) visitTemplate(node *ast.TemplateNode) {
 	s.jsln("return output;")
 	s.indentLevels--
 	s.jsln("};")
-	s.autoescape = oldAutoescape
 }
 
 // TODO: unify print directives
 func (s *state) visitPrint(node *ast.PrintNode) {
-	var escape = s.autoescape
 	var directives []*ast.PrintDirectiveNode
 	for _, dir := range node.Directives {
-		var directive, ok = soyhtml.PrintDirectives[dir.Name]
+		var _, ok = soyhtml.PrintDirectives[dir.Name]
 		if !ok {
 			s.errorf("Print directive %q not found", dir.Name)
-		}
-		if directive.CancelAutoescape {
-			escape = ast.AutoescapeOff
 		}
 		switch dir.Name {
 		case "id", "noAutoescape":
@@ -283,9 +272,6 @@ func (s *state) visitPrint(node *ast.PrintNode) {
 		default:
 			directives = append(directives, dir)
 		}
-	}
-	if escape != ast.AutoescapeOff {
-		directives = append([]*ast.PrintDirectiveNode{{0, "escapeHtml", nil}}, directives...)
 	}
 
 	s.indent()

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 
-	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
 )
 
@@ -40,22 +39,16 @@ func (t Renderer) Execute(wr io.Writer, obj data.Map) (err error) {
 		return ErrTemplateNotFound
 	}
 
-	var autoescapeMode = tmpl.Namespace.Autoescape
-	if autoescapeMode == ast.AutoescapeUnspecified {
-		autoescapeMode = ast.AutoescapeOn
-	}
-
 	var initialScope = newScope(obj)
 	initialScope.enter()
 
 	state := &state{
-		tmpl:       tmpl,
-		registry:   *t.tofu.registry,
-		namespace:  tmpl.Namespace.Name,
-		autoescape: autoescapeMode,
-		wr:         wr,
-		context:    initialScope,
-		ij:         t.ij,
+		tmpl:      tmpl,
+		registry:  *t.tofu.registry,
+		namespace: tmpl.Namespace.Name,
+		wr:        wr,
+		context:   initialScope,
+		ij:        t.ij,
 	}
 	defer state.errRecover(&err)
 	state.walk(tmpl.Node)

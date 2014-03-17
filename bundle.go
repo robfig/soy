@@ -142,6 +142,12 @@ func (b *Bundle) Compile() (*template.Registry, error) {
 		return nil, err
 	}
 
+	// Apply autoescaping
+	err = parsepasses.Autoescape(registry)
+	if err != nil {
+		return nil, err
+	}
+
 	if b.watcher != nil {
 		go b.recompiler(&registry)
 	}

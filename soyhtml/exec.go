@@ -18,15 +18,14 @@ var Logger *log.Logger
 
 // state represents the state of an execution.
 type state struct {
-	namespace  string
-	tmpl       soyt.Template
-	wr         io.Writer
-	node       ast.Node           // current node, for errors
-	registry   soyt.Registry      // the entire bundle of templates
-	val        data.Value         // temp value for expression being computed
-	context    scope              // variable scope
-	autoescape ast.AutoescapeType // escaping mode
-	ij         data.Map           // injected data available to all templates.
+	namespace string
+	tmpl      soyt.Template
+	wr        io.Writer
+	node      ast.Node      // current node, for errors
+	registry  soyt.Registry // the entire bundle of templates
+	val       data.Value    // temp value for expression being computed
+	context   scope         // variable scope
+	ij        data.Map      // injected data available to all templates.
 }
 
 // at marks the state to be on node n, for error reporting.
@@ -69,9 +68,6 @@ func (s *state) walk(node ast.Node) {
 			s.walk(node)
 		}
 	case *ast.TemplateNode:
-		if node.Autoescape != ast.AutoescapeUnspecified {
-			s.autoescape = node.Autoescape
-		}
 		s.walk(node.Body)
 	case *ast.ListNode:
 		for _, node := range node.Nodes {
@@ -291,7 +287,6 @@ func (s *state) evalPrint(node *ast.PrintNode) {
 	if _, ok := s.val.(data.Undefined); ok {
 		s.errorf("In 'print' tag, expression %q evaluates to undefined.", node.Arg.String())
 	}
-	var escapeHtml = s.autoescape != ast.AutoescapeOff
 	var result = s.val
 	for _, directiveNode := range node.Directives {
 		var directive, ok = PrintDirectives[directiveNode.Name]
@@ -319,18 +314,10 @@ func (s *state) evalPrint(node *ast.PrintNode) {
 			}()
 			result = directive.Apply(result, args)
 		}()
-		if directive.CancelAutoescape {
-			escapeHtml = false
-		}
 	}
 
-	var resultStr = result.String()
-	if escapeHtml {
-		htmlEscapeString(s.wr, resultStr)
-	} else {
-		if _, err := io.WriteString(s.wr, resultStr); err != nil {
-			s.errorf("%s", err)
-		}
+	if _, err := io.WriteString(s.wr, result.String()); err != nil {
+		s.errorf("%s", err)
 	}
 }
 
@@ -371,13 +358,12 @@ func (s *state) evalCall(node *ast.CallNode) {
 
 	callData.enter()
 	state := &state{
-		tmpl:       calledTmpl,
-		registry:   s.registry,
-		namespace:  calledTmpl.Namespace.Name,
-		autoescape: calledTmpl.Namespace.Autoescape,
-		wr:         s.wr,
-		context:    callData,
-		ij:         s.ij,
+		tmpl:      calledTmpl,
+		registry:  s.registry,
+		namespace: calledTmpl.Namespace.Name,
+		wr:        s.wr,
+		context:   callData,
+		ij:        s.ij,
 	}
 	state.walk(calledTmpl.Node)
 }

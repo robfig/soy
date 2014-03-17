@@ -406,9 +406,9 @@ func TestCss(t *testing.T) {
 
 func TestPrintDirectives(t *testing.T) {
 	runExecTests(t, []execTest{
-		exprtest("sanitized html", "{'<a>'}", "&lt;a&gt;"),
+		exprtest("sanitized html", "{'<a>'|escapeHtml}", "&lt;a&gt;"),
 		exprtest("noAutoescape", "{'<a>'|noAutoescape}", "<a>"),
-		exprtestwdata("sanitized var", "{$var}", "&lt;a&gt;", d{"var": "<a>"}),
+		exprtestwdata("sanitized var", "{$var|escapeHtml}", "&lt;a&gt;", d{"var": "<a>"}),
 		exprtestwdata("noAutoescape var", "{$var |noAutoescape}", "<a>", d{"var": "<a>"}),
 
 		// |id == |noAutoescape (it's deprecated)
@@ -462,72 +462,6 @@ func TestInjectedData(t *testing.T) {
 	ij["foo"] = data.String("abc")
 	runExecTests(t, []execTest{
 		exprtest("ij", `{$ij.foo}`, `abc`),
-	})
-}
-
-func TestAutoescapeModes(t *testing.T) {
-	runExecTests(t, []execTest{
-		{"template autoescape=false", "test.autoescapeoff", `{namespace test}
-
-{template .autoescapeoff autoescape="false"}
-  {$foo} {$foo|escapeHtml}
-{/template}`,
-			"<b>hello</b> &lt;b&gt;hello&lt;/b&gt;",
-			d{"foo": "<b>hello</b>"},
-			true,
-		},
-
-		{"autoescape mode w/ call", "test.autowcall", `{namespace test}
-
-{template .autowcall}
-  {call .called data="all"/}
-{/template}
-
-{template .called autoescape="false"}
-  {$foo}
-{/template}
-`,
-			"<b>hello</b>",
-			d{"foo": "<b>hello</b>"},
-			true,
-		},
-
-		{"autoescape mode w/ call2", "test.autowcall", `{namespace test}
-
-{template .autowcall autoescape="false"}
-  {call .called data="all"/}
-{/template}
-
-{template .called}
-  {$foo}
-{/template}
-`,
-			"&lt;b&gt;hello&lt;/b&gt;",
-			d{"foo": "<b>hello</b>"},
-			true,
-		},
-
-		{"namespace sets default", "test.name", `
-{namespace test autoescape="false"}
-
-{template .name}
-  {$foo}
-{/template}`,
-			"<b>hello</b>",
-			d{"foo": "<b>hello</b>"},
-			true,
-		},
-
-		{"template overrides namespace", "test.name", `
-{namespace test autoescape="false"}
-
-{template .name autoescape="true"}
-  {$foo}
-{/template}`,
-			"&lt;b&gt;hello&lt;/b&gt;",
-			d{"foo": "<b>hello</b>"},
-			true,
-		},
 	})
 }
 
