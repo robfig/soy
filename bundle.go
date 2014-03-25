@@ -183,7 +183,7 @@ func (b *Bundle) recompiler(reg *template.Registry) {
 			// update the existing template registry.
 			// (this is not goroutine-safe, but that seems ok for a development aid,
 			// as long as it works in practice)
-			*registry = *registry
+			*reg = *registry
 			Logger.Printf("update successful (%v)", ev)
 
 		case err := <-b.watcher.Error:
