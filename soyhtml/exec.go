@@ -7,6 +7,7 @@ import (
 	"log"
 	"runtime"
 	"runtime/debug"
+	"strings"
 	"text/template"
 
 	"github.com/robfig/soy/ast"
@@ -93,7 +94,7 @@ func (s *state) walk(node ast.Node) {
 		if node.Expr != nil {
 			prefix = s.eval(node.Expr).String() + "-"
 		}
-		if _, err := s.wr.Write([]byte(prefix + node.Suffix)); err != nil {
+		if _, err := io.WriteString(s.wr, prefix+node.Suffix); err != nil {
 			s.errorf("%s", err)
 		}
 	case *ast.DebuggerNode:
@@ -323,10 +324,11 @@ func (s *state) evalPrint(node *ast.PrintNode) {
 		}
 	}
 
-	if escapeHtml {
-		template.HTMLEscape(s.wr, []byte(result.String()))
+	var resultStr = result.String()
+	if escapeHtml && strings.IndexAny(resultStr, `'"&<>`) != -1 {
+		template.HTMLEscape(s.wr, []byte(resultStr))
 	} else {
-		if _, err := s.wr.Write([]byte(result.String())); err != nil {
+		if _, err := io.WriteString(s.wr, resultStr); err != nil {
 			s.errorf("%s", err)
 		}
 	}
