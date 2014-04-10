@@ -304,9 +304,9 @@ func (s *state) evalPrint(node *ast.PrintNode) {
 				directiveNode.Name, len(directiveNode.Args), directive.ValidArgLengths)
 		}
 
-		var args []data.Value
-		for _, arg := range directiveNode.Args {
-			args = append(args, s.eval(arg))
+		var args = make([]data.Value, len(directiveNode.Args))
+		for i, arg := range directiveNode.Args {
+			args[i] = s.eval(arg)
 		}
 		defer func() {
 			if err := recover(); err != nil {
@@ -409,9 +409,9 @@ func (s *state) evalFunc(node *ast.FunctionNode) data.Value {
 				node.Name, len(node.Args), fn.ValidArgLengths)
 		}
 
-		var args []data.Value
-		for _, arg := range node.Args {
-			args = append(args, s.eval(arg))
+		var args = make([]data.Value, len(node.Args))
+		for i, arg := range node.Args {
+			args[i] = s.eval(arg)
 		}
 		defer func() {
 			if err := recover(); err != nil {
