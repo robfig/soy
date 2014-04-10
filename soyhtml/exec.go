@@ -7,8 +7,6 @@ import (
 	"log"
 	"runtime"
 	"runtime/debug"
-	"strings"
-	"text/template"
 
 	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
@@ -325,8 +323,8 @@ func (s *state) evalPrint(node *ast.PrintNode) {
 	}
 
 	var resultStr = result.String()
-	if escapeHtml && strings.IndexAny(resultStr, `'"&<>`) != -1 {
-		template.HTMLEscape(s.wr, []byte(resultStr))
+	if escapeHtml {
+		htmlEscapeString(s.wr, resultStr)
 	} else {
 		if _, err := io.WriteString(s.wr, resultStr); err != nil {
 			s.errorf("%s", err)
@@ -526,4 +524,39 @@ func (s *state) evaldef(n ast.Node) data.Value {
 		s.errorf("%v is undefined", n)
 	}
 	return val
+}
+
+var (
+	htmlQuot = []byte("&#34;") // shorter than "&quot;"
+	htmlApos = []byte("&#39;") // shorter than "&apos;" and apos was not in HTML until HTML5
+	htmlAmp  = []byte("&amp;")
+	htmlLt   = []byte("&lt;")
+	htmlGt   = []byte("&gt;")
+)
+
+// htmlEscapeString is a modified veresion of the stdlib HTMLEscape routine
+// escapes a string without making copies.
+func htmlEscapeString(w io.Writer, str string) {
+	last := 0
+	for i := 0; i < len(str); i++ {
+		var html []byte
+		switch str[i] {
+		case '"':
+			html = htmlQuot
+		case '\'':
+			html = htmlApos
+		case '&':
+			html = htmlAmp
+		case '<':
+			html = htmlLt
+		case '>':
+			html = htmlGt
+		default:
+			continue
+		}
+		io.WriteString(w, str[last:i])
+		w.Write(html)
+		last = i + 1
+	}
+	io.WriteString(w, str[last:])
 }
