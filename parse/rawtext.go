@@ -3,26 +3,19 @@ package parse
 import "unicode/utf8"
 
 type rawtextlexer struct {
-	str      string
-	pos      int
-	lastpos  int
-	lastpos2 int
+	str     string
+	pos     int
+	lastpos int
 }
 
 func (l *rawtextlexer) eof() bool {
 	return l.pos >= len(l.str)
 }
 func (l *rawtextlexer) next() rune {
-	l.lastpos2 = l.lastpos
 	l.lastpos = l.pos
 	var r, width = utf8.DecodeRuneInString(l.str[l.pos:])
 	l.pos += width
 	return r
-}
-func (l *rawtextlexer) backup() {
-	l.pos = l.lastpos
-	l.lastpos = l.lastpos2
-	l.lastpos2 = 0
 }
 
 // rawtext processes the raw text found in templates:
@@ -32,7 +25,7 @@ func (l *rawtextlexer) backup() {
 // - trim leading and trailing whitespace on each internal line
 // - join lines with no space if '<' or '>' are on either side, else with 1 space.
 func rawtext(s string, trimBefore, trimAfter bool) []byte {
-	var lex = rawtextlexer{s, 0, 0, 0}
+	var lex = rawtextlexer{s, 0, 0}
 	var (
 		spaces         = 0
 		seenNewline    = trimBefore
