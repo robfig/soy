@@ -24,14 +24,11 @@ func (l *rawtextlexer) backup() {
 	l.lastpos = l.lastpos2
 	l.lastpos2 = 0
 }
-func (l *rawtextlexer) emitRune(result []byte) []byte {
-	return append(result, []byte(l.str[l.lastpos:l.pos])...)
-}
 
 // rawtext processes the raw text found in templates:
 // - trim leading/trailing whitespace if either:
 //  a. the whitespace includes a newline, or
-//  b. the caller tells us the surrounding content is a tight joiner  by start/endTightJoin
+//  b. the caller tells us the surrounding content is a tight joiner by trimBefore/After
 // - trim leading and trailing whitespace on each internal line
 // - join lines with no space if '<' or '>' are on either side, else with 1 space.
 func rawtext(s string, trimBefore, trimAfter bool) []byte {
@@ -41,7 +38,8 @@ func rawtext(s string, trimBefore, trimAfter bool) []byte {
 		seenNewline    = trimBefore
 		lastChar       rune
 		charBeforeTrim rune
-		result         = make([]byte, 0, len(s))
+		result         = make([]byte, len(s))
+		resultLen      = 0
 	)
 	if trimBefore {
 		spaces = 1
@@ -51,9 +49,12 @@ func rawtext(s string, trimBefore, trimAfter bool) []byte {
 		if lex.eof() {
 			// if we haven't seen a newline, add all the space we've been trimming.
 			if !seenNewline && spaces > 0 && !trimAfter {
-				result = append(result, s[lex.pos-spaces:lex.pos]...)
+				for i := lex.pos - spaces; i < lex.pos; i++ {
+					result[resultLen] = s[i]
+					resultLen++
+				}
 			}
-			return result
+			return result[:resultLen]
 		}
 		var r = lex.next()
 
@@ -76,9 +77,13 @@ func rawtext(s string, trimBefore, trimAfter bool) []byte {
 			// - else, ignore the space.
 			switch {
 			case !seenNewline:
-				result = append(result, s[lex.lastpos-spaces:lex.lastpos]...)
+				for i := lex.lastpos - spaces; i < lex.lastpos; i++ {
+					result[resultLen] = s[i]
+					resultLen++
+				}
 			case seenNewline && !isTightJoiner(charBeforeTrim) && !isTightJoiner(r):
-				result = append(result, ' ')
+				result[resultLen] = ' '
+				resultLen++
 			default:
 				// ignore the space
 			}
@@ -95,10 +100,13 @@ func rawtext(s string, trimBefore, trimAfter bool) []byte {
 		}
 
 		// non-space characters are added verbatim.
-		result = lex.emitRune(result)
+		for i := lex.lastpos; i < lex.pos; i++ {
+			result[resultLen] = lex.str[i]
+			resultLen++
+		}
 		lastChar = r
 	}
-	return result
+	return result[:resultLen]
 }
 
 func isTightJoiner(r rune) bool {
