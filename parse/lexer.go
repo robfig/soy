@@ -867,31 +867,28 @@ func lexLiteral(l *lexer) stateFn {
 	}
 	l.emit(itemRightDelim)
 
-	// accept everything as itemText until we see the {/literal}
-	var end bool
-	var delimLen int
-	for {
-		if !l.doubleDelim && strings.HasPrefix(l.input[l.pos:], "{/literal}") {
-			end, delimLen = true, 1
-		} else if l.doubleDelim && strings.HasPrefix(l.input[l.pos:], "{{/literal}}") {
-			end, delimLen = true, 2
-		}
-		if end {
-			if l.pos > l.start {
-				l.emit(itemText)
-			}
-			l.pos += ast.Pos(delimLen)
-			l.emit(itemLeftDelim)
-			l.pos += ast.Pos(len("/literal"))
-			l.emit(itemLiteralEnd)
-			l.pos += ast.Pos(delimLen)
-			l.emit(itemRightDelim)
-			return lexText
-		}
-		if l.next() == eof {
-			return l.errorf("unclosed literal")
-		}
+	// Fast forward through the literal section.
+	var expectClose, delimLen = "{/literal}", 1
+	if l.doubleDelim {
+		expectClose, delimLen = "{{/literal}}", 2
 	}
+	var i = strings.Index(l.input[l.pos:], expectClose)
+	if i == -1 {
+		return l.errorf("unclosed literal")
+	}
+	l.pos += ast.Pos(i)
+
+	// Accept everything as itemText until we see the {/literal}
+	// Emit the other various tokens.
+	if i > 0 {
+		l.emit(itemText)
+	}
+	l.pos += ast.Pos(delimLen)
+	l.emit(itemLeftDelim)
+	l.pos += ast.Pos(len("/literal"))
+	l.emit(itemLiteralEnd)
+	l.pos += ast.Pos(delimLen)
+	l.emit(itemRightDelim)
 	return lexText
 }
 
