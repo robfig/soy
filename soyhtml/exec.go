@@ -308,15 +308,17 @@ func (s *state) evalPrint(node *ast.PrintNode) {
 		for i, arg := range directiveNode.Args {
 			args[i] = s.eval(arg)
 		}
-		defer func() {
-			if err := recover(); err != nil {
-				s.errorf("panic in %v: %v\nexecuted: %v(%q, %v)\n%v",
-					directiveNode, err,
-					directiveNode.Name, result, args,
-					string(debug.Stack()))
-			}
+		func() {
+			defer func() {
+				if err := recover(); err != nil {
+					s.errorf("panic in %v: %v\nexecuted: %v(%q, %v)\n%v",
+						directiveNode, err,
+						directiveNode.Name, result, args,
+						string(debug.Stack()))
+				}
+			}()
+			result = directive.Apply(result, args)
 		}()
-		result = directive.Apply(result, args)
 		if directive.CancelAutoescape {
 			escapeHtml = false
 		}
