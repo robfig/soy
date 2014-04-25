@@ -1,11 +1,93 @@
 /*
-Package soy is an implementation of Google's Closure Templates.
+Package soy is an implementation of Google's Closure Templates, which are
+data-driven templates for generating HTML.
 
-See the official documentation for features, syntax, data types, commands, functions, etc:
+Compared to html/template, Closure Templates have a few advantages
+
+ * Intuitive templating language that supports simple control flow, expressions and arithmetic.
+ * The same templates may be used from Go, Java, and Javascript.
+ * Internationalization is built in
+
+Also, there are a few conveniences that this implementation provides:
+
+ * Hot reload for templates
+ * Add a directory of templates (including sub-directories)
+
+Refer to the official language spec for details:
 
 https://developers.google.com/closure/templates/
 
+Template example
+
+Here is Hello World
+
+	{namespace examples.simple}
+
+	/**
+	 * Says hello to the world.*/
+//	 */
+/*	{template .helloWorld}
+	  Hello world!
+	{/template}
+
+
+Here is a more customized version that addresses us by name and can use
+greetings other than "Hello".
+
+	/**
+	 * Greets a person using "Hello" by default.
+	 * @param name The name of the person.
+	 * @param? greetingWord Optional greeting word to use instead of "Hello".*/
+//	 */
+/*	{template .helloName}
+	  {if not $greetingWord}
+	    Hello {$name}!
+	  {else}
+	    {$greetingWord} {$name}!
+	  {/if}
+	{/template}
+
+This last example renders a greeting for each person in a list of names.
+
+It demonstrates a [foreach] loop with an [ifempty] command. It also shows how to
+call other templates and insert their output using the [call] command. Note that
+the [data="all"] attribute in the call command passes all of the caller's
+template data to the callee template.
+
+	/**
+	 * Greets a person and optionally a list of other people.
+	 * @param name The name of the person.
+	 * @param additionalNames The additional names to greet. May be an empty list.*/
+//	 */
+/*	{template .helloNames}
+	  // Greet the person.
+	  {call .helloName data="all" /}<br>
+	  // Greet the additional people.
+	  {foreach $additionalName in $additionalNames}
+	    {call .helloName}
+	      {param name: $additionalName /}
+	    {/call}
+	    {if not isLast($additionalName)}
+	      <br>  // break after every line except the last
+	    {/if}
+	  {ifempty}
+	    No additional people to greet.
+	  {/foreach}
+	{/template}
+
+(This example is from
+https://developers.google.com/closure/templates/docs/helloworld_java)
+
 Usage example
+
+These are the high level steps:
+
+ * Create a soy.Bundle and add templates to it (the literal template strings,
+   files, or directories).
+ * Compile the bundle of templates, resulting in a "Tofu" instance. It provides
+   access to all your soy.
+ * Render a HTML template from Tofu by providing the template name and a data
+   object.
 
 Typically in a web application you have a directory containing views for all of
 your pages.  For example:
@@ -24,7 +106,7 @@ errors to soy.Logger).  Error checking is omitted.
 On startup:
 
   tofu, _ := soy.NewBundle().
-      WatchFiles(mode == "dev").            // watch soy files, reload on changes (in dev)
+      WatchFiles(true).                     // watch soy files, reload on changes
       AddGlobalsFile("views/globals.txt").  // parse a file of globals
       AddTemplateDir("views").              // load *.soy in all sub-directories
       CompileToTofu()
