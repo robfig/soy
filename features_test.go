@@ -5,13 +5,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"math/rand"
 	"os"
 	"testing"
 
 	"github.com/robertkrimen/otto"
-
+	"github.com/robfig/soy/data"
 	"github.com/robfig/soy/soyjs"
 )
 
@@ -219,6 +220,57 @@ func BenchmarkExecuteFeatures(b *testing.B) {
 			if err != nil {
 				b.Error(err)
 			}
+		}
+	}
+}
+
+func BenchmarkSimpleTemplate_Soy(b *testing.B) {
+	var tofu, err = NewBundle().
+		AddTemplateString("", `
+{namespace small}
+/**
+ * @param foo
+ * @param bar
+ * @param baz
+ */
+{template .test}
+some {$foo}, some {$bar}, more {$baz}
+{/template}`).
+		CompileToTofu()
+	if err != nil {
+		panic(err)
+	}
+	b.ResetTimer()
+	var buf = new(bytes.Buffer)
+	for i := 0; i < b.N; i++ {
+		buf.Reset()
+		err = tofu.Render(buf, "small.test", data.Map{
+			"foo": data.String("foostring"),
+			"bar": data.Int(42),
+			"baz": data.Bool(true),
+		})
+		if err != nil {
+			b.Error(err)
+		}
+	}
+}
+
+func BenchmarkSimpleTemplate_Go(b *testing.B) {
+	var tmpl = template.Must(template.New("").Parse(`
+{{define "small.test"}}
+some {{.foo}}, some {{.bar}}, more {{.baz}}
+{{end}}`))
+	b.ResetTimer()
+	var buf = new(bytes.Buffer)
+	for i := 0; i < b.N; i++ {
+		buf.Reset()
+		var err = tmpl.ExecuteTemplate(buf, "small.test", data.Map{
+			"foo": data.String("foostring"),
+			"bar": data.Int(42),
+			"baz": data.Bool(true),
+		})
+		if err != nil {
+			b.Error(err)
 		}
 	}
 }

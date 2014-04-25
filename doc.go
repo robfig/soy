@@ -8,10 +8,11 @@ Compared to html/template, Closure Templates have a few advantages
  * The same templates may be used from Go, Java, and Javascript.
  * Internationalization is built in
 
-Also, there are a few conveniences that this implementation provides:
+and specific to this implementation:
 
+ * High performance (> 3x faster than html/template in BenchmarkSimpleTemplate)
  * Hot reload for templates
- * Add a directory of templates (including sub-directories)
+ * Parse a directory tree of templates
 
 Refer to the official language spec for details:
 
