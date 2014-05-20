@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/robfig/soy/autoescape"
 	"github.com/robfig/soy/data"
 	"github.com/robfig/soy/parse"
 	"github.com/robfig/soy/parsepasses"
@@ -143,7 +144,7 @@ func (b *Bundle) Compile() (*template.Registry, error) {
 	}
 
 	// Apply autoescaping
-	err = parsepasses.Autoescape(registry)
+	err = autoescape.Simple(&registry)
 	if err != nil {
 		return nil, err
 	}

@@ -1,4 +1,4 @@
-package parsepasses
+package autoescape
 
 import (
 	"fmt"
@@ -8,32 +8,29 @@ import (
 	"github.com/robfig/soy/template"
 )
 
-// Autoescape rewrites all templates in the given registry to add
-// appropriately-escaping print directives to all print commands.
-func Autoescape(reg template.Registry) (err error) {
+// Simple applies basic html escaping directives to dynamic data. Unless
+// overridden by an escaping-canceling print directive, a |escapeHtml directive
+// will be added to each print statement.
+func Simple(reg *template.Registry) (err error) {
 	var currentTemplate string
 	defer func() {
 		if err2 := recover(); err2 != nil {
 			err = fmt.Errorf("template %v: %v", currentTemplate, err2)
 		}
 	}()
-
 	for _, t := range reg.Templates {
 		currentTemplate = t.Node.Name
-		if t.Namespace.Autoescape == ast.AutoescapeContextual {
-			panic("contextual autoescaping is not implemented")
-		}
-		var a = autoescaper{t.Namespace.Autoescape}
+		var a = simpleAutoescaper{t.Namespace.Autoescape}
 		a.walk(t.Node)
 	}
 	return nil
 }
 
-type autoescaper struct {
+type simpleAutoescaper struct {
 	mode ast.AutoescapeType // current escaping mode
 }
 
-func (a *autoescaper) walk(node ast.Node) {
+func (a *simpleAutoescaper) walk(node ast.Node) {
 	var prev = a.mode
 	switch node := node.(type) {
 	case *ast.TemplateNode:
@@ -53,7 +50,7 @@ func (a *autoescaper) walk(node ast.Node) {
 	a.mode = prev
 }
 
-func (a *autoescaper) escape(node *ast.PrintNode) {
+func (a *simpleAutoescaper) escape(node *ast.PrintNode) {
 	for _, dir := range node.Directives {
 		var d = soyhtml.PrintDirectives[dir.Name]
 		if d.CancelAutoescape {
