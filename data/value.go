@@ -84,7 +84,13 @@ func (v Map) String() string {
 	var items = make([]string, len(v))
 	var i = 0
 	for k, v := range v {
-		items[i] = k + ": " + v.String()
+		var vstr string
+		if _, ok := v.(Undefined); ok {
+			vstr = "undefined" // have mercy
+		} else {
+			vstr = v.String()
+		}
+		items[i] = k + ": " + vstr
 		i++
 	}
 	return "{" + strings.Join(items, ", ") + "}"
