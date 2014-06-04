@@ -2,6 +2,7 @@ package soyhtml
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -31,6 +32,7 @@ var PrintDirectives = map[string]PrintDirective{
 	"escapeJsString":    {directiveEscapeJsString, []int{0}, true},
 	"bidiSpanWrap":      {nil, []int{0}, false}, // unimplemented
 	"bidiUnicodeWrap":   {nil, []int{0}, false}, // unimplemented
+	"json":              {directiveJson, []int{0}, true},
 }
 
 func directiveInsertWordBreaks(value data.Value, args []data.Value) data.Value {
@@ -123,4 +125,12 @@ func directiveEscapeUri(value data.Value, _ []data.Value) data.Value {
 
 func directiveEscapeJsString(value data.Value, _ []data.Value) data.Value {
 	return data.String(template.JSEscapeString(value.String()))
+}
+
+func directiveJson(value data.Value, _ []data.Value) data.Value {
+	j, err := json.Marshal(value)
+	if err != nil {
+		panic(fmt.Errorf("Error JSON encoding value: %v", err))
+	}
+	return data.String(j)
 }
