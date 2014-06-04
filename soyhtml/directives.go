@@ -2,12 +2,12 @@ package soyhtml
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"regexp"
 	"text/template"
 	"unicode/utf8"
-	"encoding/json"
 
 	"github.com/robfig/soy/data"
 )
@@ -32,7 +32,7 @@ var PrintDirectives = map[string]PrintDirective{
 	"escapeJsString":    {directiveEscapeJsString, []int{0}, true},
 	"bidiSpanWrap":      {nil, []int{0}, false}, // unimplemented
 	"bidiUnicodeWrap":   {nil, []int{0}, false}, // unimplemented
-	"json":        {directiveJson, []int{0}, true},
+	"json":              {directiveJson, []int{0}, true},
 }
 
 func directiveInsertWordBreaks(value data.Value, args []data.Value) data.Value {
