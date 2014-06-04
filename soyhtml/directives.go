@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"text/template"
 	"unicode/utf8"
+	"encoding/json"
 
 	"github.com/robfig/soy/data"
 )
