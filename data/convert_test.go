@@ -34,6 +34,7 @@ func TestNew(t *testing.T) {
 
 		// pointers
 		{pInt(5), Int(5)},
+		{&jan1, String(jan1.Format(time.RFC3339))},
 
 		// structs with all of the above, and unexported fields.
 		// also, structs have their fields lowerCamel and Time's default formatting.

@@ -38,7 +38,7 @@ func NewWith(convert StructOptions, value interface{}) Value {
 	}
 
 	if v.Type() == timeType {
-		return String(value.(time.Time).Format(convert.TimeFormat))
+		return String(v.Interface().(time.Time).Format(convert.TimeFormat))
 	}
 
 	switch v.Kind() {
