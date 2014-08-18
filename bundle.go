@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"code.google.com/p/go.exp/fsnotify"
 	"github.com/robfig/soy/data"
 	"github.com/robfig/soy/parse"
 	"github.com/robfig/soy/parsepasses"
 	"github.com/robfig/soy/soyhtml"
 	"github.com/robfig/soy/template"
+	"gopkg.in/fsnotify.v0"
 )
 
 // Logger is used to print notifications and compile errors when using the
