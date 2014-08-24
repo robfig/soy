@@ -317,9 +317,12 @@ var lexTests = []lexTest{
 		tEOF,
 	}},
 
-	{"msg", `{msg desc="msg description"}Hello{/msg}`, []item{
+	{"msg", `{msg meaning="verb" desc="msg description"}Hello{/msg}`, []item{
 		tLeft,
 		{itemMsg, 0, "msg"},
+		{itemIdent, 0, "meaning"},
+		{itemEquals, 0, "="},
+		{itemString, 0, `"verb"`},
 		{itemIdent, 0, "desc"},
 		{itemEquals, 0, "="},
 		{itemString, 0, `"msg description"`},

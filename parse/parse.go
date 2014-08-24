@@ -573,7 +573,7 @@ func (t *tree) parseMsg(token item) ast.Node {
 		t.errorf("Tag 'msg' must have a 'desc' attribute")
 	}
 	t.expect(itemRightDelim, ctx)
-	var node = &ast.MsgNode{token.pos, attrs["desc"], t.itemList(itemMsgEnd)}
+	var node = &ast.MsgNode{token.pos, attrs["meaning"], attrs["desc"], t.itemList(itemMsgEnd)}
 	t.expect(itemRightDelim, ctx)
 	return node
 }

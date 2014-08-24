@@ -299,12 +299,17 @@ func (i *IdentNode) String() string {
 
 type MsgNode struct {
 	Pos
-	Desc string
-	Body Node
+	Meaning string
+	Desc    string
+	Body    Node
 }
 
 func (n *MsgNode) String() string {
-	return fmt.Sprintf("{msg desc=%q}", n.Desc)
+	var meaning = " "
+	if n.Meaning != "" {
+		meaning = fmt.Sprintf(" meaning=%q ", n.Meaning)
+	}
+	return fmt.Sprintf("{msg%sdesc=%q}", meaning, n.Desc)
 }
 
 func (n *MsgNode) Children() []Node {

@@ -302,7 +302,7 @@ var parseTests = []parseTest{
 
 	{"for", `
 {for $i in range(1, $items.length + 1)}
-  {msg desc="Numbered item."}
+  {msg meaning="verb" desc="Numbered item."}
     {$i}: {$items[$i - 1]}{\n}
   {/msg}
 {/for}`, tFile(
@@ -313,7 +313,7 @@ var parseTests = []parseTest{
 					&ast.DataRefNode{0, "items", []ast.Node{&ast.DataRefKeyNode{0, false, "length"}}},
 					&ast.IntNode{0, 1})}}},
 			tList(
-				&ast.MsgNode{0, "Numbered item.", tList(
+				&ast.MsgNode{0, "verb", "Numbered item.", tList(
 					&ast.PrintNode{0, &ast.DataRefNode{0, "i", nil}, nil},
 					newText(0, ": "),
 					&ast.PrintNode{0, &ast.DataRefNode{0, "items", []ast.Node{
