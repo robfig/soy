@@ -24,6 +24,7 @@ type tree struct {
 	namespace string                // the current namespace, for fully-qualifying template.
 	aliases   map[string]string     // map from alias to namespace e.g. {"c": "a.b.c"}
 	globals   map[string]data.Value // global (compile-time constants) values by name
+	inmsg     bool                  // true while parsing children of a message node.
 }
 
 // SoyFile parses the input into a SoyFileNode (the AST).
@@ -133,12 +134,16 @@ func (t *tree) beginTag() ast.Node {
 	case itemTemplate:
 		return t.parseTemplate(token)
 	case itemIf:
+		t.notmsg(token)
 		return t.parseIf(token)
 	case itemMsg:
+		t.notmsg(token)
 		return t.parseMsg(token)
 	case itemForeach, itemFor:
+		t.notmsg(token)
 		return t.parseFor(token)
 	case itemSwitch:
+		t.notmsg(token)
 		return t.parseSwitch(token)
 	case itemCall:
 		return t.parseCall(token)
@@ -573,9 +578,18 @@ func (t *tree) parseMsg(token item) ast.Node {
 		t.errorf("Tag 'msg' must have a 'desc' attribute")
 	}
 	t.expect(itemRightDelim, ctx)
+	t.inmsg = true
 	var node = &ast.MsgNode{token.pos, attrs["meaning"], attrs["desc"], t.itemList(itemMsgEnd)}
+	t.inmsg = false
 	t.expect(itemRightDelim, ctx)
 	return node
+}
+
+// notmsg asserts that the parser is not currently within a message node
+func (t *tree) notmsg(tok item) {
+	if t.inmsg {
+		t.unexpected(tok, "msg")
+	}
 }
 
 func (t *tree) parseNamespace(token item) ast.Node {

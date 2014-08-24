@@ -758,8 +758,12 @@ func TestRecognizeCommands(t *testing.T) {
 	// TODO: implement well-formed HTML checks.
 	// fails(t, "{msg desc=\"\"}<a href=http://www.google.com{/msg}")
 
-	// TODO: disallow nested message tags
-	// fails(t, "{msg desc=\"\"}blah{msg desc=\"\"}bleh{/msg}bluh{/msg}")
+	// Within a message tag, some are not allowed: {msg}, {for}, {foreach}, {switch}, {if}
+	fails(t, "{msg desc=\"\"}blah{msg desc=\"\"}bleh{/msg}bluh{/msg}")
+	fails(t, "{msg desc=\"\"}{foreach $item in $items}{/foreach}{/msg}")
+	fails(t, "{msg desc=\"\"}{for $i in range(5)}{/for}{/msg}")
+	fails(t, "{msg desc=\"\"}{switch}{/switch}{/msg}")
+	fails(t, "{msg desc=\"\"}{if $i}{/if}{/msg}")
 
 	fails(t, "{msg desc=\"\"}blah{/msg blah}")
 	fails(t, "{namespace}")
