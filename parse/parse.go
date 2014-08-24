@@ -578,9 +578,24 @@ func (t *tree) parseMsg(token item) ast.Node {
 		t.errorf("Tag 'msg' must have a 'desc' attribute")
 	}
 	t.expect(itemRightDelim, ctx)
+
+	// Parse the message body.
 	t.inmsg = true
-	var node = &ast.MsgNode{token.pos, attrs["meaning"], attrs["desc"], t.itemList(itemMsgEnd)}
+	var contents = t.itemList(itemMsgEnd)
 	t.inmsg = false
+
+	// Wrap the children in Placeholder nodes unless they are RawText
+	var msgchildren []ast.Node
+	for _, child := range contents.Children() {
+		switch child := child.(type) {
+		case *ast.RawTextNode:
+			msgchildren = append(msgchildren, child)
+		default:
+			msgchildren = append(msgchildren, &ast.MsgPlaceholderNode{child.Position(), child})
+		}
+	}
+
+	var node = &ast.MsgNode{token.pos, attrs["meaning"], attrs["desc"], msgchildren}
 	t.expect(itemRightDelim, ctx)
 	return node
 }

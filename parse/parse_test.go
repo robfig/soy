@@ -313,17 +313,18 @@ var parseTests = []parseTest{
 					&ast.DataRefNode{0, "items", []ast.Node{&ast.DataRefKeyNode{0, false, "length"}}},
 					&ast.IntNode{0, 1})}}},
 			tList(
-				&ast.MsgNode{0, "verb", "Numbered item.", tList(
-					&ast.PrintNode{0, &ast.DataRefNode{0, "i", nil}, nil},
+				&ast.MsgNode{0, "verb", "Numbered item.", []ast.Node{
+					&ast.MsgPlaceholderNode{0,
+						&ast.PrintNode{0, &ast.DataRefNode{0, "i", nil}, nil}},
 					newText(0, ": "),
-					&ast.PrintNode{0, &ast.DataRefNode{0, "items", []ast.Node{
-						&ast.DataRefExprNode{0, false,
-							&ast.SubNode{bin(
-								&ast.DataRefNode{0, "i", nil},
-								&ast.IntNode{0, 1})}}}}, nil},
-
+					&ast.MsgPlaceholderNode{0,
+						&ast.PrintNode{0, &ast.DataRefNode{0, "items", []ast.Node{
+							&ast.DataRefExprNode{0, false,
+								&ast.SubNode{bin(
+									&ast.DataRefNode{0, "i", nil},
+									&ast.IntNode{0, 1})}}}}, nil}},
 					newText(0, "\n"), // {\n}
-				)}),
+				}}),
 			nil},
 	)},
 
@@ -534,7 +535,10 @@ func eqTree(t *testing.T, expected, actual ast.Node) bool {
 		return eqTree(t, expected.(*ast.PrintNode).Arg, actual.(*ast.PrintNode).Arg)
 	case *ast.MsgNode:
 		return eqstr(t, "msg", expected.(*ast.MsgNode).Desc, actual.(*ast.MsgNode).Desc) &&
-			eqTree(t, expected.(*ast.MsgNode).Body, actual.(*ast.MsgNode).Body)
+			eqstr(t, "msg", expected.(*ast.MsgNode).Meaning, actual.(*ast.MsgNode).Meaning) &&
+			eqNodes(t, expected.(*ast.MsgNode).Body, actual.(*ast.MsgNode).Body)
+	case *ast.MsgPlaceholderNode:
+		return eqTree(t, expected.(*ast.MsgPlaceholderNode).Body, actual.(*ast.MsgPlaceholderNode).Body)
 	case *ast.CallNode:
 		return eqstr(t, "call", expected.(*ast.CallNode).Name, actual.(*ast.CallNode).Name) &&
 			eqTree(t, expected.(*ast.CallNode).Data, actual.(*ast.CallNode).Data) &&

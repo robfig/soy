@@ -297,11 +297,12 @@ func (i *IdentNode) String() string {
 	return i.Ident
 }
 
+// MsgNode represents a localized message.
 type MsgNode struct {
 	Pos
 	Meaning string
 	Desc    string
-	Body    Node
+	Body    []Node // RawTextNode or MsgPlaceholderNode
 }
 
 func (n *MsgNode) String() string {
@@ -313,6 +314,19 @@ func (n *MsgNode) String() string {
 }
 
 func (n *MsgNode) Children() []Node {
+	return n.Body
+}
+
+type MsgPlaceholderNode struct {
+	Pos
+	Body Node
+}
+
+func (n *MsgPlaceholderNode) String() string {
+	return n.Body.String()
+}
+
+func (n *MsgPlaceholderNode) Children() []Node {
 	return []Node{n.Body}
 }
 
