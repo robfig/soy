@@ -78,7 +78,7 @@ func (s *state) walk(node ast.Node) {
 	case *ast.PrintNode:
 		s.visitPrint(node)
 	case *ast.MsgNode:
-		s.walk(node.Body)
+		s.visitMsg(node)
 	case *ast.CssNode:
 		if node.Expr != nil {
 			s.jsln(s.bufferName, " += ", node.Expr, " + '-';")
@@ -497,6 +497,18 @@ func (s *state) visitSwitch(node *ast.SwitchNode) {
 	}
 	s.indentLevels--
 	s.jsln("}")
+}
+
+// TODO: {msg} node translation is unimplemented
+func (s *state) visitMsg(node *ast.MsgNode) {
+	for _, n := range node.Body {
+		switch n := n.(type) {
+		case *ast.RawTextNode:
+			s.walk(n)
+		case *ast.MsgPlaceholderNode:
+			s.walk(n.Body)
+		}
+	}
 }
 
 // visitGlobal constructs a primitive node from its value and uses walk to

@@ -8,9 +8,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
 	"github.com/robfig/soy/errortypes"
 	"github.com/robfig/soy/parse"
+	"github.com/robfig/soy/soymsg"
 	"github.com/robfig/soy/template"
 )
 
@@ -789,6 +791,74 @@ func TestCallData(t *testing.T) {
 	})
 }
 
+type fakeBundle map[uint64]string
+
+func (fb fakeBundle) Message(id uint64) *soymsg.Message {
+	if fb == nil {
+		return nil
+	}
+
+	var str, ok = fb[id]
+	if !ok {
+		return nil
+	}
+
+	return &soymsg.Message{
+		ID:   id,
+		Body: str,
+	}
+}
+
+func newFakeBundle(msg, tran string) fakeBundle {
+	return fakeBundle{
+		soymsg.CalcID(&ast.MsgNode{0, "", "", []ast.Node{&ast.RawTextNode{0, []byte(msg)}}}): tran,
+	}
+}
+
+func TestMessages(t *testing.T) {
+	runNsExecTests(t, []nsExecTest{
+		{
+			name:         "no bundle",
+			templateName: "test.main",
+			input: []string{`{namespace test}
+{template .main}
+  {msg desc=""}
+    Hello world
+  {/msg}
+{/template}`},
+			output: "Hello world",
+			ok:     true,
+		},
+
+		{
+			name:         "bundle lacks",
+			templateName: "test.main",
+			input: []string{`{namespace test}
+{template .main}
+  {msg desc=""}
+    Hello world
+  {/msg}
+{/template}`},
+			output: "Hello world", msgs: newFakeBundle("foo", "bar"),
+			ok: true,
+		},
+
+		{
+			name:         "bundle has",
+			templateName: "test.main",
+			input: []string{`{namespace test}
+{template .main}
+  {msg desc=""}
+    Hello world
+  {/msg}
+{/template}`},
+			output: "Sup",
+			msgs:   newFakeBundle("Hello world", "Sup"),
+			ok:     true,
+		},
+	})
+}
+
 // testing cross namespace stuff requires multiple file bodies
 type nsExecTest struct {
 	name         string
@@ -796,6 +866,7 @@ type nsExecTest struct {
 	input        []string
 	output       string
 	data         interface{}
+	msgs         fakeBundle
 	ok           bool
 	errFilename  string
 	errLine      int
@@ -940,6 +1011,7 @@ func runNsExecTests(t *testing.T, tests []nsExecTest) {
 		}
 		err := NewTofu(&registry).NewRenderer(test.templateName).
 			Inject(ij).
+			WithMessages(test.msgs).
 			Execute(b, datamap)
 		switch {
 		case !test.ok && err == nil:
