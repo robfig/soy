@@ -7,6 +7,7 @@ import (
 
 	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
+	"github.com/robfig/soy/soymsg"
 )
 
 var ErrTemplateNotFound = errors.New("template not found")
@@ -17,11 +18,18 @@ type Renderer struct {
 	tofu *Tofu    // a registry of all templates in a bundle
 	name string   // fully-qualified name of the template to render
 	ij   data.Map // data for the $ij map
+	msgs soymsg.Bundle
 }
 
 // Inject sets the given data map as the $ij injected data.
 func (r *Renderer) Inject(ij data.Map) *Renderer {
 	r.ij = ij
+	return r
+}
+
+// WithMessages provides a message bundle to use during execution.
+func (r *Renderer) WithMessages(bundle soymsg.Bundle) *Renderer {
+	r.msgs = bundle
 	return r
 }
 
@@ -56,6 +64,7 @@ func (t Renderer) Execute(wr io.Writer, obj data.Map) (err error) {
 		wr:         wr,
 		context:    initialScope,
 		ij:         t.ij,
+		msgs:       t.msgs,
 	}
 	defer state.errRecover(&err)
 	state.walk(tmpl.Node)

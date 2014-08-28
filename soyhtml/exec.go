@@ -10,6 +10,7 @@ import (
 
 	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
+	"github.com/robfig/soy/soymsg"
 	soyt "github.com/robfig/soy/template"
 )
 
@@ -27,6 +28,7 @@ type state struct {
 	context    scope              // variable scope
 	autoescape ast.AutoescapeType // escaping mode
 	ij         data.Map           // injected data available to all templates.
+	msgs       soymsg.Bundle      // replacement text for {msg} tags
 }
 
 // at marks the state to be on node n, for error reporting.
@@ -86,7 +88,7 @@ func (s *state) walk(node ast.Node) {
 			s.errorf("%s", err)
 		}
 	case *ast.MsgNode:
-		s.walk(node.Body)
+		s.evalMsg(node)
 	case *ast.CssNode:
 		var prefix = ""
 		if node.Expr != nil {
@@ -330,6 +332,38 @@ func (s *state) evalPrint(node *ast.PrintNode) {
 	} else {
 		if _, err := io.WriteString(s.wr, resultStr); err != nil {
 			s.errorf("%s", err)
+		}
+	}
+}
+
+func (s *state) evalMsg(node *ast.MsgNode) {
+	// If no bundle was provided, walk the message sub-nodes.
+	if s.msgs == nil {
+		s.walkMsg(node)
+		return
+	}
+
+	// Look up the message in the bundle.
+	var id = soymsg.CalcID(node)
+	var msg = s.msgs.Message(id)
+	if msg == nil {
+		s.walkMsg(node)
+		return
+	}
+
+	// Translated message found.
+	if _, err := io.WriteString(s.wr, msg.Body); err != nil {
+		s.errorf("%s", err)
+	}
+}
+
+func (s *state) walkMsg(node *ast.MsgNode) {
+	for _, n := range node.Body {
+		switch n := n.(type) {
+		case *ast.RawTextNode:
+			s.walk(n)
+		case *ast.MsgPlaceholderNode:
+			s.walk(n.Body)
 		}
 	}
 }

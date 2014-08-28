@@ -8,8 +8,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
 	"github.com/robfig/soy/parse"
+	"github.com/robfig/soy/soymsg"
 	"github.com/robfig/soy/template"
 )
 
@@ -774,6 +776,55 @@ func TestCallData(t *testing.T) {
 	})
 }
 
+type fakeBundle map[uint64]string
+
+func (fb fakeBundle) Message(id uint64) *soymsg.Message {
+	if fb == nil {
+		return nil
+	}
+
+	var str, ok = fb[id]
+	if !ok {
+		return nil
+	}
+
+	return &soymsg.Message{
+		ID:   id,
+		Body: str,
+	}
+}
+
+func newFakeBundle(msg, tran string) fakeBundle {
+	return fakeBundle{
+		soymsg.CalcID(&ast.MsgNode{0, "", "", []ast.Node{&ast.RawTextNode{0, []byte(msg)}}}): tran,
+	}
+}
+
+func TestMessages(t *testing.T) {
+	runNsExecTests(t, []nsExecTest{
+		{"no bundle", "test.main", []string{`{namespace test}
+{template .main}
+  {msg desc=""}
+    Hello world
+  {/msg}
+{/template}`}, "Hello world", nil, nil, true},
+
+		{"bundle lacks", "test.main", []string{`{namespace test}
+{template .main}
+  {msg desc=""}
+    Hello world
+  {/msg}
+{/template}`}, "Hello world", nil, newFakeBundle("foo", "bar"), true},
+
+		{"bundle has", "test.main", []string{`{namespace test}
+{template .main}
+  {msg desc=""}
+    Hello world
+  {/msg}
+{/template}`}, "Sup", nil, newFakeBundle("Hello world", "Sup"), true},
+	})
+}
+
 // testing cross namespace stuff requires multiple file bodies
 type nsExecTest struct {
 	name         string
@@ -781,6 +832,7 @@ type nsExecTest struct {
 	input        []string
 	output       string
 	data         interface{}
+	msgs         fakeBundle
 	ok           bool
 }
 
@@ -800,7 +852,7 @@ func TestAlias(t *testing.T) {
 {template .hello}
 Hello world
 {/template}`},
-			"Hello world", nil, true},
+			"Hello world", nil, nil, true},
 	})
 }
 
@@ -868,6 +920,7 @@ func runExecTests(t *testing.T, tests []execTest) {
 			[]string{test.input},
 			test.output,
 			test.data,
+			nil,
 			test.ok,
 		})
 	}
@@ -894,6 +947,7 @@ func runNsExecTests(t *testing.T, tests []nsExecTest) {
 		}
 		err := NewTofu(&registry).NewRenderer(test.templateName).
 			Inject(ij).
+			WithMessages(test.msgs).
 			Execute(b, datamap)
 		switch {
 		case !test.ok && err == nil:
