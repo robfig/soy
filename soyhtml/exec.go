@@ -344,8 +344,7 @@ func (s *state) evalCall(node *ast.CallNode) {
 	// sort out the data to pass
 	var callData scope
 	if node.AllData {
-		callData = s.context
-		callData.push()
+		callData = s.context.alldata()
 	} else if node.Data != nil {
 		result, ok := s.eval(node.Data).(data.Map)
 		if !ok {
@@ -353,6 +352,7 @@ func (s *state) evalCall(node *ast.CallNode) {
 				node.String(), node.Data.String())
 		}
 		callData = scope{result}
+		callData.push()
 	} else {
 		callData = scope{make(data.Map)}
 	}

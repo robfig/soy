@@ -51,7 +51,7 @@ func (t Renderer) Execute(wr io.Writer, obj data.Map) (err error) {
 		namespace:  tmpl.Namespace.Name,
 		autoescape: autoescapeMode,
 		wr:         wr,
-		context:    scope{obj},
+		context:    scope{obj}.alldata(),
 		ij:         t.ij,
 	}
 	defer state.errRecover(&err)

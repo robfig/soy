@@ -591,6 +591,89 @@ func TestLet(t *testing.T) {
 	})
 }
 
+// Ensure that variables have the appropriate scope.
+// Ensure that the input data map is not updated.
+// Ensure that let variables are not passed with data="all"
+func TestLetScopes(t *testing.T) {
+	var m = data.Map{"a": data.Int(1)}
+	runExecTests(t, []execTest{
+		{"letscopes", "test.main", `{namespace test}
+/** @param a */
+{template .main}
+
+// starting value
+{$a}
+
+// reassign with a let
+{let $a: 2 /}
+{$a}
+
+// data="all" should not pass "let" assignments
+// $a should not be updated by the {let} in .inner
+{call .inner data="all" /}
+{$a}
+
+// for loops should create a new scope, not update the existing variable
+{for $a in range(5, 6)}
+  {$a}
+{/for}
+{$a}
+
+// reassign to the same value
+{let $a}
+  {let $b: $a/}
+  {$b}
+{/let}
+{$a}
+
+// reassign to a different value
+{let $a:6/}
+{$a}
+{/template}
+
+/** @param a */
+{template .inner}
+{$a}
+{let $a: 3 /}
+{$a}
+{call .inner2 data="all"/}
+{$a}
+{/template}
+
+/** @param a */
+{template .inner2}
+{$a}
+{let $a: 4 /}
+{$a}
+{/template}
+`, "121314325226", m, true},
+	})
+
+	if len(m) != 1 || m["a"].(data.Int) != 1 {
+		t.Errorf("input data map changed: %v", m)
+	}
+
+	m["a"] = data.Map{"b": data.Int(1)}
+	runExecTests(t, []execTest{
+		{"letscopes", "test.main", `{namespace test}
+/** @param a */
+{template .main}
+{call .inner data="$a"/}
+{/template}
+
+/** @param b */
+{template .inner}
+{$b}
+{let $b: 2/}
+{$b}
+{/template}`, "12", m, true},
+	})
+
+	if len(m) != 1 || m["a"].(data.Map)["b"].(data.Int) != 1 {
+		t.Errorf("call data map changed: %v", m)
+	}
+}
+
 // testing cross namespace stuff requires multiple file bodies
 type nsExecTest struct {
 	name         string

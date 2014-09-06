@@ -33,3 +33,14 @@ func (s scope) lookup(k string) data.Value {
 	}
 	return data.Undefined{}
 }
+
+// alldata returns a new scope for use when passing data="all" to a template.
+func (s scope) alldata() scope {
+	i, ok := s.lookup("__all").(data.Int)
+	if ok {
+		s = append(scope(nil), s[:i+1]...)
+	}
+	s.push()
+	s.set("__all", data.Int(i))
+	return s
+}
