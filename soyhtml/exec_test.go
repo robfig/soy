@@ -169,7 +169,7 @@ func TestForeach(t *testing.T) {
 {foreach $var in keys($map)}
   {$var}
 {/foreach}`, []datatest{
-		{d{"map": d{"a": nil, "b": nil, "c": nil}}, "abc"},
+		{d{"map": d{"a": nil}}, "a"},
 	}, nil))
 }
 

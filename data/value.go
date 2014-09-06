@@ -4,6 +4,7 @@ package data
 import (
 	"math"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -93,6 +94,7 @@ func (v Map) String() string {
 		items[i] = k + ": " + vstr
 		i++
 	}
+	sort.Strings(items)
 	return "{" + strings.Join(items, ", ") + "}"
 }
 
