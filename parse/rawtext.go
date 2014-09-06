@@ -99,7 +99,6 @@ func rawtext(s string, trimBefore, trimAfter bool) []byte {
 		}
 		lastChar = r
 	}
-	return result[:resultLen]
 }
 
 func isTightJoiner(r rune) bool {

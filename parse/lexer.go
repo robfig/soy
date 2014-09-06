@@ -789,7 +789,7 @@ func lexIdent(l *lexer) stateFn {
 	case '?':
 		dot := l.next()
 		if dot != '.' {
-			l.errorf("unexpected beginning to ident: ?%s", dot)
+			l.errorf("unexpected beginning to ident: ?%v", dot)
 		}
 		if isDigit(l.next()) {
 			itemType = itemQuestionDotIndex

@@ -407,7 +407,6 @@ func (t *tree) parseCallParams() []ast.Node {
 			params = append(params, &ast.CallParamValueNode{initial.pos, key, value})
 		}
 	}
-	return params
 }
 
 // "switch" has just been read.
