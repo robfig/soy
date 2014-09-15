@@ -420,10 +420,14 @@ func (s *state) evalFunc(node *ast.FunctionNode) data.Value {
 				s.errorf("panic in %s(%v): %v\n%v", node.Name, args, err, string(debug.Stack()))
 			}
 		}()
-		return fn.Apply(args)
+		r := fn.Apply(args)
+		if r == nil {
+			return data.Null{}
+		}
+		return r
 	}
 	s.errorf("unrecognized function name: %s", node.Name)
-	return nil
+	panic("unreachable")
 }
 
 func (s *state) evalDataRef(node *ast.DataRefNode) data.Value {
