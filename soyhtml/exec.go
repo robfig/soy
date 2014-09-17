@@ -345,6 +345,7 @@ func (s *state) evalCall(node *ast.CallNode) {
 	var callData scope
 	if node.AllData {
 		callData = s.context.alldata()
+		callData.push()
 	} else if node.Data != nil {
 		result, ok := s.eval(node.Data).(data.Map)
 		if !ok {
@@ -352,7 +353,6 @@ func (s *state) evalCall(node *ast.CallNode) {
 				node.String(), node.Data.String())
 		}
 		callData = scope{result}
-		callData.push()
 	} else {
 		callData = scope{make(data.Map)}
 	}
@@ -369,6 +369,7 @@ func (s *state) evalCall(node *ast.CallNode) {
 		}
 	}
 
+	callData.enter()
 	state := &state{
 		tmpl:       calledTmpl,
 		registry:   s.registry,

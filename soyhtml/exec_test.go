@@ -610,7 +610,7 @@ func TestLetScopes(t *testing.T) {
 
 // data="all" should not pass "let" assignments
 // $a should not be updated by the {let} in .inner
-{call .inner data="all" /}
+{call .inner data="all"/}
 {$a}
 
 // for loops should create a new scope, not update the existing variable
@@ -631,9 +631,13 @@ func TestLetScopes(t *testing.T) {
 {$a}
 {/template}
 
-/** @param a */
+/**
+ * @param a
+ * @param? b
+ */
 {template .inner}
 {$a}
+{if $b}{$b}{/if}
 {let $a: 3 /}
 {$a}
 {call .inner2 data="all"/}
@@ -652,10 +656,14 @@ func TestLetScopes(t *testing.T) {
 	if len(m) != 1 || m["a"].(data.Int) != 1 {
 		t.Errorf("input data map changed: %v", m)
 	}
+}
 
-	m["a"] = data.Map{"b": data.Int(1)}
+// TestCallData checks that the various cases around passing data in {call} are
+// working according to spec.
+func TestCallData(t *testing.T) {
 	runExecTests(t, []execTest{
-		{"letscopes", "test.main", `{namespace test}
+		// test that data=$property is subsequently passed through data=all
+		{"data=$a", "test.main", `{namespace test}
 /** @param a */
 {template .main}
 {call .inner data="$a"/}
@@ -666,12 +674,87 @@ func TestLetScopes(t *testing.T) {
 {$b}
 {let $b: 2/}
 {$b}
-{/template}`, "12", m, true},
-	})
+{call .inner2 data="all"/}
+{/template}
 
-	if len(m) != 1 || m["a"].(data.Map)["b"].(data.Int) != 1 {
-		t.Errorf("call data map changed: %v", m)
-	}
+/** @param b */
+{template .inner2}
+{$b}
+{let $b: 2/}
+{$b}
+{/template}`, "1212", d{"a": d{"b": 1}}, true},
+
+		// test that explicit params are included in data="all"
+		{"data=all+param", "test.main", `{namespace test}
+/** @param a */
+{template .main}
+{call .inner data="all"}
+  {param b: 2/}
+{/call}
+{/template}
+
+/**
+ * @param a
+ * @param b
+ */
+{template .inner}
+{call .inner2 data="all"/}
+{/template}
+
+/**
+ * @param a
+ * @param b
+ */
+{template .inner2}
+{$a}{$b}
+{/template}`, "12", d{"a": 1}, true},
+
+		// test that explicit params are included in data="all"
+		{"data=all+param", "test.main", `{namespace test}
+/** @param a */
+{template .main}
+{call .inner data="$b"}
+  {param b: 2/}
+{/call}
+{/template}
+
+/**
+ * @param a
+ * @param b
+ */
+{template .inner}
+{call .inner2 data="all"/}
+{/template}
+
+/**
+ * @param a
+ * @param b
+ */
+{template .inner2}
+{$a}{$b}
+{/template}`, "12", d{"b": d{"a": 1}}, true},
+
+		// test multiple calls with different data sets
+		{"multiple data=all+param", "test.main", `{namespace test}
+/** @param a */
+{template .main}
+{call .inner data="all"}
+  {param a: 2/}
+{/call}
+{call .inner data="all"}
+  {param b: 3/}
+{/call}
+{/template}
+
+/**
+ * @param a
+ * @param? b
+ */
+{template .inner}
+{$a}{if $b}{$b}{/if}
+{/template}
+`, "213", d{"a": 1}, true},
+	})
 }
 
 // testing cross namespace stuff requires multiple file bodies

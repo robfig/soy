@@ -36,11 +36,13 @@ func (s scope) lookup(k string) data.Value {
 
 // alldata returns a new scope for use when passing data="all" to a template.
 func (s scope) alldata() scope {
-	i, ok := s.lookup("__all").(data.Int)
-	if ok {
-		s = append(scope(nil), s[:i+1]...)
-	}
+	i := s.lookup("__all").(data.Int)
+	return s[:i+1 : i+1]
+}
+
+// enter records that this is the frame where we enter a template.
+// only the frames up to here will be passed in the next data="all"
+func (s *scope) enter() {
+	s.set("__all", data.Int(len(*s)-1))
 	s.push()
-	s.set("__all", data.Int(i))
-	return s
 }

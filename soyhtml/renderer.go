@@ -45,13 +45,20 @@ func (t Renderer) Execute(wr io.Writer, obj data.Map) (err error) {
 		autoescapeMode = ast.AutoescapeOn
 	}
 
+	var initialData = make(data.Map)
+	for k, v := range obj {
+		initialData[k] = v
+	}
+	var initialScope = scope{initialData}
+	initialScope.enter()
+
 	state := &state{
 		tmpl:       tmpl,
 		registry:   *t.tofu.registry,
 		namespace:  tmpl.Namespace.Name,
 		autoescape: autoescapeMode,
 		wr:         wr,
-		context:    scope{obj}.alldata(),
+		context:    initialScope,
 		ij:         t.ij,
 	}
 	defer state.errRecover(&err)
