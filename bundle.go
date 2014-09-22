@@ -141,6 +141,7 @@ func (b *Bundle) Compile() (*template.Registry, error) {
 	if err != nil {
 		return nil, err
 	}
+	parsepasses.ProcessMessages(registry)
 
 	if b.watcher != nil {
 		go b.recompiler(&registry)
