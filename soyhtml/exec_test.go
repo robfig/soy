@@ -11,6 +11,7 @@ import (
 	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
 	"github.com/robfig/soy/parse"
+	"github.com/robfig/soy/parsepasses"
 	"github.com/robfig/soy/soymsg"
 	"github.com/robfig/soy/template"
 )
@@ -776,28 +777,24 @@ func TestCallData(t *testing.T) {
 	})
 }
 
-type fakeBundle map[uint64]string
+type fakeBundle map[uint64]*soymsg.Message
 
 func (fb fakeBundle) Message(id uint64) *soymsg.Message {
 	if fb == nil {
 		return nil
 	}
-
-	var str, ok = fb[id]
-	if !ok {
-		return nil
-	}
-
-	return &soymsg.Message{
-		ID:   id,
-		Body: str,
-	}
+	return fb[id]
 }
 
 func newFakeBundle(msg, tran string) fakeBundle {
-	return fakeBundle{
-		soymsg.CalcID(&ast.MsgNode{0, "", "", []ast.Node{&ast.RawTextNode{0, []byte(msg)}}}): tran,
+	var sf, err = parse.SoyFile("", `{msg desc=""}`+msg+`{/msg}`, nil)
+	if err != nil {
+		panic(err)
 	}
+	var msgnode = sf.Body[0].(*ast.MsgNode)
+	soymsg.SetPlaceholdersAndID(msgnode)
+	var m = soymsg.NewMessage(msgnode.ID, tran)
+	return fakeBundle{msgnode.ID: &m}
 }
 
 func TestMessages(t *testing.T) {
@@ -822,6 +819,31 @@ func TestMessages(t *testing.T) {
     Hello world
   {/msg}
 {/template}`}, "Sup", nil, newFakeBundle("Hello world", "Sup"), true},
+
+		{"msg with variable & translation", "test.main", []string{`{namespace test}
+/** @param a */
+{template .main}
+  {msg desc=""}
+    a: {$a}
+  {/msg}
+{/template}`}, "a is 1", d{"a": 1}, newFakeBundle("a: {$a}", "a is {A}"), true},
+
+		{"msg w variables", "test.main", []string{`{namespace test}
+/** @param a */
+{template .main}
+  {msg desc=""}
+    {$a}{$a} xx {$a}{sp}
+  {/msg}
+{/template}`}, "11xxx1", d{"a": 1}, newFakeBundle("{$a}{$a} xx {$a}{sp}", "{A}{A}xxx{A}"), true},
+
+		{"msg w numbered placeholders", "test.main", []string{`{namespace test}
+/** @param a */
+{template .main}
+  {msg desc=""}
+    {$a.a}{$a.b.a}
+  {/msg}
+{/template}`}, "21", d{"a": d{"a": 1, "b": d{"a": 2}}},
+			newFakeBundle("{$a.a}{$a.b.a}", "{A_2}{A_1}"), true},
 	})
 }
 
@@ -939,6 +961,7 @@ func runNsExecTests(t *testing.T, tests []nsExecTest) {
 			}
 			registry.Add(tree)
 		}
+		parsepasses.ProcessMessages(registry)
 
 		b.Reset()
 		var datamap data.Map

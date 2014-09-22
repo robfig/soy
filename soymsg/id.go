@@ -7,19 +7,19 @@ import (
 	"github.com/robfig/soy/ast"
 )
 
-// CalcID calculates a message ID for the given message node.
+// calcID calculates the message ID for the given message node.
 // The ID changes if the text content or meaning attribute changes.
 // It is invariant to changes in description.
-func CalcID(n *ast.MsgNode) uint64 {
+func calcID(n *ast.MsgNode) uint64 {
 	var buf bytes.Buffer
 	for _, part := range n.Body {
 		switch part := part.(type) {
 		case *ast.RawTextNode:
 			buf.Write(part.Text)
 		case *ast.MsgPlaceholderNode:
-			// UNIMPLEMENTED
+			buf.WriteString(part.Name)
 		default:
-			panic(fmt.Sprintf("CalcID: unrecognized type %T", part))
+			panic(fmt.Sprintf("unrecognized type %T", part))
 		}
 	}
 

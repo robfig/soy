@@ -591,11 +591,11 @@ func (t *tree) parseMsg(token item) ast.Node {
 		case *ast.RawTextNode:
 			msgchildren = append(msgchildren, child)
 		default:
-			msgchildren = append(msgchildren, &ast.MsgPlaceholderNode{child.Position(), child})
+			msgchildren = append(msgchildren, &ast.MsgPlaceholderNode{child.Position(), "", child})
 		}
 	}
 
-	var node = &ast.MsgNode{token.pos, attrs["meaning"], attrs["desc"], msgchildren}
+	var node = &ast.MsgNode{token.pos, 0, attrs["meaning"], attrs["desc"], msgchildren}
 	t.expect(itemRightDelim, ctx)
 	return node
 }

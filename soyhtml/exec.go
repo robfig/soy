@@ -344,16 +344,34 @@ func (s *state) evalMsg(node *ast.MsgNode) {
 	}
 
 	// Look up the message in the bundle.
-	var id = soymsg.CalcID(node)
-	var msg = s.msgs.Message(id)
+	var msg = s.msgs.Message(node.ID)
 	if msg == nil {
 		s.walkMsg(node)
 		return
 	}
 
-	// Translated message found.
-	if _, err := io.WriteString(s.wr, msg.Body); err != nil {
-		s.errorf("%s", err)
+	// Translated message found.  Render each part.
+	for _, part := range msg.Parts {
+		if part.Content != "" {
+			if _, err := io.WriteString(s.wr, part.Content); err != nil {
+				s.errorf("%s", err)
+			}
+			continue
+		}
+
+		// It's a placeholder
+		// Find the right node to walk.
+		var found = false
+		for _, phnode := range node.Body {
+			if phnode, ok := phnode.(*ast.MsgPlaceholderNode); ok && phnode.Name == part.Placeholder {
+				s.walk(phnode.Body)
+				found = true
+				break
+			}
+		}
+		if !found {
+			s.errorf("failed to find placeholder %q in %v", part.Placeholder, node.PlaceholderString())
+		}
 	}
 }
 

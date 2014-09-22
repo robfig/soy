@@ -300,9 +300,23 @@ func (i *IdentNode) String() string {
 // MsgNode represents a localized message.
 type MsgNode struct {
 	Pos
+	ID      uint64
 	Meaning string
 	Desc    string
 	Body    []Node // RawTextNode or MsgPlaceholderNode
+}
+
+func (n *MsgNode) PlaceholderString() string {
+	var buf bytes.Buffer
+	for _, child := range n.Body {
+		switch child := child.(type) {
+		case *RawTextNode:
+			buf.Write(child.Text)
+		case *MsgPlaceholderNode:
+			buf.Write([]byte("{" + child.Name + "}"))
+		}
+	}
+	return buf.String()
 }
 
 func (n *MsgNode) String() string {
@@ -310,7 +324,19 @@ func (n *MsgNode) String() string {
 	if n.Meaning != "" {
 		meaning = fmt.Sprintf(" meaning=%q ", n.Meaning)
 	}
-	return fmt.Sprintf("{msg%sdesc=%q}", meaning, n.Desc)
+
+	var buf bytes.Buffer
+	buf.WriteString(fmt.Sprintf("{msg%sdesc=%q}", meaning, n.Desc))
+	for _, child := range n.Body {
+		switch child := child.(type) {
+		case *RawTextNode:
+			buf.Write(child.Text)
+		case *MsgPlaceholderNode:
+			buf.WriteString(child.Body.String())
+		}
+	}
+	buf.WriteString("{/msg}")
+	return buf.String()
 }
 
 func (n *MsgNode) Children() []Node {
@@ -319,6 +345,7 @@ func (n *MsgNode) Children() []Node {
 
 type MsgPlaceholderNode struct {
 	Pos
+	Name string
 	Body Node
 }
 

@@ -313,18 +313,21 @@ var parseTests = []parseTest{
 					&ast.DataRefNode{0, "items", []ast.Node{&ast.DataRefKeyNode{0, false, "length"}}},
 					&ast.IntNode{0, 1})}}},
 			tList(
-				&ast.MsgNode{0, "verb", "Numbered item.", []ast.Node{
-					&ast.MsgPlaceholderNode{0,
+				&ast.MsgNode{0, 0, "verb", "Numbered item.", []ast.Node{
+					&ast.MsgPlaceholderNode{0, "",
 						&ast.PrintNode{0, &ast.DataRefNode{0, "i", nil}, nil}},
+
 					newText(0, ": "),
-					&ast.MsgPlaceholderNode{0,
+					&ast.MsgPlaceholderNode{0, "",
 						&ast.PrintNode{0, &ast.DataRefNode{0, "items", []ast.Node{
 							&ast.DataRefExprNode{0, false,
 								&ast.SubNode{bin(
 									&ast.DataRefNode{0, "i", nil},
 									&ast.IntNode{0, 1})}}}}, nil}},
-					newText(0, "\n"), // {\n}
-				}}),
+
+					newText(0, "\n"),
+				}},
+			),
 			nil},
 	)},
 
