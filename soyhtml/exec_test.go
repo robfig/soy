@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -595,7 +596,8 @@ func TestLet(t *testing.T) {
 // Ensure that the input data map is not updated.
 // Ensure that let variables are not passed with data="all"
 func TestLetScopes(t *testing.T) {
-	var m = data.Map{"a": data.Int(1)}
+	var m = data.Map{"a": data.Int(1), "z": data.Map{"y": data.Int(9)}}
+	var mcopy = data.Map{"a": data.Int(1), "z": data.Map{"y": data.Int(9)}}
 	runExecTests(t, []execTest{
 		{"letscopes", "test.main", `{namespace test}
 /** @param a */
@@ -651,9 +653,24 @@ func TestLetScopes(t *testing.T) {
 {$a}
 {/template}
 `, "121314325226", m, true},
+
+		{"no-overwrite-map", "test.main", `{namespace test}
+/** @param z */
+{template .main}
+{call .inner data="$z"/}
+{/template}
+
+/** @param y */
+{template .inner}
+{let $a: 8/}
+{$y} {$a}
+{let $y: 7/}
+{sp}{$y}
+{/template}
+`, "9 8 7", m, true},
 	})
 
-	if len(m) != 1 || m["a"].(data.Int) != 1 {
+	if !reflect.DeepEqual(m, mcopy) {
 		t.Errorf("input data map changed: %v", m)
 	}
 }

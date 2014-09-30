@@ -45,11 +45,7 @@ func (t Renderer) Execute(wr io.Writer, obj data.Map) (err error) {
 		autoescapeMode = ast.AutoescapeOn
 	}
 
-	var initialData = make(data.Map)
-	for k, v := range obj {
-		initialData[k] = v
-	}
-	var initialScope = scope{initialData}
+	var initialScope = newScope(obj)
 	initialScope.enter()
 
 	state := &state{

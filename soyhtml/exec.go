@@ -352,9 +352,9 @@ func (s *state) evalCall(node *ast.CallNode) {
 			s.errorf("In 'call' command %q, the data reference %q does not resolve to a map.",
 				node.String(), node.Data.String())
 		}
-		callData = scope{result}
+		callData = newScope(result)
 	} else {
-		callData = scope{make(data.Map)}
+		callData = newScope(make(data.Map))
 	}
 
 	// resolve the params
