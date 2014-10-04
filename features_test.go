@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
+	"reflect"
 	"testing"
 
 	"github.com/robertkrimen/otto"
@@ -217,6 +218,82 @@ func BenchmarkExecuteFeatures(b *testing.B) {
 			// }
 			buf.Reset()
 			err = tofu.Render(buf, "soy.examples.features."+test.name, test.data)
+			if err != nil {
+				b.Error(err)
+			}
+		}
+	}
+}
+
+func BenchmarkExecuteSimple_Soy(b *testing.B) {
+	var tofu, err = NewBundle().
+		AddTemplateString("", mustReadFile("testdata/simple.soy")).
+		CompileToTofu()
+	if err != nil {
+		panic(err)
+	}
+	b.ResetTimer()
+	var buf = new(bytes.Buffer)
+	var testdata = []data.Map{
+		{"names": data.List{}},
+		{"names": data.List{data.String("Rob")}},
+		{"names": data.List{data.String("Rob"), data.String("Joe")}},
+	}
+	for i := 0; i < b.N; i++ {
+		for _, data := range testdata {
+			buf.Reset()
+			err = tofu.Render(buf, "soy.examples.simple.helloNames", data)
+			if err != nil {
+				b.Error(err)
+			}
+		}
+	}
+}
+
+func BenchmarkExecuteSimple_Go(b *testing.B) {
+	// from https://groups.google.com/forum/#!topic/golang-nuts/mqRbR7AFJj0
+	var fns = template.FuncMap{
+		"last": func(x int, a interface{}) bool {
+			return x == reflect.ValueOf(a).Len()-1
+		},
+	}
+
+	var tmpl = template.Must(template.New("").Funcs(fns).Parse(`
+{{define "go.examples.simple.helloWorld"}}
+Hello world!
+{{end}}
+
+{{define "go.examples.simple.helloName"}}
+{{if .}}
+  Hello {{.}}!
+{{else}}
+  {{template "go.examples.simple.helloWorld"}}
+{{end}}
+{{end}}
+
+{{define "go.examples.simple.helloNames"}}
+  {{range $i, $name := .names}}
+    {{template "go.examples.simple.helloName" $name}}
+    {{if last $i $.names | not }}
+      <br>
+    {{end}}
+  {{else}}
+    {{template "go.examples.simple.helloWorld"}}
+  {{end}}
+{{end}}`))
+
+	var buf = new(bytes.Buffer)
+	var testdata = []map[string]interface{}{
+		{"names": nil},
+		{"names": []string{"Rob"}},
+		{"names": []string{"Rob", "Joe"}},
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, data := range testdata {
+			buf.Reset()
+			var err = tmpl.ExecuteTemplate(buf, "go.examples.simple.helloNames", data)
 			if err != nil {
 				b.Error(err)
 			}
