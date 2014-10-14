@@ -89,6 +89,10 @@ func (s *state) walk(node ast.Node) {
 		}
 	case *ast.MsgNode:
 		s.evalMsg(node)
+	case *ast.MsgHtmlTagNode:
+		if _, err := s.wr.Write(node.Text); err != nil {
+			s.errorf("%s", err)
+		}
 	case *ast.CssNode:
 		var prefix = ""
 		if node.Expr != nil {

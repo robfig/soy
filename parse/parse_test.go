@@ -46,6 +46,10 @@ func newText(pos ast.Pos, text string) *ast.RawTextNode {
 	return &ast.RawTextNode{Pos: pos, Text: []byte(text)}
 }
 
+func htmltag(text string) *ast.MsgPlaceholderNode {
+	return &ast.MsgPlaceholderNode{Pos: 0, Body: &ast.MsgHtmlTagNode{Pos: 0, Text: []byte(text)}}
+}
+
 func bin(n1, n2 ast.Node) ast.BinaryOpNode {
 	return ast.BinaryOpNode{Arg1: n1, Arg2: n2}
 }
@@ -398,6 +402,32 @@ var parseTests = []parseTest{
 	{"alias", `{alias a.b.c}{call c.d/}`, tFile(
 		&ast.CallNode{0, "a.b.c.d", false, nil, nil},
 	)},
+
+	{"msg html", `
+{msg desc=""}
+  <A > {$i} </a name="foo" phname="custom_ph">{\n} <br/>
+  <h2> my <b>heading </b><input
+><input
+name="foo">
+{/msg}`, tFile(
+		&ast.MsgNode{0, 0, "", "", []ast.Node{
+			htmltag("<A >"),
+			newText(0, " "),
+			&ast.MsgPlaceholderNode{0, "", &ast.PrintNode{0, &ast.DataRefNode{0, "i", nil}, nil}},
+			newText(0, " "),
+			htmltag(`</a name="foo" phname="custom_ph">`),
+			newText(0, "\n"),
+			newText(0, " "),
+			htmltag("<br/>"),
+			htmltag("<h2>"),
+			newText(0, " my "),
+			htmltag("<b>"),
+			newText(0, "heading "),
+			htmltag("</b>"),
+			htmltag("<input>"), // due to line joining
+			htmltag("<input name=\"foo\">"),
+		}},
+	)},
 }
 
 var globals = data.Map{
@@ -542,6 +572,8 @@ func eqTree(t *testing.T, expected, actual ast.Node) bool {
 			eqNodes(t, expected.(*ast.MsgNode).Body, actual.(*ast.MsgNode).Body)
 	case *ast.MsgPlaceholderNode:
 		return eqTree(t, expected.(*ast.MsgPlaceholderNode).Body, actual.(*ast.MsgPlaceholderNode).Body)
+	case *ast.MsgHtmlTagNode:
+		return eqstr(t, "msghtmltag", string(expected.(*ast.MsgHtmlTagNode).Text), string(actual.(*ast.MsgHtmlTagNode).Text))
 	case *ast.CallNode:
 		return eqstr(t, "call", expected.(*ast.CallNode).Name, actual.(*ast.CallNode).Name) &&
 			eqTree(t, expected.(*ast.CallNode).Data, actual.(*ast.CallNode).Data) &&

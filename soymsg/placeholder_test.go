@@ -16,6 +16,8 @@ func TestSetPlaceholders(t *testing.T) {
 
 	var tests = []test{
 		{newMsg("Hello world"), "Hello world"},
+
+		// Data refs
 		{newMsg("Hello {$name}"), "Hello {NAME}"},
 		{newMsg("{$a}, {$b}, and {$c}"), "{A}, {B}, and {C}"},
 		{newMsg("{$a} {$a}"), "{A} {A}"},
@@ -24,6 +26,14 @@ func TestSetPlaceholders(t *testing.T) {
 
 		// Command sequences
 		{newMsg("hello{sp}world"), "hello world"},
+
+		// HTML
+		{newMsg("Click <a>here</a>"), "Click {START_LINK}here{END_LINK}"},
+		{newMsg("<br><br/><br/>"), "{START_BREAK}{BREAK}{BREAK}"},
+		{newMsg("<a href=foo>Click</a> <a href=bar>here</a >"),
+			"{START_LINK_1}Click{END_LINK_1} {START_LINK_2}here{END_LINK_2}"},
+
+		// TODO: phname
 
 		// TODO: investigate globals
 		// {newMsg("{GLOBAL}"), "{GLOBAL}"},

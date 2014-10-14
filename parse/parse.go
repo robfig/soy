@@ -4,6 +4,7 @@ package parse
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -589,7 +590,7 @@ func (t *tree) parseMsg(token item) ast.Node {
 	for _, child := range contents.Children() {
 		switch child := child.(type) {
 		case *ast.RawTextNode:
-			msgchildren = append(msgchildren, child)
+			msgchildren = append(msgchildren, t.parseMsgRawText(child)...)
 		default:
 			msgchildren = append(msgchildren, &ast.MsgPlaceholderNode{child.Position(), "", child})
 		}
@@ -598,6 +599,41 @@ func (t *tree) parseMsg(token item) ast.Node {
 	var node = &ast.MsgNode{token.pos, 0, attrs["meaning"], attrs["desc"], msgchildren}
 	t.expect(itemRightDelim, ctx)
 	return node
+}
+
+var (
+	htmlTagRegexp    = regexp.MustCompile(`</?[a-zA-Z0-9]+[^>]*?>`)
+	phnameAttrRegexp = regexp.MustCompile(`\sphname="([^"]*)"`)
+)
+
+// parseMsgRawText returns a sequence of text and html placeholder nodes for the
+// given raw text.
+func (t *tree) parseMsgRawText(node *ast.RawTextNode) []ast.Node {
+	var (
+		r   []ast.Node
+		txt = node.Text
+		pos = node.Position()
+	)
+	for len(txt) > 0 {
+		var start, end = len(txt), len(txt)
+		var ii = htmlTagRegexp.FindSubmatchIndex(txt)
+		if ii != nil {
+			start, end = ii[0], ii[1]
+		}
+
+		if start > 0 {
+			r = append(r, &ast.RawTextNode{pos, txt[:start]})
+			pos += ast.Pos(start)
+		}
+
+		if end > start {
+			r = append(r, &ast.MsgPlaceholderNode{pos, "", &ast.MsgHtmlTagNode{pos, txt[start:end]}})
+			pos += ast.Pos(end - start)
+		}
+
+		txt = txt[end:]
+	}
+	return r
 }
 
 // notmsg asserts that the parser is not currently within a message node
