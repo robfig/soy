@@ -1,6 +1,7 @@
 package soymsg
 
 import (
+	"bytes"
 	"regexp"
 	"strconv"
 	"strings"
@@ -99,6 +100,8 @@ func genBasePlaceholderName(node ast.Node) string {
 	switch part := node.(type) {
 	case *ast.PrintNode:
 		return genBasePlaceholderNameFromExpr(part.Arg)
+	case *ast.MsgHtmlTagNode:
+		return genBasePlaceholderNameFromHtml(part)
 	}
 	return "XXX"
 }
@@ -117,6 +120,54 @@ func genBasePlaceholderNameFromExpr(expr ast.Node) string {
 		}
 	}
 	return "XXX"
+}
+
+var htmlTagNames = map[string]string{
+	"a":   "link",
+	"br":  "break",
+	"b":   "bold",
+	"i":   "italic",
+	"li":  "item",
+	"ol":  "ordered_list",
+	"ul":  "unordered_list",
+	"p":   "paragraph",
+	"img": "image",
+	"em":  "emphasis",
+}
+
+func genBasePlaceholderNameFromHtml(node *ast.MsgHtmlTagNode) string {
+	var tag, tagType = tagName(node.Text)
+	if prettyName, ok := htmlTagNames[tag]; ok {
+		tag = prettyName
+	}
+	return toUpperUnderscore(tagType + tag)
+}
+
+func tagName(text []byte) (name, tagType string) {
+	switch {
+	case bytes.HasPrefix(text, []byte("</")):
+		tagType = "END_"
+	case bytes.HasSuffix(text, []byte("/>")):
+		tagType = ""
+	default:
+		tagType = "START_"
+	}
+
+	text = bytes.TrimPrefix(text, []byte("<"))
+	text = bytes.TrimPrefix(text, []byte("/"))
+	for i, ch := range text {
+		if !isAlphaNumeric(ch) {
+			return strings.ToLower(string(text[:i])), tagType
+		}
+	}
+	// the parser should never produce html tag nodes that tagName can't handle.
+	panic("no tag name found: " + string(text))
+}
+
+func isAlphaNumeric(r byte) bool {
+	return 'A' <= r && r <= 'Z' ||
+		'a' <= r && r <= 'z' ||
+		'0' <= r && r <= '9'
 }
 
 var (

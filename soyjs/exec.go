@@ -79,6 +79,8 @@ func (s *state) walk(node ast.Node) {
 		s.visitPrint(node)
 	case *ast.MsgNode:
 		s.visitMsg(node)
+	case *ast.MsgHtmlTagNode:
+		s.writeRawText(node.Text)
 	case *ast.CssNode:
 		if node.Expr != nil {
 			s.jsln(s.bufferName, " += ", node.Expr, " + '-';")

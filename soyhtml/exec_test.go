@@ -901,6 +901,21 @@ func TestMessages(t *testing.T) {
 			msgs:   newFakeBundle("{$a.a}{$a.b.a}", "{A_2}{A_1}"),
 			ok:     true,
 		},
+
+		{
+			name:         "msg w html",
+			templateName: "test.main",
+			input: []string{`{namespace test}
+/** @param a */
+{template .main}
+  {msg desc=""}
+    Click <a>here</a>
+  {/msg}
+{/template}`},
+			output: "<a>Click here</a>",
+			msgs:   newFakeBundle("Click <a>here</a>", "{START_LINK}Click here{END_LINK}"),
+			ok:     true,
+		},
 	})
 }
 

@@ -334,6 +334,8 @@ func (n *MsgNode) String() string {
 			buf.Write(child.Text)
 		case *MsgPlaceholderNode:
 			buf.WriteString(child.Body.String())
+		case *MsgHtmlTagNode:
+			buf.Write(child.Text)
 		}
 	}
 	buf.WriteString("{/msg}")
@@ -356,6 +358,15 @@ func (n *MsgPlaceholderNode) String() string {
 
 func (n *MsgPlaceholderNode) Children() []Node {
 	return []Node{n.Body}
+}
+
+type MsgHtmlTagNode struct {
+	Pos
+	Text []byte
+}
+
+func (n *MsgHtmlTagNode) String() string {
+	return string(n.Text)
 }
 
 type CallNode struct {
