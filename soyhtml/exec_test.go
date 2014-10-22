@@ -802,7 +802,7 @@ func (fb fakeBundle) Message(id uint64) *soymsg.Message {
 }
 
 func newFakeBundle(msg, tran string) fakeBundle {
-	var sf, err = parse.SoyFile("", `{msg desc=""}`+msg+`{/msg}`, nil)
+	var sf, err = parse.SoyFile("", `{msg desc=""}`+msg+`{/msg}`)
 	if err != nil {
 		panic(err)
 	}
@@ -1056,13 +1056,14 @@ func runNsExecTests(t *testing.T, tests []nsExecTest) {
 	for _, test := range tests {
 		var registry = template.Registry{}
 		for fileIndex, input := range test.input {
-			var tree, err = parse.SoyFile(fmt.Sprintf("file%d.soy", fileIndex), input, globals)
+			var tree, err = parse.SoyFile(fmt.Sprintf("file%d.soy", fileIndex), input)
 			if err != nil {
 				t.Errorf("%s: parse error: %s", test.name, err)
 				continue
 			}
 			registry.Add(tree)
 		}
+		parsepasses.SetGlobals(registry, globals)
 		parsepasses.ProcessMessages(registry)
 
 		b.Reset()

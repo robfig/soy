@@ -127,7 +127,7 @@ func (b *Bundle) Compile() (*template.Registry, error) {
 	// Compile all the soy (globals are already parsed)
 	var registry = template.Registry{}
 	for _, soyfile := range b.files {
-		var tree, err = parse.SoyFile(soyfile.name, soyfile.content, b.globals)
+		var tree, err = parse.SoyFile(soyfile.name, soyfile.content)
 		if err != nil {
 			return nil, err
 		}
@@ -137,8 +137,10 @@ func (b *Bundle) Compile() (*template.Registry, error) {
 	}
 
 	// Apply the post-parse processing
-	var err = parsepasses.CheckDataRefs(registry)
-	if err != nil {
+	if err := parsepasses.CheckDataRefs(registry); err != nil {
+		return nil, err
+	}
+	if err := parsepasses.SetGlobals(registry, b.globals); err != nil {
 		return nil, err
 	}
 	parsepasses.ProcessMessages(registry)

@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/robfig/soy/ast"
-	"github.com/robfig/soy/data"
 	"github.com/robfig/soy/errortypes"
 )
 
@@ -164,8 +163,8 @@ var parseTests = []parseTest{
 
 	{"debugger", "{debugger}", tFile(&ast.DebuggerNode{0})},
 	{"global", "{GLOBAL_STR}{app.GLOBAL}", tFile(
-		&ast.PrintNode{0, &ast.GlobalNode{0, "GLOBAL_STR", data.String("a")}, nil},
-		&ast.PrintNode{0, &ast.GlobalNode{0, "app.GLOBAL", data.String("b")}, nil},
+		&ast.PrintNode{0, &ast.GlobalNode{0, "GLOBAL_STR", nil}, nil},
+		&ast.PrintNode{0, &ast.GlobalNode{0, "app.GLOBAL", nil}, nil},
 	)},
 
 	{"expression1", "{not false and (isFirst($foo) or (-$x - 5) > 3.1)}", tFile(&ast.PrintNode{0, &ast.AndNode{bin(
@@ -431,14 +430,9 @@ name="foo">
 	)},
 }
 
-var globals = data.Map{
-	"GLOBAL_STR": data.String("a"),
-	"app.GLOBAL": data.String("b"),
-}
-
 func TestParse(t *testing.T) {
 	for _, test := range parseTests {
-		tmpl, err := SoyFile(test.name, test.input, globals)
+		tmpl, err := SoyFile(test.name, test.input)
 
 		switch {
 		// case err == nil && !test.ok:
@@ -855,7 +849,7 @@ func TestRecognizeComments(t *testing.T) {
 }
 
 func TestErrorFilePos(t *testing.T) {
-	failsWithErrFilePos(t, "{blah /* { */ blah}", 1, 7)
+	failsWithErrFilePos(t, "{blah /* { */ blah}", 1, 8)
 	failsWithErrFilePos(t,
 		"{foreach $item in $items}\n"+
 			"{$item\n"+
@@ -864,21 +858,22 @@ func TestErrorFilePos(t *testing.T) {
 }
 
 func works(t *testing.T, body string) {
-	_, err := SoyFile("", body, nil)
+	_, err := SoyFile("", body)
 	if err != nil {
 		t.Error(err)
 	}
 }
 
 func fails(t *testing.T, body string) {
-	_, err := SoyFile("", body, nil)
+	_, err := SoyFile("", body)
 	if err == nil {
 		t.Errorf("should fail: %s", body)
 	}
 }
 
 func failsWithErrFilePos(t *testing.T, body string, expectedLine, expectedCol int) {
-	_, err := SoyFile("filename.soy", body, nil)
+	t.Helper()
+	_, err := SoyFile("filename.soy", body)
 	if err == nil {
 		t.Errorf("should fail: %s", body)
 		return
