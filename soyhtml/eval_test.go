@@ -18,7 +18,7 @@ func TestEvalExpr(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		var tree, err = parse.SoyFile("", "{"+test.input+"}", nil)
+		var tree, err = parse.SoyFile("", "{"+test.input+"}")
 		if err != nil {
 			t.Error(err)
 			return

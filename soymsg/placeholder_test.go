@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/robfig/soy/ast"
-	"github.com/robfig/soy/data"
 	"github.com/robfig/soy/parse"
 )
 
@@ -49,8 +48,8 @@ func TestSetPlaceholders(t *testing.T) {
 }
 
 func newMsg(msg string) *ast.MsgNode {
-	var sf, err = parse.SoyFile("", `{msg desc=""}`+msg+`{/msg}`,
-		data.Map{"GLOBAL": data.Int(1), "sub.global": data.Int(2)})
+	// TODO: data.Map{"GLOBAL": data.Int(1), "sub.global": data.Int(2)})
+	var sf, err = parse.SoyFile("", `{msg desc=""}`+msg+`{/msg}`)
 	if err != nil {
 		panic(err)
 	}

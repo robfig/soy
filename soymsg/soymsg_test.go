@@ -100,7 +100,7 @@ The set of {$setName} is {lb}
 
 func msg(meaning, desc string, body string) *ast.MsgNode {
 	var msgtmpl = fmt.Sprintf("{msg meaning=%q desc=%q}%s{/msg}", meaning, desc, body)
-	var sf, err = parse.SoyFile("", msgtmpl, nil)
+	var sf, err = parse.SoyFile("", msgtmpl)
 	if err != nil {
 		panic(err)
 	}

@@ -16,26 +16,24 @@ import (
 
 // tree is the parsed representation of a single soy file.
 type tree struct {
-	name      string                // name provided for the input
-	root      *ast.ListNode         // top-level root of the tree
-	text      string                // the full input text
-	lex       *lexer                // lexer provides a sequence of tokens
-	token     [2]item               // two-token lookahead
-	peekCount int                   // how many tokens have we backed up?
-	namespace string                // the current namespace, for fully-qualifying template.
-	aliases   map[string]string     // map from alias to namespace e.g. {"c": "a.b.c"}
-	globals   map[string]data.Value // global (compile-time constants) values by name
-	inmsg     bool                  // true while parsing children of a message node.
+	name      string            // name provided for the input
+	root      *ast.ListNode     // top-level root of the tree
+	text      string            // the full input text
+	lex       *lexer            // lexer provides a sequence of tokens
+	token     [2]item           // two-token lookahead
+	peekCount int               // how many tokens have we backed up?
+	namespace string            // the current namespace, for fully-qualifying template.
+	aliases   map[string]string // map from alias to namespace e.g. {"c": "a.b.c"}
+	inmsg     bool              // true while parsing children of a message node.
 }
 
 // SoyFile parses the input into a SoyFileNode (the AST).
 // The result may be used as input to a soy backend to generate HTML or JS.
-func SoyFile(name, text string, globals data.Map) (node *ast.SoyFileNode, err error) {
+func SoyFile(name, text string) (node *ast.SoyFileNode, err error) {
 	var t = &tree{
 		name:    name,
 		text:    text,
 		aliases: make(map[string]string),
-		globals: globals,
 		lex:     lex(name, text),
 	}
 	defer t.recover(&err)
@@ -1053,11 +1051,7 @@ func (t *tree) newGlobalNode(tok, next item) ast.Node {
 		next = t.next()
 	}
 	t.backup()
-	if value, ok := t.globals[name]; ok {
-		return &ast.GlobalNode{tok.pos, name, value}
-	}
-	t.errorf("global %q is undefined", name)
-	return nil
+	return &ast.GlobalNode{tok.pos, name, data.Undefined{}}
 }
 
 func (t *tree) newFunctionNode(tok item) ast.Node {

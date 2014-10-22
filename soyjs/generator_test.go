@@ -31,7 +31,7 @@ soy.$$escapeHtml = function(arg) { return arg; };
 {template .funcs}
 {let $place: 'world'/}
 {capitalize('hel' + 'lo')}, {capitalize($place)}
-{/template}`, nil)
+{/template}`)
 	if err != nil {
 		t.Error(err)
 		return

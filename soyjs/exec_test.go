@@ -13,6 +13,7 @@ import (
 	"github.com/robertkrimen/otto"
 	"github.com/robfig/soy/data"
 	"github.com/robfig/soy/parse"
+	"github.com/robfig/soy/parsepasses"
 )
 
 // TODO: test all types of globals
@@ -719,7 +720,7 @@ soy.$$escapeHtml = function(arg) { return arg; };
 {namespace test}
 {template .log}
 {log}Hello {$name}.{/log}
-{/template}`, nil)
+{/template}`)
 	if err != nil {
 		t.Error(err)
 		return
@@ -769,11 +770,12 @@ func runNsExecTests(t *testing.T, tests []nsExecTest) {
 		// Parse the templates, generate and run the compiled javascript.
 		var source bytes.Buffer
 		for _, input := range test.input {
-			soyfile, err := parse.SoyFile(test.name, input, globals)
+			soyfile, err := parse.SoyFile(test.name, input)
 			if err != nil {
 				t.Error(err)
 				continue
 			}
+			parsepasses.SetNodeGlobals(soyfile, globals)
 
 			var buf bytes.Buffer
 			err = Write(&buf, soyfile, Options{})
