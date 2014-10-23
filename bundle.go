@@ -102,6 +102,7 @@ func (b *Bundle) AddGlobalsFile(filename string) *Bundle {
 	if err != nil {
 		b.err = err
 	}
+	f.Close()
 	return b.AddGlobalsMap(globals)
 }
 
