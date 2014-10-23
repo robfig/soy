@@ -7,5 +7,6 @@ install:
   - go get code.google.com/p/go.tools/cmd/cover
   - go get github.com/robertkrimen/otto
   - go get gopkg.in/fsnotify.v0
+  - go get github.com/robfig/gettext-go
 script:
   - go test -cover github.com/robfig/soy/...
