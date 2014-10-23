@@ -1,0 +1,21 @@
+#.
+#: id=3329840836245051515
+msgid "A trip was taken."
+msgstr "zA ztrip zwas ztaken."
+
+#. Says hello to a person.
+#: id=6936162475751860807
+msgid "Hello {NAME}!"
+msgstr "zHello z{NAME}!"
+
+#. The word 'Archive' used as a noun, i.e. an information store.
+#: id=7224011416745566687
+msgctxt "noun"
+msgid "Archive"
+msgstr "zArchiveNoun"
+
+#. The word 'Archive' used as a verb, i.e. to store information.
+#: id=4826315192146469447
+msgctxt "verb"
+msgid "Archive"
+msgstr "zArchiveVerb"
