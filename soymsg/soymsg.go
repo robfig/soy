@@ -6,7 +6,18 @@ import (
 	"github.com/robfig/soy/ast"
 )
 
+// Provider provides access to message bundles by locale.
+type Provider interface {
+	// Bundle returns messages for the given locale, which is in the form
+	// [language_territory]. If no locale-specific messages could be found, an
+	// empty bundle is returned, which will cause all messages to use the source
+	// text.
+	Bundle(locale string) Bundle
+}
+
+// Bundle is the set of messages available in a particular locale.
 type Bundle interface {
+	// Message returns the message with the given id, or nil if none was found.
 	Message(id uint64) *Message
 }
 
