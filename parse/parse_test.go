@@ -427,6 +427,21 @@ name="foo">
 			htmltag("<input name=\"foo\">"),
 		}},
 	)},
+
+	// BUG: This test should pass. Fix is not easy.
+	// 	{"msg dataref + html", `
+	// {msg desc=""}
+	//   <a href="{$link}"></a>
+	// {/msg}`, tFile(
+	// 		&ast.MsgNode{0, 0, "", "", []ast.Node{
+	// 			&ast.MsgPlaceholderNode{0, "", tList(
+	// 				newText(0, `<a href="`),
+	// 				&ast.PrintNode{0, &ast.DataRefNode{0, "link", nil}, nil},
+	// 				newText(0, `">`),
+	// 			)},
+	// 			htmltag("</a>"),
+	// 		}},
+	// )},
 }
 
 func TestParse(t *testing.T) {

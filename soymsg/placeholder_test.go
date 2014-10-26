@@ -32,6 +32,9 @@ func TestSetPlaceholders(t *testing.T) {
 		{newMsg("<a href=foo>Click</a> <a href=bar>here</a >"),
 			"{START_LINK_1}Click{END_LINK_1} {START_LINK_2}here{END_LINK_2}"},
 
+		// BUG: Data refs + HTML
+		// {newMsg("<a href={$url}>Click</a>"), "{START_LINK}Click{END_LINK}"},
+
 		// TODO: phname
 
 		// TODO: investigate globals
