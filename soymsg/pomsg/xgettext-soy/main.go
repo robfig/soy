@@ -13,6 +13,7 @@ import (
 	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/parse"
 	"github.com/robfig/soy/parsepasses"
+	"github.com/robfig/soy/soymsg/pomsg"
 	"github.com/robfig/soy/template"
 )
 
@@ -26,7 +27,7 @@ Usage:
 INPUTPATH elements may be files or directories. Input directories will be
 recursively searched for *.soy files.
 
-The resulting PO template file is written to STDOUT
+The resulting POT (PO template) file is written to STDOUT
 `)
 }
 
@@ -84,14 +85,17 @@ type extractor struct {
 func (e extractor) extract(node ast.Node) {
 	switch node := node.(type) {
 	case *ast.MsgNode:
+		if err := pomsg.Validate(node); err != nil {
+			exit(err)
+		}
 		e.file.Messages = append(e.file.Messages, po.Message{
 			Comment: po.Comment{
 				ExtractedComments: []string{node.Desc},
 				References:        []string{fmt.Sprintf("id=%d", node.ID)},
 			},
 			Ctxt:     node.Meaning,
-			Id:       node.PlaceholderString(),
-			IdPlural: "", // TODO
+			Id:       pomsg.Msgid(node),
+			IdPlural: pomsg.MsgidPlural(node),
 		})
 	default:
 		if parent, ok := node.(ast.ParentNode); ok {

@@ -122,6 +122,7 @@ const (
 	itemMsg         // {msg ...}
 	itemNamespace   // {namespace}
 	itemParam       // {param ...}
+	itemPlural      // {plural ...}
 	itemPrint       // {print ...}
 	itemSwitch      // {switch ...}
 	itemTemplate    // {template ...}
@@ -148,6 +149,7 @@ const (
 	itemLiteralEnd     // {/literal}
 	itemMsgEnd         // {/msg}
 	itemParamEnd       // {/param}
+	itemPluralEnd      // {/plural}
 	itemSwitchEnd      // {/switch}
 	itemTemplateEnd    // {/template}
 	itemLogEnd         // {/log}
@@ -183,6 +185,7 @@ var builtinIdents = map[string]itemType{
 	"msg":       itemMsg,
 	"namespace": itemNamespace,
 	"param":     itemParam,
+	"plural":    itemPlural,
 	"print":     itemPrint,
 	"switch":    itemSwitch,
 	"template":  itemTemplate,
@@ -198,6 +201,7 @@ var builtinIdents = map[string]itemType{
 	"/log":         itemLogEnd,
 	"/msg":         itemMsgEnd,
 	"/param":       itemParamEnd,
+	"/plural":      itemPluralEnd,
 	"/switch":      itemSwitchEnd,
 	"/template":    itemTemplateEnd,
 

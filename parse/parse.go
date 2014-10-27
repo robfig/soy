@@ -138,12 +138,14 @@ func (t *tree) beginTag() ast.Node {
 	case itemMsg:
 		t.notmsg(token)
 		return t.parseMsg(token)
+	case itemPlural:
+		return t.parsePlural(token)
 	case itemForeach, itemFor:
 		t.notmsg(token)
 		return t.parseFor(token)
 	case itemSwitch:
 		t.notmsg(token)
-		return t.parseSwitch(token)
+		return t.parseSwitch(token, itemSwitchEnd)
 	case itemCall:
 		return t.parseCall(token)
 	case itemLiteral:
@@ -414,7 +416,7 @@ func (t *tree) parseCallParams() []ast.Node {
 }
 
 // "switch" has just been read.
-func (t *tree) parseSwitch(token item) ast.Node {
+func (t *tree) parseSwitch(token item, end itemType) ast.Node {
 	const ctx = "switch"
 	var switchValue = t.parseExpr(0)
 	t.expect(itemRightDelim, ctx)
@@ -430,7 +432,7 @@ func (t *tree) parseSwitch(token item) ast.Node {
 			t.unexpected(tok, "between switch cases")
 		case itemCase, itemDefault:
 			cases = append(cases, t.parseCase(tok))
-		case itemSwitchEnd:
+		case end:
 			t.expect(itemRightDelim, ctx)
 			return &ast.SwitchNode{token.pos, switchValue, cases}
 		}
@@ -448,7 +450,7 @@ func (t *tree) parseCase(token item) *ast.SwitchCaseNode {
 		case itemComma:
 			continue
 		case itemRightDelim:
-			var body = t.itemList(itemCase, itemDefault, itemSwitchEnd)
+			var body = t.itemList(itemCase, itemDefault, itemSwitchEnd, itemPluralEnd)
 			t.backup()
 			return &ast.SwitchCaseNode{token.pos, values, body}
 		default:
@@ -583,20 +585,74 @@ func (t *tree) parseMsg(token item) ast.Node {
 	var contents = t.itemList(itemMsgEnd)
 	t.inmsg = false
 
-	// Wrap the children in Placeholder nodes unless they are RawText
-	var msgchildren []ast.Node
-	for _, child := range contents.Children() {
-		switch child := child.(type) {
-		case *ast.RawTextNode:
-			msgchildren = append(msgchildren, t.parseMsgRawText(child)...)
-		default:
-			msgchildren = append(msgchildren, &ast.MsgPlaceholderNode{child.Position(), "", child})
+	// Replace children nodes with placeholders.
+	var node = &ast.MsgNode{token.pos, 0, attrs["meaning"], attrs["desc"], t.placeholderize(contents)}
+
+	// Validate: if there's a plural tag, it should be the only child
+	var hasPlural = false
+	for _, child := range node.Body.Children() {
+		if _, ok := child.(*ast.MsgPluralNode); ok {
+			hasPlural = true
 		}
 	}
+	if hasPlural && len(node.Body.Children()) != 1 {
+		t.errorf("content not allowed outside plural tag")
+	}
 
-	var node = &ast.MsgNode{token.pos, 0, attrs["meaning"], attrs["desc"], msgchildren}
 	t.expect(itemRightDelim, ctx)
 	return node
+}
+
+// "plural" has just been read
+func (t *tree) parsePlural(tok item) ast.Node {
+	const ctx = "plural"
+	if !t.inmsg {
+		t.unexpected(tok, "not in msg")
+	}
+
+	// plural and switch nodes have the same structure.
+	// BUG: the location quoted the erorr messages will not be correct.
+	var sw = t.parseSwitch(tok, itemPluralEnd).(*ast.SwitchNode)
+	var defaultNode ast.ParentNode
+	var cases []*ast.MsgPluralCaseNode
+	for _, node := range sw.Cases {
+		if len(node.Values) == 0 {
+			defaultNode = node.Body.(ast.ParentNode)
+		} else {
+			var intNode, ok = node.Values[0].(*ast.IntNode)
+			if !ok || len(node.Values) > 1 {
+				t.errorf("plural case must be a single integer, got %v", node.Values)
+			}
+			cases = append(cases, &ast.MsgPluralCaseNode{node.Pos, int(intNode.Value), node.Body.(ast.ParentNode)})
+		}
+	}
+	if defaultNode == nil {
+		t.errorf("{default} case required")
+	}
+	return &ast.MsgPluralNode{sw.Pos, "", sw.Value, cases, defaultNode}
+}
+
+// placeholderize wraps all children of the given node in placeholders as
+// necessary.  the new list of children nodes is returned.
+func (t *tree) placeholderize(parent ast.ParentNode) *ast.ListNode {
+	// Wrap the children in Placeholder nodes unless they are RawText
+	var r []ast.Node
+	for _, child := range parent.Children() {
+		switch child := child.(type) {
+		case *ast.RawTextNode:
+			r = append(r, t.parseMsgRawText(child)...)
+		case *ast.MsgPluralNode:
+			var cases []*ast.MsgPluralCaseNode
+			for _, pc := range child.Cases {
+				cases = append(cases,
+					&ast.MsgPluralCaseNode{pc.Pos, pc.Value, t.placeholderize(pc.Body.(*ast.ListNode))})
+			}
+			r = append(r, &ast.MsgPluralNode{child.Pos, "", child.Value, cases, t.placeholderize(child.Default.(*ast.ListNode))})
+		default:
+			r = append(r, &ast.MsgPlaceholderNode{child.Position(), "", child})
+		}
+	}
+	return &ast.ListNode{parent.Position(), r}
 }
 
 var (

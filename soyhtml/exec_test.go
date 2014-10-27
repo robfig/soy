@@ -797,6 +797,24 @@ func newFakeBundle(msg, tran string) fakeBundle {
 	return fakeBundle{msgnode.ID: &m}
 }
 
+func newFakePluralBundle(pluralVar, msg1, msg2, singular, plural string) fakeBundle {
+	var sf, err = parse.SoyFile("", `{msg desc=""}
+{plural `+pluralVar+`}
+  {case 1}`+msg1+`
+  {default}`+msg2+`
+{/plural}
+{/msg}`)
+	if err != nil {
+		panic(err)
+	}
+	var msgnode = sf.Body[0].(*ast.MsgNode)
+	soymsg.SetPlaceholdersAndID(msgnode)
+	return fakeBundle{msgnode.ID: &soymsg.Message{0, []soymsg.Case{
+		{soymsg.PluralSpec{soymsg.PluralSpecExplicit, 1}, soymsg.Parts(singular)},
+		{soymsg.PluralSpec{soymsg.PluralSpecOther, -1}, soymsg.Parts(plural)},
+	}}}
+}
+
 func TestMessages(t *testing.T) {
 	runNsExecTests(t, []nsExecTest{
 		{"no bundle", "test.main", []string{`{namespace test}
@@ -853,6 +871,62 @@ func TestMessages(t *testing.T) {
   {/msg}
 {/template}`}, "<a>Click here</a>", nil,
 			newFakeBundle("Click <a>here</a>", "{START_LINK}Click here{END_LINK}"), true},
+
+		{"plural, not found, singular", "test.main", []string{`{namespace test}
+/** @param n */
+{template .main}
+  {msg desc=""}
+    {plural $n}
+    {case 1}
+      one user
+    {default}
+      {$n} users
+    {/plural}
+  {/msg}
+{/template}`}, "one user", d{"n": 1},
+			nil, true},
+
+		{"plural, not found, plural", "test.main", []string{`{namespace test}
+/** @param n */
+{template .main}
+  {msg desc=""}
+    {plural $n}
+    {case 1}
+      one user
+    {default}
+      {$n} users
+    {/plural}
+  {/msg}
+{/template}`}, "11 users", d{"n": 11},
+			nil, true},
+
+		{"plural, singular", "test.main", []string{`{namespace test}
+/** @param n */
+{template .main}
+  {msg desc=""}
+    {plural $n}
+    {case 1}
+      one user
+    {default}
+      {$n} users
+    {/plural}
+  {/msg}
+{/template}`}, "|one user|", d{"n": 1},
+			newFakePluralBundle("$n", "one user", "{$n} users", "|one user|", "|({N_2}) users|"), true},
+
+		{"plural, plural", "test.main", []string{`{namespace test}
+/** @param n */
+{template .main}
+  {msg desc=""}
+    {plural $n}
+    {case 1}
+      one user
+    {default}
+      {$n} users
+    {/plural}
+  {/msg}
+{/template}`}, "|(10) users|", d{"n": 10},
+			newFakePluralBundle("$n", "one user", "{$n} users", "|one user|", "|({N_2}) users|"), true},
 	})
 }
 

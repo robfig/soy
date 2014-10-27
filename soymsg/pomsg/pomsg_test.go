@@ -3,8 +3,6 @@ package pomsg
 import (
 	"reflect"
 	"testing"
-
-	"github.com/robfig/soy/soymsg"
 )
 
 func TestPOBundle(t *testing.T) {
@@ -35,7 +33,7 @@ func TestPOBundle(t *testing.T) {
 			t.Errorf("msg not found: %v", test.id)
 		}
 
-		var expected = soymsg.NewMessage(test.id, test.str)
+		var expected = newMessageSingular(test.id, test.str)
 		if !reflect.DeepEqual(&expected, actual) {
 			t.Errorf("expected:\n%v\ngot:\n%v", expected, actual)
 		}
@@ -46,6 +44,7 @@ func TestPOBundleNotFound(t *testing.T) {
 	var pomsgs, err = Dir("testdata")
 	if err != nil {
 		t.Error(err)
+		return
 	}
 
 	var bundle = pomsgs.Bundle("xx")

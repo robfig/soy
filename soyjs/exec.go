@@ -503,7 +503,33 @@ func (s *state) visitSwitch(node *ast.SwitchNode) {
 
 // TODO: {msg} node translation is unimplemented
 func (s *state) visitMsg(node *ast.MsgNode) {
-	for _, n := range node.Body {
+	var pluralNode, ok = node.Body.Children()[0].(*ast.MsgPluralNode)
+	if !ok {
+		s.visitMsgBody(node)
+		return
+	}
+
+	s.jsln("switch (", pluralNode.Value, ") {")
+	s.indentLevels++
+	for _, pluralCase := range pluralNode.Cases {
+		s.jsln("case ", pluralCase.Value, ":")
+		s.indentLevels++
+		s.visitMsgBody(pluralCase.Body)
+		s.jsln("break;")
+		s.indentLevels--
+	}
+	{
+		s.jsln("default:")
+		s.indentLevels++
+		s.visitMsgBody(pluralNode.Default)
+		s.indentLevels--
+	}
+	s.indentLevels--
+	s.jsln("}")
+}
+
+func (s *state) visitMsgBody(node ast.ParentNode) {
+	for _, n := range node.Children() {
 		switch n := n.(type) {
 		case *ast.RawTextNode:
 			s.walk(n)

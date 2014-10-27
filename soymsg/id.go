@@ -3,6 +3,7 @@ package soymsg
 import (
 	"bytes"
 	"fmt"
+	"strconv"
 
 	"github.com/robfig/soy/ast"
 )
@@ -12,16 +13,7 @@ import (
 // It is invariant to changes in description.
 func calcID(n *ast.MsgNode) uint64 {
 	var buf bytes.Buffer
-	for _, part := range n.Body {
-		switch part := part.(type) {
-		case *ast.RawTextNode:
-			buf.Write(part.Text)
-		case *ast.MsgPlaceholderNode:
-			buf.WriteString(part.Name)
-		default:
-			panic(fmt.Sprintf("unrecognized type %T", part))
-		}
-	}
+	writeFingerprint(&buf, n, false)
 
 	var fp = fingerprint(buf.Bytes())
 	if n.Meaning != "" {
@@ -33,6 +25,42 @@ func calcID(n *ast.MsgNode) uint64 {
 	}
 
 	return fp & 0x7fffffffffffffff
+}
+
+// writeFingerprint writes the string used to fingerprint a message to the buffer.
+// if braces is true, the string written has placeholders surrounded by braces.
+// Plural messages always have braced placeholders.
+func writeFingerprint(buf *bytes.Buffer, part ast.Node, braces bool) {
+	switch part := part.(type) {
+	case *ast.MsgNode:
+		for _, part := range part.Body.Children() {
+			writeFingerprint(buf, part, braces)
+		}
+	case *ast.RawTextNode:
+		buf.Write(part.Text)
+	case *ast.MsgPlaceholderNode:
+		if braces {
+			buf.WriteString("{" + part.Name + "}")
+		} else {
+			buf.WriteString(part.Name)
+		}
+	case *ast.MsgPluralNode:
+		buf.WriteString("{" + part.VarName + ",plural,")
+		for _, plCase := range part.Cases {
+			buf.WriteString("=" + strconv.Itoa(plCase.Value) + "{")
+			for _, child := range plCase.Body.Children() {
+				writeFingerprint(buf, child, true)
+			}
+			buf.WriteString("}")
+		}
+		buf.WriteString("other{")
+		for _, child := range part.Default.Children() {
+			writeFingerprint(buf, child, true)
+		}
+		buf.WriteString("}}")
+	default:
+		panic(fmt.Sprintf("unrecognized type %T", part))
+	}
 }
 
 // fingerprinting functions ported from official Soy, so that we end up with the

@@ -12,21 +12,13 @@ import (
 // setPlaceholderNames generates the placeholder names for all children of the
 // given message node, setting the .Name property on them.
 func setPlaceholderNames(n *ast.MsgNode) {
-	// This follows the same algorithm as official Soy.
-	// Read the comments there for help following this.
+	// Step 1: Determine representative nodes and build preliminary map
 	var (
 		baseNameToRepNodes  = make(map[string][]ast.Node)
 		equivNodeToRepNodes = make(map[ast.Node]ast.Node)
 	)
 
-	var nodeQueue []ast.Node
-	for _, child := range n.Body {
-		switch child := child.(type) {
-		case *ast.MsgPlaceholderNode:
-			nodeQueue = append(nodeQueue, child)
-		}
-	}
-
+	var nodeQueue []ast.Node = phNodes(n.Body)
 	for len(nodeQueue) > 0 {
 		var node = nodeQueue[0]
 		nodeQueue = nodeQueue[1:]
@@ -34,7 +26,10 @@ func setPlaceholderNames(n *ast.MsgNode) {
 		var baseName string
 		switch node := node.(type) {
 		case *ast.MsgPlaceholderNode:
-			baseName = genBasePlaceholderName(node.Body)
+			baseName = genBasePlaceholderName(node.Body, "XXX")
+		case *ast.MsgPluralNode:
+			nodeQueue = append(nodeQueue, pluralCaseBodies(node)...)
+			baseName = genBasePlaceholderName(node.Value, "NUM")
 		default:
 			panic("unexpected")
 		}
@@ -43,9 +38,9 @@ func setPlaceholderNames(n *ast.MsgNode) {
 			baseNameToRepNodes[baseName] = []ast.Node{node}
 		} else {
 			var isNew = true
-			var str = node.(*ast.MsgPlaceholderNode).Body.String()
+			var str = node.String()
 			for _, other := range nodes {
-				if other.(*ast.MsgPlaceholderNode).Body.String() == str {
+				if other.String() == str {
 					equivNodeToRepNodes[other] = node
 					isNew = false
 					break
@@ -57,10 +52,11 @@ func setPlaceholderNames(n *ast.MsgNode) {
 		}
 	}
 
-	var phNameToRepNodes = make(map[string]ast.Node)
+	// Step 2: Build final maps of name to representative node
+	var nameToRepNodes = make(map[string]ast.Node)
 	for baseName, nodes := range baseNameToRepNodes {
 		if len(nodes) == 1 {
-			phNameToRepNodes[baseName] = nodes[0]
+			nameToRepNodes[baseName] = nodes[0]
 			continue
 		}
 
@@ -68,8 +64,8 @@ func setPlaceholderNames(n *ast.MsgNode) {
 		for _, node := range nodes {
 			for {
 				var newName = baseName + "_" + strconv.Itoa(nextSuffix)
-				if _, ok := phNameToRepNodes[newName]; !ok {
-					phNameToRepNodes[newName] = node
+				if _, ok := nameToRepNodes[newName]; !ok {
+					nameToRepNodes[newName] = node
 					break
 				}
 				nextSuffix++
@@ -77,36 +73,61 @@ func setPlaceholderNames(n *ast.MsgNode) {
 		}
 	}
 
-	var phNodeToName = make(map[ast.Node]string)
-	for name, node := range phNameToRepNodes {
-		phNodeToName[node] = name
+	// Step 3: Create maps of every node to its name
+	var nodeToName = make(map[ast.Node]string)
+	for name, node := range nameToRepNodes {
+		nodeToName[node] = name
 	}
 	for repNode, other := range equivNodeToRepNodes {
-		phNodeToName[other] = phNodeToName[repNode]
+		nodeToName[other] = nodeToName[repNode]
 	}
 
-	for phn, name := range phNodeToName {
-		switch phn := phn.(type) {
+	// Step 4: Set the calculated names on all the nodes.
+	for node, name := range nodeToName {
+		switch node := node.(type) {
 		case *ast.MsgPlaceholderNode:
-			phn.Name = name
+			node.Name = name
+		case *ast.MsgPluralNode:
+			node.VarName = name
 		default:
-			panic("unexpected: " + phn.String())
+			panic("unexpected: " + node.String())
 		}
 	}
 }
 
-func genBasePlaceholderName(node ast.Node) string {
+func phNodes(n ast.ParentNode) []ast.Node {
+	var nodeQueue []ast.Node
+	for _, child := range n.Children() {
+		switch child := child.(type) {
+		case *ast.MsgPlaceholderNode, *ast.MsgPluralNode:
+			nodeQueue = append(nodeQueue, child)
+		}
+	}
+	return nodeQueue
+}
+
+func pluralCaseBodies(node *ast.MsgPluralNode) []ast.Node {
+	var r []ast.Node
+	for _, plCase := range node.Cases {
+		r = append(r, phNodes(plCase.Body)...)
+	}
+	return append(r, phNodes(node.Default)...)
+}
+
+func genBasePlaceholderName(node ast.Node, defaultName string) string {
 	// TODO: user supplied placeholder (phname)
 	switch part := node.(type) {
 	case *ast.PrintNode:
-		return genBasePlaceholderNameFromExpr(part.Arg)
+		return genBasePlaceholderNameFromExpr(part.Arg, defaultName)
 	case *ast.MsgHtmlTagNode:
 		return genBasePlaceholderNameFromHtml(part)
+	case *ast.DataRefNode:
+		return genBasePlaceholderNameFromExpr(node, defaultName)
 	}
-	return "XXX"
+	return defaultName
 }
 
-func genBasePlaceholderNameFromExpr(expr ast.Node) string {
+func genBasePlaceholderNameFromExpr(expr ast.Node, defaultName string) string {
 	switch expr := expr.(type) {
 	case *ast.GlobalNode:
 		return toUpperUnderscore(expr.Name)
@@ -119,7 +140,7 @@ func genBasePlaceholderNameFromExpr(expr ast.Node) string {
 			return toUpperUnderscore(lastChild.Key)
 		}
 	}
-	return "XXX"
+	return defaultName
 }
 
 var htmlTagNames = map[string]string{

@@ -43,7 +43,7 @@ func TestSetPlaceholders(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		var actual = test.node.PlaceholderString()
+		var actual = PlaceholderString(test.node)
 		if actual != test.phstr {
 			t.Errorf("(actual) %v != %v (expected)", actual, test.phstr)
 		}
@@ -91,7 +91,7 @@ func TestBaseName(t *testing.T) {
 			return
 		}
 
-		var actual = genBasePlaceholderName(&ast.PrintNode{0, n, nil})
+		var actual = genBasePlaceholderName(&ast.PrintNode{0, n, nil}, "XXX")
 		if actual != test.ph {
 			t.Errorf("(actual) %v != %v (expected)", actual, test.ph)
 		}

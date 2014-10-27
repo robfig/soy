@@ -31,8 +31,8 @@ func TestNewMessage(t *testing.T) {
 
 	for _, test := range tests {
 		var msg = NewMessage(0, test.input)
-		if !reflect.DeepEqual(msg.Parts, test.output) {
-			t.Errorf("(actual) %v != %v (expected)", msg.Parts, test.output)
+		if !reflect.DeepEqual(msg.Cases[0].Parts, test.output) {
+			t.Errorf("(actual) %v != %v (expected)", msg.Cases[0].Parts, test.output)
 		}
 	}
 }
@@ -47,7 +47,7 @@ func TestFeatureExtractedMsgs(t *testing.T) {
 		phstr string
 	}
 
-	// test data taken from closure-templates/exaples/examples_extract.xlf
+	// test data taken from closure-templates/examples/examples_extracted.xlf
 	var tests = []test{
 		// Simple messages
 		{msg("noun", "The word 'Archive' used as a noun, i.e. an information store.", "Archive"),
@@ -82,6 +82,18 @@ The set of {$setName} is {lb}
 , ...{rb}.`),
 			135956960462609535, "The set of {SET_NAME} is {{XXX}, ...}."},
 
+		// Plural
+
+		// TODO: Clarify with closure-templates mailing list whether ids should be
+		// calculated with braced PHs or not.  Presently we do not use braced phs for id.
+		{msg("", "The number of eggs you need.", `
+{plural $eggs}
+  {case 1}You have one egg
+  {default}You have {$eggs} eggs
+{/plural}`),
+			176798647517908084, "{EGGS_1,plural,=1{You have one egg}other{You have {EGGS_2} eggs}}"},
+		// would be 8336954131281929964 without/ braced phs
+
 		// TODO: Add test that needs placeholder index
 		// TODO: Test equivalent nodes
 	}
@@ -92,8 +104,9 @@ The set of {$setName} is {lb}
 			t.Errorf("(actual) %v != %v (expected)", test.msg.ID, test.id)
 		}
 
-		if test.phstr != test.msg.PlaceholderString() {
-			t.Errorf("(actual) %v != %v (expected)", test.msg.PlaceholderString(), test.phstr)
+		var actual = PlaceholderString(test.msg)
+		if test.phstr != actual {
+			t.Errorf("(actual) %v != %v (expected)", actual, test.phstr)
 		}
 	}
 }

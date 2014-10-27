@@ -341,21 +341,32 @@ func (s *state) evalPrint(node *ast.PrintNode) {
 }
 
 func (s *state) evalMsg(node *ast.MsgNode) {
+	// If plural, get the right case.
+	var body, plSpec = s.msgBody(node)
+
 	// If no bundle was provided, walk the message sub-nodes.
 	if s.msgs == nil {
-		s.walkMsg(node)
+		s.walkMsgBody(body)
 		return
 	}
 
 	// Look up the message in the bundle.
 	var msg = s.msgs.Message(node.ID)
 	if msg == nil {
-		s.walkMsg(node)
+		s.walkMsgBody(body)
 		return
 	}
 
-	// Translated message found.  Render each part.
-	for _, part := range msg.Parts {
+	// Translated message found.  Get the right plural case.
+	var parts []soymsg.Part
+	for _, plCase := range msg.Cases {
+		if plCase.Spec == plSpec {
+			parts = plCase.Parts
+		}
+	}
+
+	// Render each part.
+	for _, part := range parts {
 		if part.Content != "" {
 			if _, err := io.WriteString(s.wr, part.Content); err != nil {
 				s.errorf("%s", err)
@@ -366,7 +377,7 @@ func (s *state) evalMsg(node *ast.MsgNode) {
 		// It's a placeholder
 		// Find the right node to walk.
 		var found = false
-		for _, phnode := range node.Body {
+		for _, phnode := range body.Children() {
 			if phnode, ok := phnode.(*ast.MsgPlaceholderNode); ok && phnode.Name == part.Placeholder {
 				s.walk(phnode.Body)
 				found = true
@@ -374,13 +385,36 @@ func (s *state) evalMsg(node *ast.MsgNode) {
 			}
 		}
 		if !found {
-			s.errorf("failed to find placeholder %q in %v", part.Placeholder, node.PlaceholderString())
+			s.errorf("failed to find placeholder %q in %v", part.Placeholder, body)
 		}
 	}
 }
 
-func (s *state) walkMsg(node *ast.MsgNode) {
-	for _, n := range node.Body {
+// msgBody returns the selected plural case, or the message body if no
+// pluralization is required.
+func (s *state) msgBody(msg *ast.MsgNode) (ast.ParentNode, soymsg.PluralSpec) {
+	// TODO: Very brittle. Depends on msg body being a ListNode
+	var pluralNode, ok = msg.Body.Children()[0].(*ast.MsgPluralNode)
+	if !ok {
+		return msg.Body, soymsg.PluralSpec{soymsg.PluralSpecOther, -1}
+	}
+
+	var pluralValue = s.eval(pluralNode.Value)
+	pluralIntValue, ok := pluralValue.(data.Int)
+	if !ok {
+		s.errorf("plural argument must be integer, got %T", pluralValue)
+	}
+
+	for _, pluralCase := range pluralNode.Cases {
+		if int(pluralIntValue) == pluralCase.Value {
+			return pluralCase.Body, soymsg.PluralSpec{soymsg.PluralSpecExplicit, pluralCase.Value}
+		}
+	}
+	return pluralNode.Default, soymsg.PluralSpec{soymsg.PluralSpecOther, -1}
+}
+
+func (s *state) walkMsgBody(node ast.ParentNode) {
+	for _, n := range node.Children() {
 		switch n := n.(type) {
 		case *ast.RawTextNode:
 			s.walk(n)

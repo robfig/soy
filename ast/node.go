@@ -303,20 +303,7 @@ type MsgNode struct {
 	ID      uint64
 	Meaning string
 	Desc    string
-	Body    []Node // RawTextNode or MsgPlaceholderNode
-}
-
-func (n *MsgNode) PlaceholderString() string {
-	var buf bytes.Buffer
-	for _, child := range n.Body {
-		switch child := child.(type) {
-		case *RawTextNode:
-			buf.Write(child.Text)
-		case *MsgPlaceholderNode:
-			buf.Write([]byte("{" + child.Name + "}"))
-		}
-	}
-	return buf.String()
+	Body    ParentNode // top-level children: RawTextNode, MsgPlaceholderNode, MsgPluralNode
 }
 
 func (n *MsgNode) String() string {
@@ -324,25 +311,11 @@ func (n *MsgNode) String() string {
 	if n.Meaning != "" {
 		meaning = fmt.Sprintf(" meaning=%q ", n.Meaning)
 	}
-
-	var buf bytes.Buffer
-	buf.WriteString(fmt.Sprintf("{msg%sdesc=%q}", meaning, n.Desc))
-	for _, child := range n.Body {
-		switch child := child.(type) {
-		case *RawTextNode:
-			buf.Write(child.Text)
-		case *MsgPlaceholderNode:
-			buf.WriteString(child.Body.String())
-		case *MsgHtmlTagNode:
-			buf.Write(child.Text)
-		}
-	}
-	buf.WriteString("{/msg}")
-	return buf.String()
+	return fmt.Sprintf("{msg%sdesc=%q}%s{/msg}", meaning, n.Desc, n.Body.String())
 }
 
 func (n *MsgNode) Children() []Node {
-	return n.Body
+	return n.Body.Children()
 }
 
 type MsgPlaceholderNode struct {
@@ -366,6 +339,47 @@ type MsgHtmlTagNode struct {
 
 func (n *MsgHtmlTagNode) String() string {
 	return string(n.Text)
+}
+
+type MsgPluralNode struct {
+	Pos
+	VarName string
+	Value   Node
+	Cases   []*MsgPluralCaseNode
+	Default ParentNode
+}
+
+func (n *MsgPluralNode) String() string {
+	var expr = "{plural " + n.Value.String() + "}"
+	for _, caseNode := range n.Cases {
+		expr += caseNode.String()
+	}
+	expr += "{default}" + n.Default.String()
+	return expr + "{/plural}"
+}
+
+func (n *MsgPluralNode) Children() []Node {
+	var children []Node
+	children = append(children, n.Value)
+	for _, plCase := range n.Cases {
+		children = append(children, plCase)
+	}
+	children = append(children, n.Default)
+	return children
+}
+
+type MsgPluralCaseNode struct {
+	Pos
+	Value int
+	Body  ParentNode // top level children: RawTextNode, MsgPlaceholderNode
+}
+
+func (n *MsgPluralCaseNode) String() string {
+	return "{case " + strconv.Itoa(n.Value) + "}" + n.Body.String()
+}
+
+func (n *MsgPluralCaseNode) Children() []Node {
+	return []Node{n.Body}
 }
 
 type CallNode struct {

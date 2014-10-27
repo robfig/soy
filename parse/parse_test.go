@@ -24,7 +24,7 @@ func newList(pos ast.Pos) *ast.ListNode {
 	return &ast.ListNode{Pos: pos}
 }
 
-func tList(nodes ...ast.Node) ast.Node {
+func tList(nodes ...ast.Node) *ast.ListNode {
 	n := newList(0)
 	n.Nodes = nodes
 	return n
@@ -316,7 +316,7 @@ var parseTests = []parseTest{
 					&ast.DataRefNode{0, "items", []ast.Node{&ast.DataRefKeyNode{0, false, "length"}}},
 					&ast.IntNode{0, 1})}}},
 			tList(
-				&ast.MsgNode{0, 0, "verb", "Numbered item.", []ast.Node{
+				&ast.MsgNode{0, 0, "verb", "Numbered item.", tList(
 					&ast.MsgPlaceholderNode{0, "",
 						&ast.PrintNode{0, &ast.DataRefNode{0, "i", nil}, nil}},
 
@@ -329,7 +329,7 @@ var parseTests = []parseTest{
 									&ast.IntNode{0, 1})}}}}, nil}},
 
 					newText(0, "\n"),
-				}},
+				)},
 			),
 			nil},
 	)},
@@ -409,7 +409,7 @@ var parseTests = []parseTest{
 ><input
 name="foo">
 {/msg}`, tFile(
-		&ast.MsgNode{0, 0, "", "", []ast.Node{
+		&ast.MsgNode{0, 0, "", "", tList(
 			htmltag("<A >"),
 			newText(0, " "),
 			&ast.MsgPlaceholderNode{0, "", &ast.PrintNode{0, &ast.DataRefNode{0, "i", nil}, nil}},
@@ -425,7 +425,7 @@ name="foo">
 			htmltag("</b>"),
 			htmltag("<input>"), // due to line joining
 			htmltag("<input name=\"foo\">"),
-		}},
+		)},
 	)},
 
 	// BUG: This test should pass. Fix is not easy.
@@ -442,6 +442,28 @@ name="foo">
 	// 			htmltag("</a>"),
 	// 		}},
 	// )},
+
+	{"plural", `
+	{msg desc=""}
+    {plural length($users)}
+      {case 1}
+        1 user
+      {default}
+        {length($users)} users
+    {/plural}
+	{/msg}`, tFile(
+		&ast.MsgNode{0, 0, "", "", tList(
+			&ast.MsgPluralNode{0, "",
+				&ast.FunctionNode{0, "length", []ast.Node{&ast.DataRefNode{0, "users", nil}}},
+				[]*ast.MsgPluralCaseNode{{0, 1, tList(newText(0, "1 user"))}},
+				tList(&ast.MsgPlaceholderNode{0, "",
+					&ast.PrintNode{0,
+						&ast.FunctionNode{0, "length", []ast.Node{&ast.DataRefNode{0, "users", nil}}}, nil}},
+					newText(0, " users"),
+				),
+			},
+		)},
+	)},
 }
 
 func TestParse(t *testing.T) {
@@ -578,11 +600,19 @@ func eqTree(t *testing.T, expected, actual ast.Node) bool {
 	case *ast.MsgNode:
 		return eqstr(t, "msg", expected.(*ast.MsgNode).Desc, actual.(*ast.MsgNode).Desc) &&
 			eqstr(t, "msg", expected.(*ast.MsgNode).Meaning, actual.(*ast.MsgNode).Meaning) &&
-			eqNodes(t, expected.(*ast.MsgNode).Body, actual.(*ast.MsgNode).Body)
+			eqTree(t, expected.(*ast.MsgNode).Body, actual.(*ast.MsgNode).Body)
 	case *ast.MsgPlaceholderNode:
 		return eqTree(t, expected.(*ast.MsgPlaceholderNode).Body, actual.(*ast.MsgPlaceholderNode).Body)
 	case *ast.MsgHtmlTagNode:
 		return eqstr(t, "msghtmltag", string(expected.(*ast.MsgHtmlTagNode).Text), string(actual.(*ast.MsgHtmlTagNode).Text))
+	case *ast.MsgPluralNode:
+		return eqTree(t, expected.(*ast.MsgPluralNode).Value, actual.(*ast.MsgPluralNode).Value) &&
+			eqNodes(t, expected.(*ast.MsgPluralNode).Cases, actual.(*ast.MsgPluralNode).Cases) &&
+			eqTree(t, expected.(*ast.MsgPluralNode).Default, actual.(*ast.MsgPluralNode).Default)
+	case *ast.MsgPluralCaseNode:
+		return eqTree(t, expected.(*ast.MsgPluralCaseNode).Body, actual.(*ast.MsgPluralCaseNode).Body) &&
+			eqint(t, "case value", int64(expected.(*ast.MsgPluralCaseNode).Value), int64(actual.(*ast.MsgPluralCaseNode).Value))
+
 	case *ast.CallNode:
 		return eqstr(t, "call", expected.(*ast.CallNode).Name, actual.(*ast.CallNode).Name) &&
 			eqTree(t, expected.(*ast.CallNode).Data, actual.(*ast.CallNode).Data) &&
@@ -694,6 +724,22 @@ func printTree(t *testing.T, n ast.Node, depth int) {
 			//t.Logf("does not implement: %T", f.Interface())
 		}
 	}
+}
+
+func TestPlural(t *testing.T) {
+	// Content outside of plural cases
+	works(t, `{msg desc=""}{plural $n}{default}{/plural}{/msg}`)
+	fails(t, `{msg desc=""}{plural $n}No content allowed{default}{/plural}{/msg}`)
+	works(t, `{msg desc=""}{plural $n} {default}{/plural}{/msg}`)
+	works(t, `{msg desc=""}{plural $n} /* whitespace and comments ok */ {default}{/plural}{/msg}`)
+
+	// Content in msg outside plural
+	fails(t, `{msg desc=""}{plural $n}{default}{/plural}after{/msg}`)
+	fails(t, `{msg desc=""}before{plural $n}{default}{/plural}{/msg}`)
+
+	// Default case required
+	fails(t, `{msg desc=""}{plural $n}{/plural}{/msg}`)
+	fails(t, `{msg desc=""}{plural $n}{case 1}one{/plural}{/msg}`)
 }
 
 // Parser tests imported from the official Soy project
