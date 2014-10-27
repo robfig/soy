@@ -204,6 +204,21 @@
 
 
 /**
+ * Demo 'plural'.
+ * @param eggs The number of eggs you need to buy
+ */
+{template .demoPlural}
+    {msg desc="The number of eggs you need."}
+      {plural $eggs}
+        {case 1}You have one egg
+        {default}You have {$eggs} eggs
+      {/plural}
+    {/msg}
+  <br>
+{/template}
+
+
+/**
  * Demo 'switch'.
  * @param name The name of a kid.
  */

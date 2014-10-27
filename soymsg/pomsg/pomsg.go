@@ -75,7 +75,14 @@ func newBundle(file po.File) (*bundle, error) {
 		if id == 0 {
 			return nil, fmt.Errorf("no id found in message: %#v", msg)
 		}
-		msgs[id] = soymsg.NewMessage(id, msg.Str[0]) // TODO: Plural
+		if len(msg.Str) > 2 {
+			return nil, fmt.Errorf("only one plural is supported (msg %v has %v)", msg.Id, len(msg.Str))
+		}
+		if len(msg.Str) == 2 {
+			msgs[id] = newMessagePlural(id, msg.Str[0], msg.Str[1])
+		} else {
+			msgs[id] = newMessageSingular(id, msg.Str[0])
+		}
 	}
 	return &bundle{msgs}, nil
 }
@@ -86,4 +93,17 @@ func (b *bundle) Message(id uint64) *soymsg.Message {
 		return nil
 	}
 	return &msg
+}
+
+func newMessageSingular(id uint64, singular string) soymsg.Message {
+	return soymsg.Message{id, []soymsg.Case{
+		{soymsg.PluralSpec{soymsg.PluralSpecOther, -1}, soymsg.Parts(singular)},
+	}}
+}
+
+func newMessagePlural(id uint64, singular, plural string) soymsg.Message {
+	return soymsg.Message{id, []soymsg.Case{
+		{soymsg.PluralSpec{soymsg.PluralSpecExplicit, 1}, soymsg.Parts(singular)},
+		{soymsg.PluralSpec{soymsg.PluralSpecOther, -1}, soymsg.Parts(plural)},
+	}}
 }

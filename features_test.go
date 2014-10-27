@@ -79,6 +79,10 @@ BB<br>` +
 			`Archive<br>` +
 			`Archive<br>`},
 
+	{"demoPlural", d{"eggs": 1}, "You have one egg<br>"},
+	{"demoPlural", d{"eggs": 2}, "You have 2 eggs<br>"},
+	{"demoPlural", d{"eggs": 0}, "You have 0 eggs<br>"},
+
 	{"demoIf", d{"pi": 3.14159}, `3.14159 is a good approximation of pi.<br>`},
 	{"demoIf", d{"pi": 2.71828}, `2.71828 is a bad approximation of pi.<br>`},
 	{"demoIf", d{"pi": 1.61803}, `1.61803 is nowhere near the value of pi.<br>`},

@@ -19,3 +19,9 @@ msgstr "zArchiveNoun"
 msgctxt "verb"
 msgid "Archive"
 msgstr "zArchiveVerb"
+
+#: id=176798647517908084
+msgid "You have one egg"
+msgid_plural "You have {EGGS_2} eggs"
+msgstr[0] "zYou zhave z{$EGGS_2} zegg"
+msgstr[1] "zYou zhave z{$EGGS_2} zeggs"
