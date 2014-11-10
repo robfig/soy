@@ -341,76 +341,89 @@ func (s *state) evalPrint(node *ast.PrintNode) {
 }
 
 func (s *state) evalMsg(node *ast.MsgNode) {
-	// If plural, get the right case.
-	var body, plSpec = s.msgBody(node)
-
 	// If no bundle was provided, walk the message sub-nodes.
 	if s.msgs == nil {
-		s.walkMsgBody(body)
+		s.walkMsgBody(node.Body)
 		return
 	}
 
 	// Look up the message in the bundle.
 	var msg = s.msgs.Message(node.ID)
 	if msg == nil {
-		s.walkMsgBody(body)
+		s.walkMsgBody(node.Body)
 		return
 	}
 
-	// Translated message found.  Get the right plural case.
-	var parts []soymsg.Part
-	for _, plCase := range msg.Cases {
-		if plCase.Spec == plSpec {
-			parts = plCase.Parts
-		}
-	}
-
 	// Render each part.
+	s.evalMsgParts(node, msg.Parts)
+}
+
+func (s *state) evalMsgParts(msgNode *ast.MsgNode, parts []soymsg.Part) {
 	for _, part := range parts {
-		if part.Content != "" {
-			if _, err := io.WriteString(s.wr, part.Content); err != nil {
+		switch part := part.(type) {
+
+		case soymsg.RawTextPart:
+			if _, err := io.WriteString(s.wr, part.Text); err != nil {
 				s.errorf("%s", err)
 			}
-			continue
-		}
 
-		// It's a placeholder
-		// Find the right node to walk.
-		var found = false
-		for _, phnode := range body.Children() {
-			if phnode, ok := phnode.(*ast.MsgPlaceholderNode); ok && phnode.Name == part.Placeholder {
-				s.walk(phnode.Body)
-				found = true
-				break
+		case soymsg.PlaceholderPart:
+			// Find the node corresponding to the placeholder, and walk it.
+			var phnode = msgNode.Placeholder(part.Name)
+			if phnode == nil {
+				s.errorf("failed to find placeholder %q in %q",
+					part.Name, soymsg.PlaceholderString(msgNode))
 			}
-		}
-		if !found {
-			s.errorf("failed to find placeholder %q in %v", part.Placeholder, body)
+			s.walk(phnode.Body)
+
+		case soymsg.PluralPart:
+			// Find the corresponding node for this part and evaluate the argument.
+			var (
+				pluralNode         = s.findPluralNode(msgNode, part.VarName)
+				pluralValue        = s.eval(pluralNode.Value)
+				pluralIntValue, ok = pluralValue.(data.Int)
+			)
+			if !ok {
+				s.errorf("plural argument must be integer, got %T", pluralValue)
+			}
+
+			// Execute the right plural case
+			var pluralCaseIndex = s.msgs.PluralCase(int(pluralIntValue))
+			if pluralCaseIndex >= len(part.Cases) {
+				s.errorf("plural case index out of bounds (n=%v, len(cases)=%v)",
+					pluralCaseIndex, len(part.Cases))
+			}
+			var pluralCase = part.Cases[pluralCaseIndex]
+			s.evalMsgParts(msgNode, pluralCase.Parts)
 		}
 	}
 }
 
-// msgBody returns the selected plural case, or the message body if no
-// pluralization is required.
-func (s *state) msgBody(msg *ast.MsgNode) (ast.ParentNode, soymsg.PluralSpec) {
-	// TODO: Very brittle. Depends on msg body being a ListNode
-	var pluralNode, ok = msg.Body.Children()[0].(*ast.MsgPluralNode)
-	if !ok {
-		return msg.Body, soymsg.PluralSpec{soymsg.PluralSpecOther, -1}
-	}
-
-	var pluralValue = s.eval(pluralNode.Value)
-	pluralIntValue, ok := pluralValue.(data.Int)
-	if !ok {
-		s.errorf("plural argument must be integer, got %T", pluralValue)
-	}
-
-	for _, pluralCase := range pluralNode.Cases {
-		if int(pluralIntValue) == pluralCase.Value {
-			return pluralCase.Body, soymsg.PluralSpec{soymsg.PluralSpecExplicit, pluralCase.Value}
+func (s *state) findPluralNode(node *ast.MsgNode, pluralVarName string) *ast.MsgPluralNode {
+	for _, plnode := range node.Body.Children() {
+		if plnode, ok := plnode.(*ast.MsgPluralNode); ok && plnode.VarName == pluralVarName {
+			return plnode
 		}
 	}
-	return pluralNode.Default, soymsg.PluralSpec{soymsg.PluralSpecOther, -1}
+	s.errorf("failed to find placeholder %q in %v", pluralVarName, node.Body)
+	panic("unreachable")
+}
+
+func (s *state) walkPlural(node *ast.MsgPluralNode) {
+	var val = s.eval(node.Value)
+	var intVal, ok = val.(data.Int)
+	if !ok {
+		s.errorf("plural argument must be integer, got %T", val)
+	}
+
+	// TODO: This only handles explicit numbers, not the CLDR classes.
+	for _, pluralCase := range node.Cases {
+		if int(intVal) == pluralCase.Value {
+			s.walkMsgBody(pluralCase.Body)
+			return
+		}
+	}
+	s.walkMsgBody(node.Default)
 }
 
 func (s *state) walkMsgBody(node ast.ParentNode) {
@@ -420,6 +433,8 @@ func (s *state) walkMsgBody(node ast.ParentNode) {
 			s.walk(n)
 		case *ast.MsgPlaceholderNode:
 			s.walk(n.Body)
+		case *ast.MsgPluralNode:
+			s.walkPlural(n)
 		}
 	}
 }

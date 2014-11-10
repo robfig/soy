@@ -318,6 +318,27 @@ func (n *MsgNode) Children() []Node {
 	return n.Body.Children()
 }
 
+// Placeholder returns a placeholder node with the given name within this
+// message node.  It requires placeholder names to have been calculated.
+func (n *MsgNode) Placeholder(name string) *MsgPlaceholderNode {
+	var q = n.Body.Children()
+	for len(q) > 0 {
+		var node Node
+		node, q = q[0], q[1:]
+		switch node := node.(type) {
+		case *MsgPlaceholderNode:
+			if node.Name == name {
+				return node
+			}
+		default:
+			if node, ok := node.(ParentNode); ok {
+				q = append(q, node.Children()...)
+			}
+		}
+	}
+	return nil
+}
+
 type MsgPlaceholderNode struct {
 	Pos
 	Name string

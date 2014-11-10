@@ -15,8 +15,8 @@ func TestNewMessage(t *testing.T) {
 		input  string
 		output []Part
 	}
-	var txt = func(str string) Part { return Part{Content: str} }
-	var ph = func(name string) Part { return Part{Placeholder: name} }
+	var txt = func(str string) Part { return RawTextPart{str} }
+	var ph = func(name string) Part { return PlaceholderPart{name} }
 	var tests = []test{
 		{"", nil},
 		{"hello world", []Part{txt("hello world")}},
@@ -31,8 +31,8 @@ func TestNewMessage(t *testing.T) {
 
 	for _, test := range tests {
 		var msg = NewMessage(0, test.input)
-		if !reflect.DeepEqual(msg.Cases[0].Parts, test.output) {
-			t.Errorf("(actual) %v != %v (expected)", msg.Cases[0].Parts, test.output)
+		if !reflect.DeepEqual(msg.Parts, test.output) {
+			t.Errorf("(actual) %v != %v (expected)", msg.Parts, test.output)
 		}
 	}
 }

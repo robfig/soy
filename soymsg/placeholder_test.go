@@ -50,6 +50,26 @@ func TestSetPlaceholders(t *testing.T) {
 	}
 }
 
+func TestSetPluralVarName(t *testing.T) {
+	type test struct {
+		node    *ast.MsgNode
+		varname string
+	}
+
+	var tests = []test{
+		{newMsg("{plural $eggs}{case 1}one{default}other{/plural}"), "EGGS"},
+		{newMsg("{plural $eggs}{case 1}one{default}{$eggs}{/plural}"), "EGGS_1"},
+		{newMsg("{plural length($eggs)}{case 1}one{default}other{/plural}"), "NUM"},
+	}
+
+	for _, test := range tests {
+		var actual = test.node.Body.Children()[0].(*ast.MsgPluralNode).VarName
+		if actual != test.varname {
+			t.Errorf("(actual) %v != %v (expected)", actual, test.varname)
+		}
+	}
+}
+
 func newMsg(msg string) *ast.MsgNode {
 	// TODO: data.Map{"GLOBAL": data.Int(1), "sub.global": data.Int(2)})
 	var sf, err = parse.SoyFile("", `{msg desc=""}`+msg+`{/msg}`)

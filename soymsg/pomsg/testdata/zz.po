@@ -1,3 +1,8 @@
+# Test data
+msgid ""
+msgstr ""
+"Plural-Forms: nplurals=3; plural=n==1 ? 0 : n==2 ? 1 : 2;\n"
+
 #.
 #: id=3329840836245051515
 msgid "A trip was taken."
@@ -20,8 +25,9 @@ msgctxt "verb"
 msgid "Archive"
 msgstr "zArchiveVerb"
 
-#: id=176798647517908084
+#: id=176798647517908084 var=EGGS_1
 msgid "You have one egg"
 msgid_plural "You have {EGGS_2} eggs"
-msgstr[0] "zYou zhave z{$EGGS_2} zegg"
+msgstr[0] "zYou zhave zone zegg"
 msgstr[1] "zYou zhave z{$EGGS_2} zeggs"
+msgstr[2] "zYou zhave ztwo zeggs"

@@ -181,6 +181,10 @@ func TestFeatures(t *testing.T) {
 	runFeatureTests(t, featureTests)
 }
 
+func TestMsgs(t *testing.T) {
+
+}
+
 func BenchmarkLexParseFeatures(b *testing.B) {
 	var (
 		features = mustReadFile("testdata/features.soy")

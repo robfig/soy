@@ -88,10 +88,14 @@ func (e extractor) extract(node ast.Node) {
 		if err := pomsg.Validate(node); err != nil {
 			exit(err)
 		}
+		var pluralVar = ""
+		if plural, ok := node.Body.Children()[0].(*ast.MsgPluralNode); ok {
+			pluralVar = " var=" + plural.VarName
+		}
 		e.file.Messages = append(e.file.Messages, po.Message{
 			Comment: po.Comment{
 				ExtractedComments: []string{node.Desc},
-				References:        []string{fmt.Sprintf("id=%d", node.ID)},
+				References:        []string{fmt.Sprintf("id=%d%v", node.ID, pluralVar)},
 			},
 			Ctxt:     node.Meaning,
 			Id:       pomsg.Msgid(node),
