@@ -30,8 +30,9 @@ func Dir(dirname string) (soymsg.Provider, error) {
 	}
 	var prov = provider{make(map[string]soymsg.Bundle)}
 	for _, fi := range files {
-		if !fi.IsDir() && strings.HasSuffix(fi.Name(), ".po") {
-			var f, err = os.Open(path.Join(dirname, fi.Name()))
+		var name = fi.Name()
+		if !fi.IsDir() && strings.HasSuffix(name, ".po") {
+			var f, err = os.Open(path.Join(dirname, name))
 			if err != nil {
 				return nil, err
 			}
@@ -39,11 +40,12 @@ func Dir(dirname string) (soymsg.Provider, error) {
 			if err != nil {
 				return nil, err
 			}
-			b, err := newBundle(pofile)
+			var locale = name[:len(name)-3]
+			b, err := newBundle(locale, pofile)
 			if err != nil {
 				return nil, err
 			}
-			prov.bundles[fi.Name()[:len(fi.Name())-3]] = b
+			prov.bundles[locale] = b
 		}
 	}
 	return prov, nil
@@ -54,37 +56,39 @@ func (p provider) Bundle(locale string) soymsg.Bundle {
 }
 
 type bundle struct {
-	messages map[uint64]soymsg.Message
+	messages  map[uint64]soymsg.Message
+	locale    string
+	pluralize po.PluralSelector
 }
 
-func newBundle(file po.File) (*bundle, error) {
+func newBundle(locale string, file po.File) (*bundle, error) {
+	if file.Pluralize == nil {
+		return nil, fmt.Errorf("Plural-Forms must be specified")
+	}
+
 	var err error
 	var msgs = make(map[uint64]soymsg.Message)
 	for _, msg := range file.Messages {
-		// Get the Message ID
+		// Get the Message ID and plural var name
 		var id uint64
+		var varName string
 		for _, ref := range msg.References {
-			if strings.HasPrefix(ref, "id=") {
+			switch {
+			case strings.HasPrefix(ref, "id="):
 				id, err = strconv.ParseUint(ref[3:], 10, 64)
 				if err != nil {
 					return nil, err
 				}
-				break
+			case strings.HasPrefix(ref, "var="):
+				varName = ref[len("var="):]
 			}
 		}
 		if id == 0 {
 			return nil, fmt.Errorf("no id found in message: %#v", msg)
 		}
-		if len(msg.Str) > 2 {
-			return nil, fmt.Errorf("only one plural is supported (msg %v has %v)", msg.Id, len(msg.Str))
-		}
-		if len(msg.Str) == 2 {
-			msgs[id] = newMessagePlural(id, msg.Str[0], msg.Str[1])
-		} else {
-			msgs[id] = newMessageSingular(id, msg.Str[0])
-		}
+		msgs[id] = newMessage(id, varName, msg.Str)
 	}
-	return &bundle{msgs}, nil
+	return &bundle{msgs, locale, file.Pluralize}, nil
 }
 
 func (b *bundle) Message(id uint64) *soymsg.Message {
@@ -95,15 +99,26 @@ func (b *bundle) Message(id uint64) *soymsg.Message {
 	return &msg
 }
 
-func newMessageSingular(id uint64, singular string) soymsg.Message {
-	return soymsg.Message{id, []soymsg.Case{
-		{soymsg.PluralSpec{soymsg.PluralSpecOther, -1}, soymsg.Parts(singular)},
-	}}
+func (b *bundle) Locale() string {
+	return b.locale
 }
 
-func newMessagePlural(id uint64, singular, plural string) soymsg.Message {
-	return soymsg.Message{id, []soymsg.Case{
-		{soymsg.PluralSpec{soymsg.PluralSpecExplicit, 1}, soymsg.Parts(singular)},
-		{soymsg.PluralSpec{soymsg.PluralSpecOther, -1}, soymsg.Parts(plural)},
-	}}
+func (b *bundle) PluralCase(n int) int {
+	return b.pluralize(n)
+}
+
+func newMessage(id uint64, varName string, msgstrs []string) soymsg.Message {
+	var cases []soymsg.PluralCase
+	for _, msgstr := range msgstrs {
+		// TODO: Ideally this would convert from PO plural form to CLDR plural class.
+		// Instead, just use PluralCase() to select one of these.
+		cases = append(cases, soymsg.PluralCase{
+			Spec:  soymsg.PluralSpec{soymsg.PluralSpecOther, -1}, // not used
+			Parts: soymsg.Parts(msgstr),
+		})
+	}
+	return soymsg.Message{id, []soymsg.Part{soymsg.PluralPart{
+		VarName: varName,
+		Cases:   cases,
+	}}}
 }

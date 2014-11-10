@@ -9,14 +9,19 @@ import (
 
 // Validate checks if the given message is representable in a PO file.
 // A MsgNode must be validated before trying to caculate its msgid or msgid_plural
+//
+// Rules:
+//  - If a message contains a plural, it must be the sole child.
+//  - A plural contains exactly {case 1} and {default} cases.
 func Validate(n *ast.MsgNode) error {
-	var children = n.Body.Children()
-	if len(children) == 0 {
-		return nil
-	}
-	if n, ok := children[0].(*ast.MsgPluralNode); ok {
-		if len(n.Cases) != 1 || n.Cases[0].Value != 1 {
-			return fmt.Errorf("PO requires two plural cases [1, default]. found %v", n.Cases)
+	for i, child := range n.Body.Children() {
+		if n, ok := child.(*ast.MsgPluralNode); ok {
+			if i != 0 {
+				return fmt.Errorf("plural node must be the sole child")
+			}
+			if len(n.Cases) != 1 || n.Cases[0].Value != 1 {
+				return fmt.Errorf("PO requires two plural cases [1, default]. found %v", n.Cases)
+			}
 		}
 	}
 	return nil
