@@ -26,10 +26,11 @@ type soyFile struct{ name, content string }
 // Bundle is a collection of soy content (templates and globals).  It acts as
 // input for the soy compiler.
 type Bundle struct {
-	files   []soyFile
-	globals data.Map
-	err     error
-	watcher *fsnotify.Watcher
+	files                 []soyFile
+	globals               data.Map
+	err                   error
+	watcher               *fsnotify.Watcher
+	recompilationCallback func(*template.Registry)
 }
 
 // NewBundle returns an empty bundle.
@@ -117,6 +118,13 @@ func (b *Bundle) AddGlobalsMap(globals data.Map) *Bundle {
 	return b
 }
 
+// SetRecompilationCallback assigns the bundle a function to call after
+// recompilation.  This is called before updating the in-use registry.
+func (b *Bundle) SetRecompilationCallback(c func(*template.Registry)) *Bundle {
+	b.recompilationCallback = c
+	return b
+}
+
 // Compile parses all of the soy files in this bundle, verifies a number of
 // rules about data references, and returns the completed template registry.
 func (b *Bundle) Compile() (*template.Registry, error) {
@@ -182,6 +190,10 @@ func (b *Bundle) recompiler(reg *template.Registry) {
 			if err != nil {
 				Logger.Println(err)
 				continue
+			}
+
+			if b.recompilationCallback != nil {
+				b.recompilationCallback(registry)
 			}
 
 			// update the existing template registry.
