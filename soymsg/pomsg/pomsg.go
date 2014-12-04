@@ -108,6 +108,10 @@ func (b *bundle) PluralCase(n int) int {
 }
 
 func newMessage(id uint64, varName string, msgstrs []string) soymsg.Message {
+	if varName == "" && len(msgstrs) == 1 {
+		return soymsg.Message{id, soymsg.Parts(msgstrs[0])}
+	}
+
 	var cases []soymsg.PluralCase
 	for _, msgstr := range msgstrs {
 		// TODO: Ideally this would convert from PO plural form to CLDR plural class.
