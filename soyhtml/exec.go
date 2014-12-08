@@ -483,6 +483,7 @@ func (s *state) evalCall(node *ast.CallNode) {
 		wr:         s.wr,
 		context:    callData,
 		ij:         s.ij,
+		msgs:       s.msgs,
 	}
 	state.walk(calledTmpl.Node)
 }
