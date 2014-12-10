@@ -458,6 +458,7 @@ func (s *state) evalCall(node *ast.CallNode) {
 				node.String(), node.Data.String())
 		}
 		callData = newScope(result)
+		callData.push()
 	} else {
 		callData = newScope(make(data.Map))
 	}
@@ -468,7 +469,7 @@ func (s *state) evalCall(node *ast.CallNode) {
 		case *ast.CallParamValueNode:
 			callData.set(param.Key, s.eval(param.Value))
 		case *ast.CallParamContentNode:
-			callData.set(param.Key, data.New(string(s.renderBlock(param.Content))))
+			callData.set(param.Key, data.String(s.renderBlock(param.Content)))
 		default:
 			s.errorf("unexpected call param type: %T", param)
 		}
