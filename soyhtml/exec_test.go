@@ -672,6 +672,23 @@ func TestLetScopes(t *testing.T) {
 {sp}{$y}
 {/template}
 `, "9 8 7", m, true},
+
+		{"no-overwrite-map-params", "test.main", `{namespace test}
+/** @param z */
+{template .main}
+{call .inner data="$z"}
+{param foo: false /}
+{/call}
+{/template}
+
+/** @param y */
+{template .inner}
+{let $a: 8/}
+{$y} {$a}
+{let $y: 7/}
+{sp}{$y}
+{/template}
+`, "9 8 7", m, true},
 	})
 
 	if !reflect.DeepEqual(m, mcopy) {
