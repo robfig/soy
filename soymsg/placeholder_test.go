@@ -31,6 +31,8 @@ func TestSetPlaceholders(t *testing.T) {
 		{newMsg("<br><br/><br/>"), "{START_BREAK}{BREAK}{BREAK}"},
 		{newMsg("<a href=foo>Click</a> <a href=bar>here</a >"),
 			"{START_LINK_1}Click{END_LINK_1} {START_LINK_2}here{END_LINK_2}"},
+		{newMsg("<p>P1</p><p>P2</p><p>P3</p>"),
+			"{START_PARAGRAPH}P1{END_PARAGRAPH}{START_PARAGRAPH}P2{END_PARAGRAPH}{START_PARAGRAPH}P3{END_PARAGRAPH}"},
 
 		// BUG: Data refs + HTML
 		// {newMsg("<a href={$url}>Click</a>"), "{START_LINK}Click{END_LINK}"},
