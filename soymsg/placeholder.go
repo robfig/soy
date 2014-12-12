@@ -41,7 +41,7 @@ func setPlaceholderNames(n *ast.MsgNode) {
 			var str = node.String()
 			for _, other := range nodes {
 				if other.String() == str {
-					equivNodeToRepNodes[other] = node
+					equivNodeToRepNodes[node] = other
 					isNew = false
 					break
 				}
@@ -78,7 +78,7 @@ func setPlaceholderNames(n *ast.MsgNode) {
 	for name, node := range nameToRepNodes {
 		nodeToName[node] = name
 	}
-	for repNode, other := range equivNodeToRepNodes {
+	for other, repNode := range equivNodeToRepNodes {
 		nodeToName[other] = nodeToName[repNode]
 	}
 
