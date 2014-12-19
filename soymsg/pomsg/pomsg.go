@@ -62,7 +62,11 @@ type bundle struct {
 }
 
 func newBundle(locale string, file po.File) (*bundle, error) {
-	if file.Pluralize == nil {
+	var pluralize = file.Pluralize
+	if pluralize == nil {
+		pluralize = po.PluralSelectorForLanguage(locale)
+	}
+	if pluralize == nil {
 		return nil, fmt.Errorf("Plural-Forms must be specified")
 	}
 
@@ -88,7 +92,7 @@ func newBundle(locale string, file po.File) (*bundle, error) {
 		}
 		msgs[id] = newMessage(id, varName, msg.Str)
 	}
-	return &bundle{msgs, locale, file.Pluralize}, nil
+	return &bundle{msgs, locale, pluralize}, nil
 }
 
 func (b *bundle) Message(id uint64) *soymsg.Message {
