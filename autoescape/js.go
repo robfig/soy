@@ -135,14 +135,13 @@ func indirectToJSONMarshaler(a interface{}) interface{} {
 // jsValEscaper escapes its inputs to a JS Expression (section 11.14) that has
 // neither side-effects nor free variables outside (NaN, Infinity).
 func jsValEscaper(value data.Value, _ []data.Value) data.Value {
-	// TODO
-	// switch t := value.(type) {
-	// case JS:
-	// 	return data.String(t)
-	// case JSStr:
-	// 	// TODO: normalize quotes.
-	// 	return data.String(`"` + string(t) + `"`)
-	// }
+	switch t := value.(type) {
+	case JS:
+		return t
+	case JSStr:
+		// TODO: normalize quotes.
+		return JS(`"` + string(t) + `"`)
+	}
 
 	// TODO: detect cycles before calling Marshal which loops infinitely on
 	// cyclic data. This may be an unacceptable DoS risk.
@@ -155,7 +154,7 @@ func jsValEscaper(value data.Value, _ []data.Value) data.Value {
 		// turning into
 		//     x//* error marshalling y:
 		//          second line of error message */null
-		return data.String(fmt.Sprintf(" /* %s */null ", strings.Replace(err.Error(), "*/", "* /", -1)))
+		return JS(fmt.Sprintf(" /* %s */null ", strings.Replace(err.Error(), "*/", "* /", -1)))
 	}
 
 	// TODO: maybe post-process output to prevent it from containing
@@ -166,7 +165,7 @@ func jsValEscaper(value data.Value, _ []data.Value) data.Value {
 	if len(b) == 0 {
 		// In, `x=y/{{.}}*z` a json.Marshaler that produces "" should
 		// not cause the output `x=y/*z`.
-		return data.String(" null ")
+		return JS(" null ")
 	}
 	first, _ := utf8.DecodeRune(b)
 	last, _ := utf8.DecodeLastRune(b)
@@ -202,18 +201,17 @@ func jsValEscaper(value data.Value, _ []data.Value) data.Value {
 		}
 		b = buf.Bytes()
 	}
-	return data.String(b)
+	return JS(b)
 }
 
 // jsStrEscaper produces a string that can be included between quotes in
 // JavaScript source, in JavaScript embedded in an HTML5 <script> element,
 // or in an HTML5 event handler attribute such as onclick.
 func jsStrEscaper(value data.Value, _ []data.Value) data.Value {
-	s := value.String()
-	// if t == contentTypeJSStr {
-	// 	return replace(s, jsStrNormReplacementTable)
-	// }
-	return data.String(replace(s, jsStrReplacementTable))
+	if js, ok := value.(JSStr); ok {
+		return JS(replace(js.String(), jsStrNormReplacementTable))
+	}
+	return JS(replace(value.String(), jsStrReplacementTable))
 }
 
 // jsRegexpEscaper behaves like jsStrEscaper but escapes regular expression

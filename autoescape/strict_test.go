@@ -41,18 +41,21 @@ const (
 		`</style>`
 )
 
+type testCase struct {
+	value  interface{} // value of "$x"
+	output string      // expected template output
+}
+
+type test struct {
+	name  string     // test name
+	input string     // template text
+	cases []testCase // cases to test, one per input value
+}
+
 // Tests all the various cases of straight-line escaping in various contexts,
 // excluding any control structures.
-func TestSingleTemplateEscaping(t *testing.T) {
-	type testCase struct {
-		value  interface{} // value of "$x"
-		output string      // expected template output
-	}
-	var tests = []struct {
-		name  string     // test name
-		input string     // template text
-		cases []testCase // cases to test, one per input value
-	}{
+func TestSimpleTemplateEscaping(t *testing.T) {
+	var tests = []test{
 		{"anatomy of an XSS hack", xssExample, []testCase{
 			{xssExampleVar, xssExampleAnswer},
 		}},
@@ -110,7 +113,23 @@ func TestSingleTemplateEscaping(t *testing.T) {
 			{"?q=(O'Reilly) OR Books", `<div style="background: url(?q=%28O%27Reilly%29%20OR%20Books)">`},
 		}},
 	}
+	runTests(t, tests)
+}
 
+// Test that applying kind correctly changes the escaping chosen.
+func TestKinds(t *testing.T) {
+	// TODO: Presently these just test that they skip escaping the particular
+	// content type, but it would also be nice to test cross type escaping rules.
+	var tests = []test{
+		{"HTML", `{$x}`, []testCase{
+			{HTML("<b>hello</b>"), `<b>hello</b>`},
+		}},
+	}
+
+	runTests(t, tests)
+}
+
+func runTests(t *testing.T, tests []test) {
 	const tmpl = `{namespace example}
 
 /** @param x */

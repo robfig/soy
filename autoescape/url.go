@@ -15,18 +15,17 @@ import (
 // urlFilter returns its input unless it contains an unsafe protocol in which
 // case it defangs the entire URL.
 func urlFilter(value data.Value, _ []data.Value) data.Value {
+	if c, ok := value.(URL); ok {
+		return c
+	}
 	s := value.String()
-	// TODO
-	// if t == contentTypeURL {
-	// 	return s
-	// }
 	if i := strings.IndexRune(s, ':'); i >= 0 && strings.IndexRune(s[:i], '/') < 0 {
 		protocol := strings.ToLower(s[:i])
 		if protocol != "http" && protocol != "https" && protocol != "mailto" {
-			return "#" + filterFailsafe
+			return URL("#" + filterFailsafe)
 		}
 	}
-	return data.String(s)
+	return URL(s)
 }
 
 // urlEscaper produces an output that can be embedded in a URL query.
@@ -46,12 +45,11 @@ func urlNormalizer(value data.Value, _ []data.Value) data.Value {
 
 // urlProcessor normalizes (when norm is true) or escapes its input to produce
 // a valid hierarchical or opaque URL part.
-func urlProcessor(norm bool, value data.Value) data.String {
+func urlProcessor(norm bool, value data.Value) URL {
 	s := value.String()
-	// TODO
-	// if t == contentTypeURL {
-	// 	norm = true
-	// }
+	if _, ok := value.(URL); ok {
+		norm = true
+	}
 	var b bytes.Buffer
 	written := 0
 	// The byte loop below assumes that all URLs use UTF-8 as the
@@ -102,8 +100,8 @@ func urlProcessor(norm bool, value data.Value) data.String {
 		written = i + 1
 	}
 	if written == 0 {
-		return data.String(s)
+		return URL(s)
 	}
 	b.WriteString(s[written:])
-	return data.String(b.String())
+	return URL(b.String())
 }

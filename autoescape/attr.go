@@ -6,6 +6,22 @@ package autoescape
 
 import "strings"
 
+type contentType uint8
+
+const (
+	contentTypePlain contentType = iota
+	contentTypeCSS
+	contentTypeHTML
+	contentTypeHTMLAttr
+	contentTypeJS
+	contentTypeJSStr
+	contentTypeURL
+	// contentTypeUnsafe is used in attr.go for values that affect how
+	// embedded content and network messages are formed, vetted,
+	// or interpreted; or which credentials network messages carry.
+	contentTypeUnsafe
+)
+
 // attrTypeMap[n] describes the value of the given attribute.
 // If an attribute affects (or can mask) the encoding or interpretation of
 // other content, or affects the contents, idempotency, or credentials of a

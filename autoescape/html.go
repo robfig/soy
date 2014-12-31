@@ -15,37 +15,33 @@ import (
 
 // htmlNospaceEscaper escapes for inclusion in unquoted attribute values.
 func htmlNospaceEscaper(value data.Value, _ []data.Value) data.Value {
-	// TODO
-	// if value, ok := value.(HTML); ok {
-	// 	return htmlReplacer(stripTags(value.String()), htmlNospaceNormReplacementTable, false)
-	// }
+	if value, ok := value.(HTML); ok {
+		return htmlReplacer(stripTags(value.String()), htmlNospaceNormReplacementTable, false)
+	}
 	return htmlReplacer(value.String(), htmlNospaceReplacementTable, false)
 }
 
 // attrEscaper escapes for inclusion in quoted attribute values.
 func attrEscaper(value data.Value, _ []data.Value) data.Value {
-	// TODO
-	// if value, ok := value.(HTML); ok {
-	// 	return htmlReplacer(stripTags(value.String()), htmlNormReplacementTable, true)
-	// }
+	if value, ok := value.(HTML); ok {
+		return htmlReplacer(stripTags(value.String()), htmlNormReplacementTable, true)
+	}
 	return htmlReplacer(value.String(), htmlReplacementTable, true)
 }
 
 // rcdataEscaper escapes for inclusion in an RCDATA element body.
 func rcdataEscaper(value data.Value, _ []data.Value) data.Value {
-	// TODO
-	// if value, ok := value.(HTML); ok {
-	// 	return htmlReplacer(value, htmlNormReplacementTable, true)
-	// }
+	if value, ok := value.(HTML); ok {
+		return htmlReplacer(value.String(), htmlNormReplacementTable, true)
+	}
 	return htmlReplacer(value.String(), htmlReplacementTable, true)
 }
 
 // htmlEscaper escapes for inclusion in HTML text.
 func htmlEscaper(value data.Value, _ []data.Value) data.Value {
-	// TODO
-	// if value, ok := value.(HTML); ok {
-	// 	return value
-	// }
+	if value, ok := value.(HTML); ok {
+		return value
+	}
 	return htmlReplacer(value.String(), htmlReplacementTable, true)
 }
 
@@ -219,11 +215,10 @@ func stripTags(html string) string {
 // htmlNameFilter accepts valid parts of an HTML attribute or tag name or
 // a known-safe HTML attribute.
 func htmlNameFilter(value data.Value, _ []data.Value) data.Value {
+	if c, ok := value.(HTMLAttr); ok {
+		return c
+	}
 	s := value.String()
-	// TODO
-	// if t == contentTypeHTMLAttr {
-	// 	return s
-	// }
 	if len(s) == 0 {
 		// Avoid violation of structure preservation.
 		// <input checked {{.K}}={{.V}}>.

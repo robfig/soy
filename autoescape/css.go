@@ -229,12 +229,10 @@ var mozBindingBytes = []byte("mozbinding")
 // It filters out unsafe values, such as those that affect token boundaries,
 // and anything that might execute scripts.
 func cssValueFilter(value data.Value, _ []data.Value) data.Value {
+	if c, ok := value.(CSS); ok {
+		return c
+	}
 	s := value.String()
-	// TODO
-	// s, t := stringify(args...)
-	// if t == contentTypeCSS {
-	// 	return s
-	// }
 	b, id := decodeCSS([]byte(s)), make([]byte, 0, 64)
 
 	// CSS3 error handling is specified as honoring string boundaries per

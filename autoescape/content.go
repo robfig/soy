@@ -4,12 +4,10 @@
 
 package autoescape
 
-import (
-	"fmt"
-	"reflect"
-)
+import "github.com/robfig/soy/data"
 
 // Strings of content from a trusted source.
+// These types are data.Values.
 type (
 	// CSS encapsulates known safe content that matches any of:
 	//   1. The CSS3 stylesheet production, such as `p { color: purple }`.
@@ -56,81 +54,46 @@ type (
 	URL string
 )
 
-type contentType uint8
+func (v HTML) Truthy() bool     { return v != "" }
+func (v HTMLAttr) Truthy() bool { return v != "" }
+func (v JS) Truthy() bool       { return v != "" }
+func (v JSStr) Truthy() bool    { return v != "" }
+func (v URL) Truthy() bool      { return v != "" }
+func (v CSS) Truthy() bool      { return v != "" }
 
-const (
-	contentTypePlain contentType = iota
-	contentTypeCSS
-	contentTypeHTML
-	contentTypeHTMLAttr
-	contentTypeJS
-	contentTypeJSStr
-	contentTypeURL
-	// contentTypeUnsafe is used in attr.go for values that affect how
-	// embedded content and network messages are formed, vetted,
-	// or interpreted; or which credentials network messages carry.
-	contentTypeUnsafe
-)
+func (v HTML) String() string     { return string(v) }
+func (v HTMLAttr) String() string { return string(v) }
+func (v JS) String() string       { return string(v) }
+func (v JSStr) String() string    { return string(v) }
+func (v URL) String() string      { return string(v) }
+func (v CSS) String() string      { return string(v) }
 
-// indirect returns the value, after dereferencing as many times
-// as necessary to reach the base type (or nil).
-func indirect(a interface{}) interface{} {
-	if a == nil {
-		return nil
-	}
-	if t := reflect.TypeOf(a); t.Kind() != reflect.Ptr {
-		// Avoid creating a reflect.Value if it's not a pointer.
-		return a
-	}
-	v := reflect.ValueOf(a)
-	for v.Kind() == reflect.Ptr && !v.IsNil() {
-		v = v.Elem()
-	}
-	return v.Interface()
+func (v HTML) Equals(other data.Value) bool {
+	o, ok := other.(HTML)
+	return ok && string(v) == string(o)
 }
 
-var (
-	errorType       = reflect.TypeOf((*error)(nil)).Elem()
-	fmtStringerType = reflect.TypeOf((*fmt.Stringer)(nil)).Elem()
-)
-
-// indirectToStringerOrError returns the value, after dereferencing as many times
-// as necessary to reach the base type (or nil) or an implementation of fmt.Stringer
-// or error,
-func indirectToStringerOrError(a interface{}) interface{} {
-	if a == nil {
-		return nil
-	}
-	v := reflect.ValueOf(a)
-	for !v.Type().Implements(fmtStringerType) && !v.Type().Implements(errorType) && v.Kind() == reflect.Ptr && !v.IsNil() {
-		v = v.Elem()
-	}
-	return v.Interface()
+func (v HTMLAttr) Equals(other data.Value) bool {
+	o, ok := other.(HTMLAttr)
+	return ok && string(v) == string(o)
 }
 
-// stringify converts its arguments to a string and the type of the content.
-// All pointers are dereferenced, as in the text/template package.
-func stringify(args ...interface{}) (string, contentType) {
-	if len(args) == 1 {
-		switch s := indirect(args[0]).(type) {
-		case string:
-			return s, contentTypePlain
-		case CSS:
-			return string(s), contentTypeCSS
-		case HTML:
-			return string(s), contentTypeHTML
-		case HTMLAttr:
-			return string(s), contentTypeHTMLAttr
-		case JS:
-			return string(s), contentTypeJS
-		case JSStr:
-			return string(s), contentTypeJSStr
-		case URL:
-			return string(s), contentTypeURL
-		}
-	}
-	for i, arg := range args {
-		args[i] = indirectToStringerOrError(arg)
-	}
-	return fmt.Sprint(args...), contentTypePlain
+func (v JS) Equals(other data.Value) bool {
+	o, ok := other.(JS)
+	return ok && string(v) == string(o)
+}
+
+func (v JSStr) Equals(other data.Value) bool {
+	o, ok := other.(JSStr)
+	return ok && string(v) == string(o)
+}
+
+func (v URL) Equals(other data.Value) bool {
+	o, ok := other.(URL)
+	return ok && string(v) == string(o)
+}
+
+func (v CSS) Equals(other data.Value) bool {
+	o, ok := other.(CSS)
+	return ok && string(v) == string(o)
 }
