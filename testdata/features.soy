@@ -354,7 +354,7 @@
  * @param? name The name of the person who took a trip (optional).
  * @param? destination The destination of the trip (optional).
  */
-{template .tripReport_ private="true"}
+{template .tripReport_}
   // Note: The template name demonstrates the good practice of adding a trailing underscore to
   // private templates (template that should never be called from hand-written code).
 
@@ -385,7 +385,7 @@
  * @param message A message text.
  * @param list A list of things.
  */
-{template .demoParamWithKindAttribute autoescape="contextual"}
+{template .demoParamWithKindAttribute}
   <div>
     {call .demoParamWithKindAttributeCallee_}
       // Note that the {param} blocks for the message and listItems parameter are declared to have
@@ -410,7 +410,7 @@
  * @param message A message with HTML markup.
  * @param listItems A HTML-formatted list.
  */
-{template .demoParamWithKindAttributeCallee_ private="true" autoescape="contextual"}
+{template .demoParamWithKindAttributeCallee_}
   // Note that both $message and $listItems contain HTML markup produced by a {param} block in the
   // the calling template.  Since the {param} blocks are declared to have HTML content, their values
   // are wrapped as soydata.SanitizedHtml objects.  This in turn causes them to be emitted here
@@ -491,7 +491,7 @@
  * Private helper to build a comma separated list.
  * @param items The list of items.
  */
-{template .buildCommaSeparatedList_ private="true"}
+{template .buildCommaSeparatedList_}
   {foreach $item in $items}
     {if not isFirst($item)}
       ,{sp}

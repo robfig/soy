@@ -65,6 +65,25 @@ func Strict(reg *template.Registry) (err error) {
 	return nil
 }
 
+func startStateForKind(kind string) state {
+	switch kind {
+	case "css":
+		return stateCSS
+	case "", "html":
+		return stateText
+	case "attributes":
+		return stateTag
+	case "js":
+		return stateJS
+	case "uri":
+		return stateURL
+	case "text":
+		// TODO: state where escaping is disabled?
+	default:
+		panic("unknown kind: " + kind)
+	}
+}
+
 // funcMap maps command names to functions that render their inputs safe.
 // missing: filterHtmlAttributes
 // extra: commentEscaper

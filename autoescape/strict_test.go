@@ -116,24 +116,40 @@ func TestSimpleTemplateEscaping(t *testing.T) {
 	runTests(t, tests)
 }
 
+type kindedTest struct {
+	name  string
+	input string
+	kind  string
+	cases []testCase
+}
+
 // Test that applying kind correctly changes the escaping chosen.
 func TestKinds(t *testing.T) {
-	// TODO: Presently these just test that they skip escaping the particular
-	// content type, but it would also be nice to test cross type escaping rules.
-	var tests = []test{
-		{"HTML", `{$x}`, []testCase{
+	var tests = []kindedTest{
+		{"HTML", `{$x}`, "", []testCase{
 			{HTML("<b>hello</b>"), `<b>hello</b>`},
+		}},
+
+		{"HTML in CSS context", `{$x}`, "css", []testCase{
+			{HTML("</style>"), `\3c\2fstyle\3e `},
 		}},
 	}
 
-	runTests(t, tests)
+	runKindedTests(t, tests)
 }
 
 func runTests(t *testing.T, tests []test) {
+	var ktests []kindedTest
+	for _, t := range tests {
+		ktests = append(ktests, kindedTest{t.name, t.input, "", t.cases})
+	}
+}
+
+func runKindedTests(t *testing.T, tests []kindedTest) {
 	const tmpl = `{namespace example}
 
 /** @param x */
-{template .test}
+{template .test %s}
 %s
 {/template}
 `
@@ -141,7 +157,11 @@ func runTests(t *testing.T, tests []test) {
 	var b bytes.Buffer
 	for _, test := range tests {
 		var registry = template.Registry{}
-		var tree, err = parse.SoyFile("", fmt.Sprintf(tmpl, test.input), nil)
+		var k string
+		if test.kind != "" {
+			k = `kind="` + test.kind + `"`
+		}
+		var tree, err = parse.SoyFile("", fmt.Sprintf(tmpl, k, test.input), nil)
 		if err != nil {
 			t.Errorf("%s: parse error: %s", test.name, err)
 			return

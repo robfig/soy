@@ -36,7 +36,7 @@ func tFile(nodes ...ast.Node) ast.Node {
 }
 
 func tTemplate(name string, nodes ...ast.Node) ast.Node {
-	n := &ast.TemplateNode{0, name, nil, ast.AutoescapeOn, false}
+	n := &ast.TemplateNode{0, name, nil, "true", ""}
 	n.Body = newList(0)
 	n.Body.Nodes = nodes
 	return n
@@ -56,7 +56,7 @@ func str(value string) *ast.StringNode {
 
 var parseTests = []parseTest{
 	{"empty", "", tFile()},
-	{"namespace", "{namespace soy.example}", tFile(&ast.NamespaceNode{0, "soy.example", 0})},
+	{"namespace", "{namespace soy.example}", tFile(&ast.NamespaceNode{0, "soy.example", ""})},
 	{"empty template", "{template .name}{/template}", tFile(tTemplate(".name"))},
 	{"text template", "{template .name}\nHello world!\n{/template}",
 		tFile(tTemplate(".name", newText(0, "Hello world!")))},
@@ -344,9 +344,9 @@ var parseTests = []parseTest{
 {call name=".zooTemplate" data="$animals"}
   // comments are allowed here
 
-  {param key="yoo" value="round($too)" /}
-  {param key="woo"}poo{/param}
-  {param key="doo" kind="html"}doopoo{/param}
+  {param yoo: round($too) /}
+  {param woo}poo{/param}
+  {param doo kind="html"}doopoo{/param}
 {/call}
 {call a.long.template.booTemplate_ /}
 {call .zooTemplate data="$animals"}
@@ -359,22 +359,23 @@ var parseTests = []parseTest{
 		&ast.CallNode{0, "foo.goo.mooTemplate", true, nil, nil},
 		&ast.CallNode{0, ".zooTemplate", false, &ast.DataRefNode{0, "animals", nil}, []ast.Node{
 			&ast.CallParamValueNode{0, "yoo", &ast.FunctionNode{0, "round", []ast.Node{&ast.DataRefNode{0, "too", nil}}}},
-			&ast.CallParamContentNode{0, "woo", tList(newText(0, "poo"))},
-			&ast.CallParamContentNode{0, "doo", tList(newText(0, "doopoo"))}}},
+			&ast.CallParamContentNode{0, "woo", "", tList(newText(0, "poo"))},
+			&ast.CallParamContentNode{0, "doo", "html", tList(newText(0, "doopoo"))}}},
 		&ast.CallNode{0, "a.long.template.booTemplate_", false, nil, nil},
 		&ast.CallNode{0, ".zooTemplate", false, &ast.DataRefNode{0, "animals", nil}, []ast.Node{
 			&ast.CallParamValueNode{0, "yoo", &ast.FunctionNode{0, "round", []ast.Node{&ast.DataRefNode{0, "too", nil}}}},
-			&ast.CallParamContentNode{0, "woo", tList(newText(0, "poo"))},
+			&ast.CallParamContentNode{0, "woo", "", tList(newText(0, "poo"))},
 			&ast.CallParamValueNode{0, "zoo", &ast.IntNode{0, 0}},
-			&ast.CallParamContentNode{0, "doo", tList(newText(0, "doopoo"))}}},
+			&ast.CallParamContentNode{0, "doo", "html", tList(newText(0, "doopoo"))}}},
 	)},
 
 	{"let", `
 {let $alpha: $boo.foo /}
 {let $beta}Boo!{/let}
-`, /*{let $delta kind="html"}Boo!{/let}*/ tFile(
+{let $delta kind="html"}Boo!{/let}`, tFile(
 		&ast.LetValueNode{0, "alpha", &ast.DataRefNode{0, "boo", []ast.Node{&ast.DataRefKeyNode{0, false, "foo"}}}},
-		&ast.LetContentNode{0, "beta", tList(newText(0, "Boo!"))},
+		&ast.LetContentNode{0, "beta", "", tList(newText(0, "Boo!"))},
+		&ast.LetContentNode{0, "delta", "html", tList(newText(0, "Boo!"))},
 	)},
 
 	{"comments", `
@@ -705,24 +706,25 @@ func TestRecognizeCommands(t *testing.T) {
 		"                 88, 11)}\n"+
 		"Number {$i}.{{/for}}")
 	works(t, "{call name=\"aaa.bbb.ccc\" data=\"all\" /}")
-	works(t, ""+
-		"{call name=\".aaa\"}\n"+
-		"  {{param key=\"boo\" value=\"$boo\" /}}\n"+
-		"  {param key=\"foo\"}blah blah{/param}\n"+
-		"  {param key=\"foo\" kind=\"html\"}blah blah{/param}\n"+
-		"  {param foo kind=\"html\"}blah blah{/param}\n"+
-		"{/call}")
+	// Old syntax (key="" value=""). will not fix.
+	// works(t, ""+
+	// 	"{call name=\".aaa\"}\n"+
+	// 	"  {{param key=\"boo\" value=\"$boo\" /}}\n"+
+	// 	"  {param key=\"foo\"}blah blah{/param}\n"+
+	// 	"  {param key=\"foo\" kind=\"html\"}blah blah{/param}\n"+
+	// 	"  {param foo kind=\"html\"}blah blah{/param}\n"+
+	// 	"{/call}")
 	// Soy V1 syntax.  will not fix.
 	// works(t,
 	// 	"{call .aaa}\n"+
 	// 		"  {param foo : bar \" baz/}\n"+
 	// 		"{/call}\n")
 	works(t, "{call aaa.bbb.ccc data=\"all\" /}")
-	works(t, ""+
-		"{call .aaa}\n"+
-		"  {{param key=\"boo\" value=\"$boo\" /}}\n"+
-		"  {param key=\"foo\"}blah blah{/param}\n"+
-		"{/call}")
+	// works(t, ""+
+	// 	"{call .aaa}\n"+
+	// 	"  {{param key=\"boo\" value=\"$boo\" /}}\n"+
+	// 	"  {param key=\"foo\"}blah blah{/param}\n"+
+	// 	"{/call}")
 
 	// TODO: implement delcall
 	// works(t, "{delcall aaa.bbb.ccc data=\"all\" /}")
@@ -748,9 +750,7 @@ func TestRecognizeCommands(t *testing.T) {
 	works(t, "{let $foo : 1 + 2/}\n")
 	works(t, "{let $foo : '\"'/}\n")
 	works(t, "{let $foo}Hello{/let}\n")
-
-	// TODO: implement kind
-	// works(t, "{let $foo kind=\"html\"}Hello{/let}\n")
+	works(t, "{let $foo kind=\"html\"}Hello{/let}\n")
 
 	fails(t, "{msg}blah{/msg}")
 	fails(t, "{/msg}")

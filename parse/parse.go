@@ -237,14 +237,15 @@ func (t *tree) parseLet(token item) ast.Node {
 		var node = &ast.LetValueNode{token.pos, name.val[1:], t.parseExpr(0)}
 		t.expect(itemRightDelimEnd, "let")
 		return node
-	case itemRightDelim:
-		var node = &ast.LetContentNode{token.pos, name.val[1:], t.itemList(itemLetEnd)}
-		t.expect(itemRightDelim, "let")
-		return node
 	default:
-		t.unexpected(next, "{let}")
+		t.backup()
 	}
-	panic("unreachable")
+
+	attrs := t.parseAttrs("kind")
+	t.expect(itemRightDelim, "let")
+	var node = &ast.LetContentNode{token.pos, name.val[1:], attrs["kind"], t.itemList(itemLetEnd)}
+	t.expect(itemRightDelim, "let")
+	return node
 }
 
 // "css" has just been read.
@@ -373,39 +374,18 @@ func (t *tree) parseCallParams() []ast.Node {
 			t.expect(itemRightDelimEnd, "param")
 			params = append(params, &ast.CallParamValueNode{initial.pos, key, value})
 			continue
-		case itemRightDelim:
-			key = firstIdent.val
-			value = t.itemList(itemParamEnd)
-			t.expect(itemRightDelim, "param")
-			params = append(params, &ast.CallParamContentNode{initial.pos, key, value})
-			continue
-		case itemIdent:
-			key = firstIdent.val
-			t.backup()
 		case itemEquals:
 			t.backup2(firstIdent)
 		default:
-			t.unexpected(tok, "param. (expected ':', '}', or '=')")
+			t.backup()
 		}
 
-		attrs := t.parseAttrs("key", "value", "kind")
-		var ok bool
-		if key == "" {
-			if key, ok = attrs["key"]; !ok {
-				t.errorf("param key not found.  (attrs: %v)", attrs)
-			}
-		}
-		var valueStr string
-		if valueStr, ok = attrs["value"]; !ok {
-			t.expect(itemRightDelim, "param")
-			value = t.itemList(itemParamEnd)
-			t.expect(itemRightDelim, "param")
-			params = append(params, &ast.CallParamContentNode{initial.pos, key, value})
-		} else {
-			value = t.parseQuotedExpr(valueStr)
-			t.expect(itemRightDelimEnd, "param")
-			params = append(params, &ast.CallParamValueNode{initial.pos, key, value})
-		}
+		attrs := t.parseAttrs("kind")
+		t.expect(itemRightDelim, "param")
+		key = firstIdent.val
+		value = t.itemList(itemParamEnd)
+		t.expect(itemRightDelim, "param")
+		params = append(params, &ast.CallParamContentNode{initial.pos, key, attrs["kind"], value})
 	}
 }
 
@@ -590,45 +570,25 @@ func (t *tree) parseNamespace(token item) ast.Node {
 			name += part.val
 		default:
 			t.backup()
-			var autoescape = t.parseAutoescape(t.parseAttrs("autoescape"))
+			attrs := t.parseAttrs("autoescape")
 			t.expect(itemRightDelim, ctx)
 			t.namespace = name
-			return &ast.NamespaceNode{token.pos, name, autoescape}
+			return &ast.NamespaceNode{token.pos, name, attrs["autoescape"]}
 		}
 	}
-}
-
-// parseAutoescape returns the specified autoescape selection, or
-// AutoescapeContextual by default.
-func (t *tree) parseAutoescape(attrs map[string]string) ast.AutoescapeType {
-	switch val := attrs["autoescape"]; val {
-	case "":
-		return ast.AutoescapeUnspecified
-	case "contextual":
-		return ast.AutoescapeContextual
-	case "true":
-		return ast.AutoescapeOn
-	case "false":
-		return ast.AutoescapeOff
-	default:
-		t.errorf(`expected "true", "false", or "contextual" for autoescape, got %q`, val)
-	}
-	panic("unreachable")
 }
 
 func (t *tree) parseTemplate(token item) ast.Node {
 	const ctx = "template tag"
 	var id = t.expect(itemDotIdent, ctx)
-	var attrs = t.parseAttrs("autoescape", "private")
-	var autoescape = t.parseAutoescape(attrs)
-	var private = t.boolAttr(attrs, "private", false)
+	var attrs = t.parseAttrs("autoescape", "kind")
 	t.expect(itemRightDelim, ctx)
 	tmpl := &ast.TemplateNode{
 		token.pos,
 		t.namespace + id.val,
 		t.itemList(itemTemplateEnd),
-		autoescape,
-		private,
+		attrs["autoescape"],
+		attrs["kind"],
 	}
 	t.expect(itemRightDelim, ctx)
 	return tmpl

@@ -88,37 +88,39 @@ func (t *RawTextNode) String() string {
 type NamespaceNode struct {
 	Pos
 	Name       string
-	Autoescape AutoescapeType
+	Autoescape string
 }
 
 func (c *NamespaceNode) String() string {
-	return "{namespace " + c.Name + "}"
+	return "{namespace " + c.Name + attrs("autoescape", c.Autoescape) + "}"
 }
-
-type AutoescapeType int
-
-const (
-	AutoescapeUnspecified AutoescapeType = iota
-	AutoescapeOn
-	AutoescapeOff
-	AutoescapeContextual
-)
 
 // TemplateNode holds a template body.
 type TemplateNode struct {
 	Pos
 	Name       string
 	Body       *ListNode
-	Autoescape AutoescapeType
-	Private    bool
+	Autoescape string
+	Kind       string
 }
 
 func (n *TemplateNode) String() string {
-	return fmt.Sprintf("{template %s}\n%s\n{/template}\n", n.Name, n.Body)
+	return fmt.Sprintf("{template %s%s}\n%s\n{/template}\n",
+		n.Name, attrs("autoescape", n.Autoescape, "kind", n.Kind), n.Body)
 }
 
 func (n *TemplateNode) Children() []Node {
 	return []Node{n.Body}
+}
+
+func attrs(args ...string) string {
+	var r string
+	for i := 0; i < len(args)-1; i += 2 {
+		if args[i+1] != "" {
+			r += " " + args[i] + "=" + strconv.Quote(args[i+1])
+		}
+	}
+	return r
 }
 
 type SoyDocNode struct {
@@ -277,24 +279,16 @@ func (n *LetValueNode) Children() []Node {
 type LetContentNode struct {
 	Pos
 	Name string
+	Kind string
 	Body Node
 }
 
 func (n *LetContentNode) String() string {
-	return fmt.Sprintf("{let $%s}%s{/let}", n.Name, n.Body)
+	return fmt.Sprintf("{let $%s%s}%s{/let}", n.Name, attrs("kind", n.Kind), n.Body)
 }
 
 func (n *LetContentNode) Children() []Node {
 	return []Node{n.Body}
-}
-
-type IdentNode struct {
-	Pos
-	Ident string // The ident's name.
-}
-
-func (i *IdentNode) String() string {
-	return i.Ident
 }
 
 type MsgNode struct {
@@ -362,11 +356,12 @@ func (n *CallParamValueNode) Children() []Node {
 type CallParamContentNode struct {
 	Pos
 	Key     string
+	Kind    string
 	Content Node
 }
 
 func (n *CallParamContentNode) String() string {
-	return fmt.Sprintf("{param %s}%s{/param}", n.Key, n.Content.String())
+	return fmt.Sprintf("{param %s%s}%s{/param}", n.Key, attrs("kind", n.Kind), n.Content.String())
 }
 
 func (n *CallParamContentNode) Children() []Node {

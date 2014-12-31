@@ -21,7 +21,6 @@ type state struct {
 	bufferName   string
 	varnum       int
 	scope        scope
-	autoescape   ast.AutoescapeType
 	lastNode     ast.Node
 	options      Options
 }
@@ -245,7 +244,7 @@ func (s *state) visitTemplate(node *ast.TemplateNode) {
 	}
 
 	s.jsln("")
-	s.jsln(node.Name, " = function(opt_data, opt_sb, opt_ijData) {")
+	s.jsln(s.namespace+node.Name, " = function(opt_data, opt_sb, opt_ijData) {")
 	s.indentLevels++
 	if allOptionalParams {
 		s.jsln("opt_data = opt_data || {};")

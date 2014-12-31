@@ -1,6 +1,7 @@
 package autoescape
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/robfig/soy/ast"
@@ -20,25 +21,26 @@ func Simple(reg *template.Registry) (err error) {
 	}()
 	for _, t := range reg.Templates {
 		currentTemplate = t.Node.Name
-		var a = simpleAutoescaper{t.Namespace.Autoescape}
+		var a = simpleAutoescaper{toAutoescapeType(t.Namespace.Autoescape)}
 		a.walk(t.Node)
 	}
 	return nil
 }
 
 type simpleAutoescaper struct {
-	mode ast.AutoescapeType // current escaping mode
+	mode AutoescapeType // current escaping mode
 }
 
 func (a *simpleAutoescaper) walk(node ast.Node) {
 	var prev = a.mode
 	switch node := node.(type) {
 	case *ast.TemplateNode:
-		if node.Autoescape != ast.AutoescapeUnspecified {
-			a.mode = node.Autoescape
+		autoescapeType := toAutoescapeType(node.Autoescape)
+		if autoescapeType != AutoescapeUnspecified {
+			a.mode = autoescapeType
 		}
 	case *ast.PrintNode:
-		if a.mode == ast.AutoescapeOn || a.mode == ast.AutoescapeUnspecified {
+		if a.mode == AutoescapeOn || a.mode == AutoescapeUnspecified {
 			a.escape(node)
 		}
 	}
@@ -58,4 +60,15 @@ func (a *simpleAutoescaper) escape(node *ast.PrintNode) {
 		}
 	}
 	node.Directives = append(node.Directives, &ast.PrintDirectiveNode{node.Pos, "escapeHtml", nil})
+}
+
+// toAutoescapeType converts a string to a supported autoescape type (either
+// unspecified, true, or false)
+func toAutoescapeType(autoescapeType string) AutoescapeType {
+	switch AutoescapeType(autoescapeType) {
+	case AutoescapeUnspecified, AutoescapeOff, AutoescapeOn:
+		return AutoescapeType(autoescapeType)
+	default:
+		panic(errors.New("unsupported autoescape type: " + autoescapeType))
+	}
 }
