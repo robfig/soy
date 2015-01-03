@@ -841,7 +841,7 @@ func newFakeBundle(msg, tran string, pl po.PluralSelector) *fakeBundle {
 	var msgnode = sf.Body[0].(*ast.MsgNode)
 	soymsg.SetPlaceholdersAndID(msgnode)
 	var m = soymsg.NewMessage(msgnode.ID, tran)
-	return &fakeBundle{map[uint64]*soymsg.Message{msgnode.ID: &m}, pl}
+	return &fakeBundle{map[uint64]*soymsg.Message{msgnode.ID: m}, pl}
 }
 
 func newFakePluralBundle(pluralVar, msg1, msg2 string, pl po.PluralSelector, msgstr []string) *fakeBundle {

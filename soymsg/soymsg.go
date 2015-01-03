@@ -81,8 +81,8 @@ const (
 
 // NewMessage returns a new message, given its ID and placeholder string.
 // TODO: plural parts are not parsed from the placeholder string.
-func NewMessage(id uint64, phstr string) Message {
-	return Message{id, Parts(phstr)}
+func NewMessage(id uint64, phstr string) *Message {
+	return &Message{id, Parts(phstr)}
 }
 
 // PlaceholderString returns a string representation of the message containing
