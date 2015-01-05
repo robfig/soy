@@ -66,6 +66,135 @@ func (c context) mangle(templateName string) string {
 	return s
 }
 
+func (c context) beforeDynamicValue() context {
+	if c.state == stateBeforeValue {
+		return c.contextAfterAttrDelim(delimSpaceOrTagEnd)
+	}
+	return c
+}
+
+func (c context) contextAfterAttrDelim(d delim) context {
+	switch c.attr {
+	case attrNone:
+		return context{state: stateAttr, delim: d}
+	case attrScript:
+		return context{state: stateJS, jsCtx: jsCtxRegexp, delim: d}
+	case attrStyle:
+		return context{state: stateCSS, delim: d}
+	case attrURL:
+		return context{state: stateURL, urlPart: urlPartNone, delim: d}
+	default:
+		panic("unrecognized attribute: " + c.attr.String())
+	}
+}
+
+func (c context) contextAfterEscaping(escape escapingMode) context {
+	switch {
+	case escape == escapeJSValue:
+		if c.jsCtx == jsCtxRegexp {
+			c.jsCtx = jsCtxDivOp
+		}
+		return c
+
+	// TODO: HTML_BEFORE_TAG_NAME?
+
+	case c.state == stateTag:
+		c.state = stateAttrName
+		c.attr = attrNone
+		return c
+
+	case c.urlPart == urlPartNone:
+		c.urlPart = urlPartPreQuery
+		return c
+
+	default:
+		return c
+	}
+}
+
+func (c context) escapingModes() []escapingMode {
+	s := make([]escapingMode, 0, 3)
+	switch c.state {
+	case stateError:
+		return s
+	case stateURL, stateCSSDqStr, stateCSSSqStr, stateCSSDqURL, stateCSSSqURL, stateCSSURL:
+		switch c.urlPart {
+		case urlPartNone:
+			s = append(s, filterNormalizeURL)
+			fallthrough
+		case urlPartPreQuery:
+			switch c.state {
+			case stateCSSDqStr, stateCSSSqStr:
+				s = append(s, escapeCSSStr)
+			default:
+				s = append(s, normalizeURL)
+			}
+		case urlPartQueryOrFrag:
+			s = append(s, escapeURL)
+		case urlPartUnknown:
+			panic("ambiguous URL context")
+		default:
+			panic(c.urlPart.String())
+		}
+	case stateJS:
+		s = append(s, escapeJSValue)
+		// A slash after a value starts a div operator.
+		c.jsCtx = jsCtxDivOp
+	case stateJSDqStr, stateJSSqStr:
+		s = append(s, escapeJSStr)
+	case stateJSRegexp:
+		s = append(s, escapeJSRegexp)
+	case stateCSS:
+		s = append(s, filterCSSValue)
+	case stateText:
+		s = append(s, escapeHTML)
+	case stateRCDATA:
+		s = append(s, escapeHTMLRCDATA)
+	case stateAttr:
+		// Handled below in delim check.
+	case stateAttrName, stateTag:
+		c.state = stateAttrName
+		s = append(s, filterHTMLElementName)
+	default:
+		if isComment(c.state) {
+			panic("may not {print} within a comment")
+		} else {
+			panic("unexpected state " + c.state.String())
+		}
+	}
+	switch c.delim {
+	case delimNone:
+		// No extra-escaping needed for raw text content.
+	case delimSpaceOrTagEnd:
+		s = append(s, escapeHTMLAttrNoSpace)
+	default:
+		s = append(s, escapeHTMLAttr)
+	}
+	return s
+}
+
+func (c context) isCompatibleWith(escape escapingMode) bool {
+	switch {
+	case escape == escapeJSValue:
+		switch c.state {
+		case stateJSSqStr, stateJSDqStr, stateCSSSqStr, stateCSSDqStr:
+			return false
+		default:
+			return true
+		}
+
+	case escape == noAutoescape:
+		return false // TODO: need a state for text mode.
+
+	case c.delim == delimSpaceOrTagEnd:
+		switch escape {
+		case escapeHTML, escapeHTMLAttr, escapeHTMLRCDATA:
+			return false
+		}
+	}
+	return true
+}
+
 // state describes a high-level HTML parser state.
 //
 // It bounds the top of the element stack, and by extension the HTML insertion
@@ -337,3 +466,26 @@ func (a attr) String() string {
 	}
 	return fmt.Sprintf("illegal attr %d", int(a))
 }
+
+type escapingMode struct {
+	directiveName string
+	resultKind    kind
+}
+
+var (
+	escapeHTML            = escapingMode{"escapeHtml", kindHTML}
+	escapeHTMLRCDATA      = escapingMode{"escapeHtmlRcdata", kindNone}
+	escapeHTMLAttr        = escapingMode{"escapeHtmlAttribute", kindNone}
+	escapeHTMLAttrNoSpace = escapingMode{"escapeHtmlAttributeNospace", kindNone}
+	filterHTMLElementName = escapingMode{"filterHtmlElementName", kindNone}
+	escapeJSStr           = escapingMode{"escapeJsString", kindNone}
+	escapeJSValue         = escapingMode{"escapeJsValue", kindNone}
+	escapeJSRegexp        = escapingMode{"escapeJsRegex", kindNone}
+	escapeCSSStr          = escapingMode{"escapeCssString", kindNone}
+	filterCSSValue        = escapingMode{"filterCssValue", kindCSS}
+	escapeURL             = escapingMode{"escapeUri", kindURL}
+	normalizeURL          = escapingMode{"normalizeUri", kindURL}
+	filterNormalizeURL    = escapingMode{"filterNormalizeUri", kindURL}
+	noAutoescape          = escapingMode{"noAutoescape", kindText}
+	// filterHTMLAttr
+)

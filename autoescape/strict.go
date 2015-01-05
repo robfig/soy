@@ -4,7 +4,6 @@ package autoescape
 import (
 	"fmt"
 
-	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
 	"github.com/robfig/soy/soyhtml"
 	"github.com/robfig/soy/template"
@@ -23,8 +22,8 @@ import (
 // error if the template requests something other than "strict".
 //
 // TODO: Support autoescape="false"
-// TODO: Support kind
 // TODO: Support branches, loops, {let} and {call}
+// TODO: Support autoescape-canceling directives
 //
 // NOTE: There are some differences in the escaping behavior from the official
 // implementation. Roughly, this implementation is a little more conservative.
@@ -49,36 +48,41 @@ func Strict(reg *template.Registry) (err error) {
 		}
 	}()
 
-	e := newEscaper(reg)
-
-	var callGraph = newCallGraph(reg)
-	for _, root := range callGraph.roots() {
-		// TODO: For now, assume the roots are all HTML context.
-		c := e.escape(context{state: stateText}, root.Node)
-		if c.err != nil {
-			c.err.Name = root.Node.Name
-			return c.err
-		}
+	var inferences = newInferences(reg)
+	var engine = engine{
+		registry:   reg,
+		inferences: inferences,
 	}
 
-	e.commit()
+	for _, t := range reg.Templates {
+		var start = context{state: startStateForKind(kind(t.Node.Kind))}
+		var end = engine.infer(t.Node, start)
+		// TODO: just panic instead of returning an error context (assuming there is
+		// no case where it recovers)
+		if end.err != nil {
+			end.err.Name = t.Node.Name
+			return end.err
+		}
+		inferences.recordTemplateEndContext(t.Node, end)
+	}
+
 	return nil
 }
 
-func startStateForKind(kind string) state {
+func startStateForKind(kind kind) state {
 	switch kind {
-	case "css":
+	case kindCSS:
 		return stateCSS
-	case "", "html":
+	case kindNone, kindHTML:
 		return stateText
-	case "attributes":
+	case kindAttr:
 		return stateTag
-	case "js":
+	case kindJS:
 		return stateJS
-	case "uri":
+	case kindURL:
 		return stateURL
-	case "text":
-		// TODO: state where escaping is disabled?
+	case kindText:
+		panic("TODO: state where escaping is disabled")
 	default:
 		panic("unknown kind: " + kind)
 	}
@@ -109,133 +113,9 @@ func init() {
 	}
 }
 
-// escaper collects type inferences about templates and changes needed to make
-// templates injection safe.
-type escaper struct {
-	reg *template.Registry
-	// xxxNodeEdits are the accumulated edits to apply during commit.
-	// Such edits are not applied immediately in case a template set
-	// executes a given template in different escaping contexts.
-	printNodeEdits map[*ast.PrintNode][]string
-}
-
-// newEscaper creates a blank escaper for the given set.
-func newEscaper(reg *template.Registry) *escaper {
-	return &escaper{
-		reg,
-		make(map[*ast.PrintNode][]string),
-	}
-}
-
 // filterFailsafe is an innocuous word that is emitted in place of unsafe values
 // by sanitizer functions. It is not a keyword in any programming language,
 // contains no special characters, is not empty, and when it appears in output
 // it is distinct enough that a developer can find the source of the problem
 // via a search engine.
 const filterFailsafe = data.String("zSoyz")
-
-// escape escapes a template node.
-func (e *escaper) escape(c context, n ast.Node) context {
-	switch n := n.(type) {
-	case *ast.TemplateNode:
-		return e.escape(c, n.Body)
-	case *ast.ListNode:
-		return e.escapeList(c, n.Nodes)
-	case *ast.RawTextNode:
-		return escapeText(c, n)
-	case *ast.PrintNode:
-		return e.escapePrint(c, n)
-	}
-	panic("escaping " + n.String() + " is unimplemented")
-}
-
-// escapeList escapes a list of nodes that provide sequential content.
-func (e *escaper) escapeList(c context, nodes []ast.Node) context {
-	for _, m := range nodes {
-		c = e.escape(c, m)
-	}
-	return c
-}
-
-func (e *escaper) escapePrint(c context, n *ast.PrintNode) context {
-	c = nudge(c)
-	s := make([]string, 0, 3)
-	switch c.state {
-	case stateError:
-		return c
-	case stateURL, stateCSSDqStr, stateCSSSqStr, stateCSSDqURL, stateCSSSqURL, stateCSSURL:
-		switch c.urlPart {
-		case urlPartNone:
-			s = append(s, "filterNormalizeUri")
-			fallthrough
-		case urlPartPreQuery:
-			switch c.state {
-			case stateCSSDqStr, stateCSSSqStr:
-				s = append(s, "escapeCssString")
-			default:
-				s = append(s, "normalizeUri")
-			}
-		case urlPartQueryOrFrag:
-			s = append(s, "escapeUri")
-		case urlPartUnknown:
-			return context{
-				state: stateError,
-				err:   errorf(ErrAmbigContext, 0, "%s appears in an ambiguous URL context", n),
-			}
-		default:
-			panic(c.urlPart.String())
-		}
-	case stateJS:
-		s = append(s, "escapeJsValue")
-		// A slash after a value starts a div operator.
-		c.jsCtx = jsCtxDivOp
-	case stateJSDqStr, stateJSSqStr:
-		s = append(s, "escapeJsString")
-	case stateJSRegexp:
-		s = append(s, "escapeJsRegex")
-	case stateCSS:
-		s = append(s, "filterCssValue")
-	case stateText:
-		s = append(s, "escapeHtml")
-	case stateRCDATA:
-		s = append(s, "escapeHtmlRcData")
-	case stateAttr:
-		// Handled below in delim check.
-	case stateAttrName, stateTag:
-		c.state = stateAttrName
-		s = append(s, "filterHtmlElementName")
-	default:
-		if isComment(c.state) {
-			panic("may not {print} within a comment")
-		} else {
-			panic("unexpected state " + c.state.String())
-		}
-	}
-	switch c.delim {
-	case delimNone:
-		// No extra-escaping needed for raw text content.
-	case delimSpaceOrTagEnd:
-		s = append(s, "escapeHtmlAttributeNospace")
-	default:
-		s = append(s, "escapeHtmlAttribute")
-	}
-	e.editPrintNode(n, s)
-	return c
-}
-
-// editPrintNode records a change to a print node
-func (e *escaper) editPrintNode(n *ast.PrintNode, directives []string) {
-	if _, ok := e.printNodeEdits[n]; ok {
-		panic(fmt.Sprintf("node %s already edited", n))
-	}
-	e.printNodeEdits[n] = directives
-}
-
-// commit applies changes to print nodes
-func (e *escaper) commit() {
-	for node, directives := range e.printNodeEdits {
-		for _, directive := range directives {
-			node.Directives = append(node.Directives, &ast.PrintDirectiveNode{node.Pos, directive, nil})
-		}
-	}
-}
