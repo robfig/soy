@@ -585,7 +585,7 @@ func (t *tree) parseTemplate(token item) ast.Node {
 	t.expect(itemRightDelim, ctx)
 	tmpl := &ast.TemplateNode{
 		token.pos,
-		t.namespace + id.val,
+		id.val,
 		t.itemList(itemTemplateEnd),
 		attrs["autoescape"],
 		attrs["kind"],
@@ -867,7 +867,7 @@ func newBinaryOpNode(t item, n1, n2 ast.Node) ast.Node {
 	case itemSub:
 		return &ast.SubNode{op(bin, "-")}
 	case itemEq:
-		return &ast.EqNode{op(bin, "=")}
+		return &ast.EqNode{op(bin, "==")}
 	case itemNotEq:
 		return &ast.NotEqNode{op(bin, "!=")}
 	case itemGt:

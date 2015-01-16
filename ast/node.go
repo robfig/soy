@@ -92,7 +92,7 @@ type NamespaceNode struct {
 }
 
 func (c *NamespaceNode) String() string {
-	return "{namespace " + c.Name + attrs("autoescape", c.Autoescape) + "}"
+	return "{namespace " + c.Name + attrs("autoescape", c.Autoescape) + "}\n\n"
 }
 
 // TemplateNode holds a template body.
@@ -197,9 +197,9 @@ type PrintDirectiveNode struct {
 
 func (n *PrintDirectiveNode) String() string {
 	if len(n.Args) == 0 {
-		return "|" + n.Name
+		return " |" + n.Name
 	}
-	var expr = "|" + n.Name + ":"
+	var expr = " |" + n.Name + ":"
 	var first = false
 	for _, arg := range n.Args {
 		if first {
@@ -730,7 +730,7 @@ type BinaryOpNode struct {
 }
 
 func (n *BinaryOpNode) String() string {
-	return n.Arg1.String() + n.Name + n.Arg2.String()
+	return n.Arg1.String() + " " + n.Name + " " + n.Arg2.String()
 }
 
 func (n *BinaryOpNode) Children() []Node {

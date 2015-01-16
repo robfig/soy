@@ -55,7 +55,7 @@ func (r *Registry) Add(soyfile *ast.SoyFileNode) error {
 			sdn = &ast.SoyDocNode{tn.Pos, nil}
 		}
 		r.Templates = append(r.Templates, Template{sdn, tn, ns})
-		r.sourceByTemplateName[tn.Name] = soyfile.Text
+		r.sourceByTemplateName[ns.Name+tn.Name] = soyfile.Text
 	}
 	return nil
 }
@@ -64,7 +64,7 @@ func (r *Registry) Add(soyfile *ast.SoyFileNode) error {
 // The resulting template is returned and a boolean indicating if it was found.
 func (r *Registry) Template(name string) (Template, bool) {
 	for _, t := range r.Templates {
-		if t.Node.Name == name {
+		if (t.Namespace.Name + t.Node.Name) == name {
 			return t, true
 		}
 	}

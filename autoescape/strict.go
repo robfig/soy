@@ -2,8 +2,6 @@
 package autoescape
 
 import (
-	"fmt"
-
 	"github.com/robfig/soy/data"
 	"github.com/robfig/soy/soyhtml"
 	"github.com/robfig/soy/template"
@@ -41,19 +39,19 @@ import (
 //  +----------------+------+-----------+---------+
 //
 func Strict(reg *template.Registry) (err error) {
-	var currentTemplate string
-	defer func() {
-		if err2 := recover(); err2 != nil {
-			err = fmt.Errorf("template %v: %v", currentTemplate, err2)
-		}
-	}()
+	// var currentTemplate string
+	// defer func() {
+	// 	if err2 := recover(); err2 != nil {
+	// 		err = fmt.Errorf("template %v: %v", currentTemplate, err2)
+	// 	}
+	// }()
 
+	// Infer escaping mode for all template, print, and call nodes.
 	var inferences = newInferences(reg)
 	var engine = engine{
 		registry:   reg,
 		inferences: inferences,
 	}
-
 	for _, t := range reg.Templates {
 		var start = context{state: startStateForKind(kind(t.Node.Kind))}
 		var end = engine.infer(t.Node, start)
@@ -65,6 +63,9 @@ func Strict(reg *template.Registry) (err error) {
 		}
 		inferences.recordTemplateEndContext(t.Node, end)
 	}
+
+	// Apply the appropriate directives
+	rewrite(inferences, reg)
 
 	return nil
 }
