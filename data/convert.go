@@ -28,6 +28,11 @@ func NewWith(convert StructOptions, value interface{}) Value {
 		return Null{}
 	}
 
+	// see if value implements MarshalValue
+	if mar, ok := value.(Marshaler); ok {
+		return mar.MarshalValue()
+	}
+
 	// drill through pointers and interfaces to the underlying type
 	var v = reflect.ValueOf(value)
 	for v.Kind() == reflect.Interface || v.Kind() == reflect.Ptr {
@@ -102,4 +107,10 @@ func (c StructOptions) Data(obj interface{}) Map {
 		m[key] = NewWith(c, v.Field(i).Interface())
 	}
 	return Map(m)
+}
+
+// Marshaler is the interface implemented by entities that can marshal
+// themselves into a data.Value.
+type Marshaler interface {
+	MarshalValue() Value
 }
