@@ -606,6 +606,8 @@ func (t *tree) parseAutoescape(attrs map[string]string) ast.AutoescapeType {
 		return ast.AutoescapeUnspecified
 	case "contextual":
 		return ast.AutoescapeContextual
+	case "deprecated-contextual":
+		return ast.AutoescapeContextual
 	case "true":
 		return ast.AutoescapeOn
 	case "false":
