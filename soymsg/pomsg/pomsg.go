@@ -3,6 +3,7 @@ package pomsg
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -17,7 +18,59 @@ type provider struct {
 	bundles map[string]soymsg.Bundle
 }
 
-// Dir returns a soymsg.Bundle that takes translations from the given path.
+// FileOpener defines an abstraction for opening a po file given a locale
+type FileOpener interface {
+	// Open returns ReadCloser for the po file indicated by locale. It returns
+	// nil if the file does not exist
+	Open(locale string) (io.ReadCloser, error)
+}
+
+// Load returns a soymsg.Provider that takes its translations by passing in the
+// specifified locales to the given PoFileProvider.
+//
+// TODO: Fallbacks between <lang> and <lang>_<territory>
+func Load(opener FileOpener, locales []string) (soymsg.Provider, error) {
+	var prov = provider{make(map[string]soymsg.Bundle)}
+	for _, locale := range locales {
+		r, err := opener.Open(locale)
+		if err != nil {
+			return nil, err
+		} else if r == nil {
+			continue
+		}
+
+		pofile, err := po.Parse(r)
+		r.Close()
+		if err != nil {
+			return nil, err
+		}
+
+		b, err := newBundle(locale, pofile)
+		if err != nil {
+			return nil, err
+		}
+		prov.bundles[locale] = b
+	}
+	return prov, nil
+}
+
+// fsFileOpener is a FileOpener based on the filesystem and rooted at Dirname
+type fsFileOpener struct {
+	Dirname string
+}
+
+func (o fsFileOpener) Open(locale string) (io.ReadCloser, error) {
+	switch f, err := os.Open(path.Join(o.Dirname, locale+".po")); {
+	case os.IsNotExist(err):
+		return nil, nil
+	case err != nil:
+		return nil, err
+	default:
+		return f, nil
+	}
+}
+
+// Dir returns a soymsg.Provider that takes translations from the given path.
 // For example, if dir is "/usr/local/msgs", po files should be of the form:
 //   /usr/local/msgs/<lang>.po
 //   /usr/local/msgs/<lang>_<territory>.po
@@ -28,27 +81,14 @@ func Dir(dirname string) (soymsg.Provider, error) {
 	if err != nil {
 		return nil, err
 	}
-	var prov = provider{make(map[string]soymsg.Bundle)}
+	var locales []string
 	for _, fi := range files {
 		var name = fi.Name()
 		if !fi.IsDir() && strings.HasSuffix(name, ".po") {
-			var f, err = os.Open(path.Join(dirname, name))
-			if err != nil {
-				return nil, err
-			}
-			pofile, err := po.Parse(f)
-			if err != nil {
-				return nil, err
-			}
-			var locale = name[:len(name)-3]
-			b, err := newBundle(locale, pofile)
-			if err != nil {
-				return nil, err
-			}
-			prov.bundles[locale] = b
+			locales = append(locales, name[:len(name)-3])
 		}
 	}
-	return prov, nil
+	return Load(fsFileOpener{dirname}, locales)
 }
 
 func (p provider) Bundle(locale string) soymsg.Bundle {
