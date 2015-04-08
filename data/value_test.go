@@ -1,6 +1,7 @@
 package data
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 )
@@ -15,6 +16,13 @@ var (
 	_ Value = String("")
 	_ Value = List{}
 	_ Value = Map{}
+)
+
+// Ensure custom marshalers are implemented
+
+var (
+	_ json.Marshaler = Undefined{}
+	_ json.Marshaler = Null{}
 )
 
 func TestKey(t *testing.T) {
@@ -47,6 +55,27 @@ func TestIndex(t *testing.T) {
 
 	for _, test := range tests {
 		actual := New(test.input).(List).Index(test.index)
+		if !reflect.DeepEqual(test.expected, actual) {
+			t.Errorf("%v => %#v, expected %#v", test.input, actual, test.expected)
+		}
+	}
+}
+
+func TestCustomMarhshaling(t *testing.T) {
+	tests := []struct {
+		input    interface{}
+		expected interface{}
+	}{
+		{Null{}, []byte("null")},
+		{Undefined{}, []byte("null")},
+	}
+
+	for _, test := range tests {
+		actual, err := json.Marshal(test.input)
+		if err != nil {
+			t.Errorf("unexpected error: %#v", err.Error())
+		}
+
 		if !reflect.DeepEqual(test.expected, actual) {
 			t.Errorf("%v => %#v, expected %#v", test.input, actual, test.expected)
 		}
