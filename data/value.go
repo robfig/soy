@@ -53,6 +53,11 @@ func (v Map) Key(k string) Value {
 	return result
 }
 
+// Marshal ---------
+
+func (v Undefined) MarshalJSON() ([]byte, error) { return []byte("null"), nil }
+func (v Null) MarshalJSON() ([]byte, error)      { return []byte("null"), nil }
+
 // Truthy ----------
 
 func (v Undefined) Truthy() bool { return false }
