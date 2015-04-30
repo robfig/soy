@@ -380,9 +380,11 @@ var parseTests = []parseTest{
 	{"let", `
 {let $alpha: $boo.foo /}
 {let $beta}Boo!{/let}
+{let $gamma kind="text"}BOO{/let}
 `, /*{let $delta kind="html"}Boo!{/let}*/ tFile(
 		&ast.LetValueNode{0, "alpha", &ast.DataRefNode{0, "boo", []ast.Node{&ast.DataRefKeyNode{0, false, "foo"}}}},
 		&ast.LetContentNode{0, "beta", tList(newText(0, "Boo!"))},
+		&ast.LetContentNode{0, "gamma", tList(newText(0, "BOO"))},
 	)},
 
 	{"comments", `
