@@ -63,7 +63,7 @@ var parseTests = []parseTest{
 	{"empty template", "{template .name}{/template}", tFile(tTemplate(".name"))},
 	{"text template", "{template .name}\nHello world!\n{/template}",
 		tFile(tTemplate(".name", newText(0, "Hello world!")))},
-	{"variable template", "{template .name}\nHello {$name}!\n{/template}",
+	{"variable template", "{template .name kind=\"text\"}\nHello {$name}!\n{/template}",
 		tFile(tTemplate(".name",
 			newText(0, "Hello "),
 			&ast.PrintNode{0, &ast.DataRefNode{0, "name", nil}, nil}, // implicit print

@@ -741,7 +741,7 @@ func (t *tree) parseAutoescape(attrs map[string]string) ast.AutoescapeType {
 func (t *tree) parseTemplate(token item) ast.Node {
 	const ctx = "template tag"
 	var id = t.expect(itemDotIdent, ctx)
-	var attrs = t.parseAttrs("autoescape", "private")
+	var attrs = t.parseAttrs("autoescape", "private", "kind")
 	var autoescape = t.parseAutoescape(attrs)
 	var private = t.boolAttr(attrs, "private", false)
 	t.expect(itemRightDelim, ctx)
