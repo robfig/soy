@@ -238,11 +238,14 @@ func (t *tree) parseAlias(token item) {
 // "let" has just been read.
 func (t *tree) parseLet(token item) ast.Node {
 	var name = t.expect(itemDollarIdent, "let")
-	switch next := t.next(); next.typ {
-	case itemColon:
+	if t.peek().typ == itemColon {
+		t.next()
 		var node = &ast.LetValueNode{token.pos, name.val[1:], t.parseExpr(0)}
 		t.expect(itemRightDelimEnd, "let")
 		return node
+	}
+	t.parseAttrs("kind")
+	switch next := t.next(); next.typ {
 	case itemRightDelim:
 		var node = &ast.LetContentNode{token.pos, name.val[1:], t.itemList(itemLetEnd)}
 		t.expect(itemRightDelim, "let")
@@ -738,7 +741,7 @@ func (t *tree) parseAutoescape(attrs map[string]string) ast.AutoescapeType {
 func (t *tree) parseTemplate(token item) ast.Node {
 	const ctx = "template tag"
 	var id = t.expect(itemDotIdent, ctx)
-	var attrs = t.parseAttrs("autoescape", "private")
+	var attrs = t.parseAttrs("autoescape", "private", "kind")
 	var autoescape = t.parseAutoescape(attrs)
 	var private = t.boolAttr(attrs, "private", false)
 	t.expect(itemRightDelim, ctx)

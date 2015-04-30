@@ -63,7 +63,7 @@ var parseTests = []parseTest{
 	{"empty template", "{template .name}{/template}", tFile(tTemplate(".name"))},
 	{"text template", "{template .name}\nHello world!\n{/template}",
 		tFile(tTemplate(".name", newText(0, "Hello world!")))},
-	{"variable template", "{template .name}\nHello {$name}!\n{/template}",
+	{"variable template", "{template .name kind=\"text\"}\nHello {$name}!\n{/template}",
 		tFile(tTemplate(".name",
 			newText(0, "Hello "),
 			&ast.PrintNode{0, &ast.DataRefNode{0, "name", nil}, nil}, // implicit print
@@ -379,9 +379,11 @@ var parseTests = []parseTest{
 	{"let", `
 {let $alpha: $boo.foo /}
 {let $beta}Boo!{/let}
+{let $gamma kind="text"}BOO{/let}
 `, /*{let $delta kind="html"}Boo!{/let}*/ tFile(
 		&ast.LetValueNode{0, "alpha", &ast.DataRefNode{0, "boo", []ast.Node{&ast.DataRefKeyNode{0, false, "foo"}}}},
 		&ast.LetContentNode{0, "beta", tList(newText(0, "Boo!"))},
+		&ast.LetContentNode{0, "gamma", tList(newText(0, "BOO"))},
 	)},
 
 	{"comments", `
