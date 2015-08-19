@@ -10,7 +10,6 @@ import (
 
 	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
-	"github.com/robfig/soy/soyhtml"
 )
 
 type state struct {
@@ -272,7 +271,7 @@ func (s *state) visitPrint(node *ast.PrintNode) {
 	var escape = s.autoescape
 	var directives []*ast.PrintDirectiveNode
 	for _, dir := range node.Directives {
-		var directive, ok = soyhtml.PrintDirectives[dir.Name]
+		var directive, ok = PrintDirectives[dir.Name]
 		if !ok {
 			s.errorf("Print directive %q not found", dir.Name)
 		}
@@ -293,7 +292,7 @@ func (s *state) visitPrint(node *ast.PrintNode) {
 	s.indent()
 	s.js(s.bufferName, " += ")
 	for _, dir := range directives {
-		s.js("soy.$$", dir.Name, "(")
+		s.js(PrintDirectives[dir.Name].Name, "(")
 	}
 	s.walk(node.Arg)
 	for i := range directives {
