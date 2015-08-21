@@ -385,6 +385,18 @@ func TestSpecialChars(t *testing.T) {
 	})
 }
 
+func TestForeachElvis(t *testing.T) {
+	runExecTests(t, []execTest{
+		exprtest("foreachelvislet", `{template .foo}
+			{let $list: null ?: [] /}
+			{foreach $l in $list}{/foreach}
+			{/template}`, ""),
+		exprtest("foreachelvisinline", `{template .foo}
+			{foreach $l in null ?: []}{/foreach}
+			{/template}`, ""),
+	})
+}
+
 func TestLiteral(t *testing.T) {
 	runExecTests(t, []execTest{
 		exprtest("literal",
