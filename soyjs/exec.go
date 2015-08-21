@@ -415,10 +415,10 @@ func (s *state) visitIf(node *ast.IfNode) {
 }
 
 func (s *state) visitFor(node *ast.ForNode) {
-	if _, isForeach := node.List.(*ast.DataRefNode); isForeach {
-		s.visitForeach(node)
-	} else {
+	if rangeNode, ok := node.List.(*ast.FunctionNode); ok && rangeNode.Name == "range" {
 		s.visitForRange(node)
+	} else {
+		s.visitForeach(node)
 	}
 }
 
