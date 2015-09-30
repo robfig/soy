@@ -1,28 +1,21 @@
-package soyjs
+package soyhtml
 
 import (
-	"bufio"
 	"bytes"
-	"encoding/json"
 	"fmt"
-	"io"
-	"os"
+	"log"
+	"reflect"
 	"strings"
 	"testing"
 
-	"github.com/robertkrimen/otto"
+	"github.com/robfig/gettext/po"
+	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
 	"github.com/robfig/soy/parse"
 	"github.com/robfig/soy/parsepasses"
+	"github.com/robfig/soy/soymsg"
+	"github.com/robfig/soy/template"
 )
-
-// TODO: test all types of globals
-// TODO: test all functions
-
-// This is the same test suite as tofu/exec_test, verifying that the JS versions
-// get the same result.
-
-/** BEGIN COPIED TESTS (minus lines marked with DIFFERENCE) */
 
 type d map[string]interface{}
 
@@ -81,26 +74,22 @@ func TestBasicExec(t *testing.T) {
 	})
 }
 
-// DIFFERENCE: Boolean expressions print true/false on server but return a value on client.
-// (This happens in official Soy)
 func TestExpressions(t *testing.T) {
 	runExecTests(t, []execTest{
 		exprtest("arithmetic", "{2*(1+1)/(2%4)}", "2"),
 		exprtest("arithmetic2", "{2.0-1.5}", "0.5"),
 		exprtest("bools", "{not false and (2 > 5.0 or (null ?: true))}", "true"),
 		exprtest("bools2", "{2*(1.5+1) < 3 ? 'nope' : (2 >= 2) == (5.5<6) != true }", "false"),
-		// DIFFERENCE: official soy returns true but prints nothing.  (weird!)
-		// ({true} prints true. {[:]} is truthy but prints nothing.)
-		// exprtest("bools3", "{null or 0.0 or ([:] and [])}", "true"), // map/list is truthy
+		exprtest("bools3", "{null or 0.0 or ([:] and [])}", "true"), // map/list is truthy
 		exprtest("bools4", "{'a' == 'a'}", "true"),
-		// exprtest("bools5", "{null == $foo}", "false"),  // DIFFERENCE
+		exprtest("bools5", "{null == $foo}", "false"),
 		exprtest("bools6", "{null == null}", "true"),
-		// exprtest("bools7", "{$foo == $foo}", "true"),  // DIFFERENCE
+		exprtest("bools7", "{$foo == $foo}", "true"),
 		exprtest("comparisons", `{0.5<=1 ? null?:'hello' : (1!=1)}`, "hello"),
 		exprtest("stringconcat", `{'hello' + 'world'}`, "helloworld"),
 		exprtest("mixedconcat", `{5 + 'world'}`, "5world"),
-		exprtest("elvis", `{null?:'hello'}`, "hello"), // elvis does isNonnull check on first arg
-		//exprtest("elvis2", `{$foo?:'hello'}`, "hello"),  // elvis does isNonnull check on first arg
+		exprtest("elvis", `{null?:'hello'}`, "hello"),   // elvis does isNonnull check on first arg
+		exprtest("elvis2", `{$foo?:'hello'}`, "hello"),  // elvis does isNonnull check on first arg
 		exprtest("elvis3", `{0?:'hello'}`, "0"),         // 0 is non-null
 		exprtest("elvis4", `{false?:'hello'}`, "false"), // false is non-null
 		exprtest("negate", `{-(1+1)}`, "-2"),
@@ -108,8 +97,8 @@ func TestExpressions(t *testing.T) {
 
 		// short-circuiting
 		exprtest("shortcircuit precondition undef key fails", "{$undef.key}", "").fails(),
-		// exprtest("shortcircuit and", "{$undef and $undef.key}", "undefined"),
-		exprtest("shortcircuit or", "{'yay' or $undef.key}", "yay"), // DIFFERENCE
+		exprtest("shortcircuit and", "{$undef and $undef.key}", "false"),
+		exprtest("shortcircuit or", "{'yay' or $undef.key}", "true"),
 	})
 }
 
@@ -134,13 +123,11 @@ func TestIf(t *testing.T) {
 		{d{"zoo": "zoo", "foo": d{"goo": 0}, "moo": 3}, "zooY 3"},
 	}, []errortest{
 		{nil},
-		{d{"foo": nil}}, // $foo.goo fails
-
-		// DIFFERENCE: JS templates don't error on these.
-		// {d{"foo": "str"}},           // $foo.goo must be number
-		// {d{"foo": true}},            // $foo.goo must be number
-		// {d{"foo": d{}}},             // $foo.goo must be number
-		// {d{"foo": []interface{}{}}}, // $foo.goo must be number
+		{d{"foo": nil}},             // $foo.goo fails
+		{d{"foo": "str"}},           // $foo.goo must be number
+		{d{"foo": true}},            // $foo.goo must be number
+		{d{"foo": d{}}},             // $foo.goo must be number
+		{d{"foo": []interface{}{}}}, // $foo.goo must be number
 	}))
 }
 
@@ -182,6 +169,13 @@ func TestForeach(t *testing.T) {
 		{d{"foo": d{"booze": true}}},    // $foo.booze must be list
 		{d{"foo": d{"booze": []d{{}}}}}, // $boo.name fails
 	}))
+
+	runExecTests(t, multidatatest("foreachkeys", `
+{foreach $var in keys($map)}
+  {$var}
+{/foreach}`, []datatest{
+		{d{"map": d{"a": nil}}, "a"},
+	}, nil))
 }
 
 func TestFor(t *testing.T) {
@@ -197,8 +191,7 @@ func TestFor(t *testing.T) {
 	}, []errortest{
 		{d{}},             // undefined is not a valid slice
 		{d{"items": nil}}, // null is not a valid slice
-		// DIFFERENCE: JS function iterates through the string "a" instead of throwing an error.
-		// {d{"items": "a"}}, // string is not a valid slice
+		{d{"items": "a"}}, // string is not a valid slice
 	}))
 }
 
@@ -283,28 +276,23 @@ func TestDataRefs(t *testing.T) {
 		exprtestwdata("undefined", "{$foo}", "", nil).fails(),     // undefined = error
 		exprtestwdata("null", "{$foo}", "null", d{"foo": nil}),    // null prints
 		exprtestwdata("string", "{$foo}", "foo", d{"foo": "foo"}), // string print
-		// DIFFERENCE: JS prints lists as "a,5,2.5", without brackets
-		// exprtestwdata("list", "{$foo}", "[a, 5, [2.5], [null]]",
-		// 	d{"foo": []interface{}{"a", 5, []interface{}{2.5}, []interface{}{nil}}}), // list print
-		// DIFFERENCE JS prints maps as [Object object]
-		// exprtestwdata("map", "{$foo}", "{a: 5, b: [true], c: {}}",
-		// 	d{"foo": d{"a": 5, "b": []interface{}{true}, "c": d{}}}), // map print
+		exprtestwdata("list", "{$foo}", "[a, 5, [2.5], [null]]",
+			d{"foo": []interface{}{"a", 5, []interface{}{2.5}, []interface{}{nil}}}), // list print
+		exprtestwdata("map", "{$foo}", "{a: 5, b: [true], c: {}}",
+			d{"foo": d{"a": 5, "b": []interface{}{true}, "c": d{}}}), // map print
 
 		// index lookups
 		exprtestwdata("basic", "{$foo.2}", "result",
 			d{"foo": []interface{}{"a", 5, "result"}}),
-		// DIFFERENCE: JS just returns undefined
-		// exprtestwdata("out of bounds", "{$foo.7}", "",
-		// 	d{"foo": []interface{}{"a", 5, "result"}}).fails(),
+		exprtestwdata("out of bounds", "{$foo.7}", "",
+			d{"foo": []interface{}{"a", 5, "result"}}).fails(),
 		exprtestwdata("undefined slice", "{$foo.2}", "", d{}).fails(),
 		exprtestwdata("null slice", "{$foo.2}", "", d{"foo": nil}).fails(),
 		exprtestwdata("nullsafe on undefined slice", "{$foo?.2}", "null", d{}),
 		exprtestwdata("nullsafe on null slice", "{$foo?.2}", "null", d{"foo": nil}),
-		// DIFFERENCE: JS does not throw error on out-of-bounds
-		// exprtestwdata("nullsafe does not save out of bounds", "{$foo?.2}", "",
-		// 	d{"foo": []interface{}{"a"}}).fails(),
-		// DIFFERENCE: JS allows lookups on everything.
-		// exprtestwdata("lookup on nonslice", "{$foo?.2}", "", d{"foo": "hello"}).fails(),
+		exprtestwdata("nullsafe does not save out of bounds", "{$foo?.2}", "",
+			d{"foo": []interface{}{"a"}}).fails(),
+		exprtestwdata("lookup on nonslice", "{$foo?.2}", "", d{"foo": "hello"}).fails(),
 
 		// key lookups
 		exprtestwdata("basic", "{$foo.bar}", "result", d{"foo": d{"bar": "result"}}),
@@ -313,20 +301,17 @@ func TestDataRefs(t *testing.T) {
 		exprtestwdata("null value is ok", "{$foo.bar}", "null", d{"foo": d{"bar": nil}}),
 		exprtestwdata("nullsafe on undefined map", "{$foo?.bar}", "null", d{}),
 		exprtestwdata("nullsafe on null map", "{$foo?.bar}", "null", d{"foo": nil}),
-		// DIFFERENCE: In JS everything's a map.
-		// exprtestwdata("lookup on nonmap", "{$foo?.bar}", "", d{"foo": "hello"}).fails(),
+		exprtestwdata("lookup on nonmap", "{$foo?.bar}", "", d{"foo": "hello"}).fails(),
 
 		// expr lookups (index)
 		exprtestwdata("exprbasic", "{$foo[2]}", "result", d{"foo": []interface{}{"a", 5, "result"}}),
-		// DIFFERENCE: No error
-		// exprtestwdata("exprout of bounds", "{$foo[7]}", "", d{"foo": []interface{}{"a", 5, "result"}}).fails(),
+		exprtestwdata("exprout of bounds", "{$foo[7]}", "", d{"foo": []interface{}{"a", 5, "result"}}).fails(),
 		exprtestwdata("exprundefined slice", "{$foo[2]}", "", d{}).fails(),
 		exprtestwdata("exprnull slice", "{$foo[2]}", "", d{"foo": nil}).fails(),
 		exprtestwdata("exprnullsafe on undefined slice", "{$foo?[2]}", "null", d{}),
 		exprtestwdata("exprnullsafe on null slice", "{$foo?[2]}", "null", d{"foo": nil}),
-		// DIFFERENCE: No error
-		// exprtestwdata("exprnullsafe does not save out of bounds", "{$foo?[2]}", "",
-		// 	d{"foo": []interface{}{"a"}}).fails(),
+		exprtestwdata("exprnullsafe does not save out of bounds", "{$foo?[2]}", "",
+			d{"foo": []interface{}{"a"}}).fails(),
 		exprtestwdata("exprarith", "{$foo[1+1>3.0?8:1]}", "5", d{"foo": []interface{}{"a", 5, "z"}}),
 
 		// expr lookups (key)
@@ -337,41 +322,6 @@ func TestDataRefs(t *testing.T) {
 		exprtestwdata("exprkeynullsafe on undefined map", "{$foo?['bar']}", "null", d{}),
 		exprtestwdata("exprkeynullsafe on null map", "{$foo?['bar']}", "null", d{"foo": nil}),
 		exprtestwdata("exprkeyarith", "{$foo['b'+('a'+'r')]}", "result", d{"foo": d{"bar": "result"}}),
-
-		// DIFFERENCE: More tests on nullsafe navigation.
-		exprtestwdata("nullsafe battle royale",
-			"{$foo[2].bar?.baz?['bar']?[3].boo[3]}", "null", d{
-				"foo": []interface{}{
-					d{},
-					d{},
-					d{}, // foo[2].bar is null
-				}}),
-		exprtestwdata("nullsafe battle royale2",
-			"{$foo[2].bar?.baz?['bar']?[3].boo[3]}", "null", d{
-				"foo": []interface{}{
-					d{},
-					d{},
-					d{"bar": d{}}, // foo[2].bar.baz is null
-				}}),
-		exprtestwdata("nullsafe battle royale3",
-			"{$foo[2].bar?.baz?['bar']?[3].boo[3]}", "null", d{
-				"foo": []interface{}{
-					d{},
-					d{},
-					d{"bar": d{"baz": d{}}}, // foo[2].bar.baz['bar'] is null
-				}}),
-		exprtestwdata("nullsafe battle royale4",
-			"{$foo[2].bar?.baz?['bar']?[3].boo[3]}", "d", d{
-				"foo": []interface{}{
-					d{},
-					d{},
-					d{"bar": d{"baz": d{"bar": []interface{}{
-						d{},
-						d{},
-						d{},
-						// foo[2].bar.baz['bar'][3].boo[3] is NOT null
-						d{"boo": []interface{}{"a", "b", "c", "d"}}}}}},
-				}}),
 	})
 }
 
@@ -382,18 +332,6 @@ func TestSpecialChars(t *testing.T) {
 		exprtest("nil avoids space", "abc{nil}\ndef", "abcdef"),
 		exprtest("without sp there is no space", "abc\n<a>", "abc<a>"),
 		exprtest("sp adds space", "abc{sp}\n<a>", "abc <a>"),
-	})
-}
-
-func TestForeachElvis(t *testing.T) {
-	runExecTests(t, []execTest{
-		exprtest("foreachelvislet", `{template .foo}
-			{let $list: null ?: [] /}
-			{foreach $l in $list}{/foreach}
-			{/template}`, ""),
-		exprtest("foreachelvisinline", `{template .foo}
-			{foreach $l in null ?: []}{/foreach}
-			{/template}`, ""),
 	})
 }
 
@@ -414,8 +352,25 @@ func TestCss(t *testing.T) {
 	})
 }
 
-/** TestLog */
-/** TestDebugger */
+func TestLog(t *testing.T) {
+	originalLogger := Logger
+	defer func() { Logger = originalLogger }()
+
+	var buf bytes.Buffer
+	Logger = log.New(&buf, "", 0)
+	runExecTests(t, []execTest{
+		exprtestwdata("log", "{log} Hello {$name} // comment\n{/log}", ``, d{"name": "Rob"}),
+	})
+	if strings.TrimSpace(buf.String()) != "Hello Rob" {
+		t.Errorf("logger didn't match: %q", buf.String())
+	}
+}
+
+func TestDebugger(t *testing.T) {
+	runExecTests(t, []execTest{
+		exprtest("debugger", `{debugger}`, ``),
+	})
+}
 
 func TestPrintDirectives(t *testing.T) {
 	runExecTests(t, []execTest{
@@ -430,8 +385,7 @@ func TestPrintDirectives(t *testing.T) {
 		exprtest("escapeHtml", "{'<a>'|escapeHtml}", "&lt;a&gt;"),
 
 		exprtest("escapeUri1", "{''|escapeUri}", ""),
-		// DIFFERENCE: Go results in +, JS in %20
-		exprtest("escapeUri2", "{'a%b > c'|escapeUri}", "a%25b%20%3E%20c"),
+		exprtest("escapeUri2", "{'a%b > c'|escapeUri}", "a%25b+%3E+c"),
 		// TODO: test it escapes kind=HTML content
 		// TODO: test it does not escape kind=URI content
 
@@ -441,10 +395,8 @@ func TestPrintDirectives(t *testing.T) {
 		// TODO: test it even escapes "kind=HTML" content
 		// TODO: test it does not escape "kind=JS_STR" content
 		exprtestwdata("ejs4", "{$var|escapeJsString}", `\\`, d{"var": "\\"}),
-		// DIFFERENCE: Go results in \'\', JS in \x27\x27
-		exprtestwdata("ejs5", "{$var|escapeJsString}", `\x27\x27`, d{"var": "''"}),
-		// DIFFERENCE: Go results in \"\", JS in \x22\x22
-		exprtestwdata("ejs5", "{$var|escapeJsString}", `\x22foo\x22`, d{"var": `"foo"`}),
+		exprtestwdata("ejs5", "{$var|escapeJsString}", `\'\'`, d{"var": "''"}),
+		exprtestwdata("ejs5", "{$var|escapeJsString}", `\"foo\"`, d{"var": `"foo"`}),
 		exprtestwdata("ejs5", "{$var|escapeJsString}", `42`, d{"var": 42}),
 
 		exprtest("truncate", "{'Lorem Ipsum' |truncate:8}", "Lorem..."),
@@ -609,7 +561,24 @@ func TestHelloWorld(t *testing.T) {
 	})
 }
 
-/** TestStructData */
+func TestStructData(t *testing.T) {
+	runExecTests(t, []execTest{
+		{"1 name", "examples.simple.helloName", helloWorldTemplate,
+			"Hello Ana!",
+			struct{ Name string }{"Ana"},
+			true,
+		},
+
+		{"additional names", "examples.simple.helloNames", helloWorldTemplate,
+			"Hello Ana!<br>Hello Bob!<br>Hello Cid!<br>Hello Dee!",
+			struct {
+				Name            string
+				AdditionalNames []string
+			}{"Ana", []string{"Bob", "Cid", "Dee"}},
+			true,
+		},
+	})
+}
 
 func TestLet(t *testing.T) {
 	runExecTests(t, []execTest{
@@ -627,6 +596,421 @@ func TestLet(t *testing.T) {
 	})
 }
 
+// Ensure that variables have the appropriate scope.
+// Ensure that the input data map is not updated.
+// Ensure that let variables are not passed with data="all"
+func TestLetScopes(t *testing.T) {
+	var m = data.Map{"a": data.Int(1), "z": data.Map{"y": data.Int(9)}}
+	var mcopy = data.Map{"a": data.Int(1), "z": data.Map{"y": data.Int(9)}}
+	runExecTests(t, []execTest{
+		{"letscopes", "test.main", `{namespace test}
+/** @param a */
+{template .main}
+
+// starting value
+{$a}
+
+// reassign with a let
+{let $a: 2 /}
+{$a}
+
+// data="all" should not pass "let" assignments
+// $a should not be updated by the {let} in .inner
+{call .inner data="all"/}
+{$a}
+
+// for loops should create a new scope, not update the existing variable
+{for $a in range(5, 6)}
+  {$a}
+{/for}
+{$a}
+
+// reassign to the same value
+{let $a}
+  {let $b: $a/}
+  {$b}
+{/let}
+{$a}
+
+// reassign to a different value
+{let $a:6/}
+{$a}
+{/template}
+
+/**
+ * @param a
+ * @param? b
+ */
+{template .inner}
+{$a}
+{if $b}{$b}{/if}
+{let $a: 3 /}
+{$a}
+{call .inner2 data="all"/}
+{$a}
+{/template}
+
+/** @param a */
+{template .inner2}
+{$a}
+{let $a: 4 /}
+{$a}
+{/template}
+`, "121314325226", m, true},
+
+		{"no-overwrite-map", "test.main", `{namespace test}
+/** @param z */
+{template .main}
+{call .inner data="$z"/}
+{/template}
+
+/** @param y */
+{template .inner}
+{let $a: 8/}
+{$y} {$a}
+{let $y: 7/}
+{sp}{$y}
+{/template}
+`, "9 8 7", m, true},
+
+		{"no-overwrite-map-params", "test.main", `{namespace test}
+/** @param z */
+{template .main}
+{call .inner data="$z"}
+{param foo: false /}
+{/call}
+{/template}
+
+/** @param y */
+{template .inner}
+{let $a: 8/}
+{$y} {$a}
+{let $y: 7/}
+{sp}{$y}
+{/template}
+`, "9 8 7", m, true},
+	})
+
+	if !reflect.DeepEqual(m, mcopy) {
+		t.Errorf("input data map changed: %v", m)
+	}
+}
+
+// TestCallData checks that the various cases around passing data in {call} are
+// working according to spec.
+func TestCallData(t *testing.T) {
+	runExecTests(t, []execTest{
+		// test that data=$property is subsequently passed through data=all
+		{"data=$a", "test.main", `{namespace test}
+/** @param a */
+{template .main}
+{call .inner data="$a"/}
+{/template}
+
+/** @param b */
+{template .inner}
+{$b}
+{let $b: 2/}
+{$b}
+{call .inner2 data="all"/}
+{/template}
+
+/** @param b */
+{template .inner2}
+{$b}
+{let $b: 2/}
+{$b}
+{/template}`, "1212", d{"a": d{"b": 1}}, true},
+
+		// test that explicit params are included in data="all"
+		{"data=all+param", "test.main", `{namespace test}
+/** @param a */
+{template .main}
+{call .inner data="all"}
+  {param b: 2/}
+{/call}
+{/template}
+
+/**
+ * @param a
+ * @param b
+ */
+{template .inner}
+{call .inner2 data="all"/}
+{/template}
+
+/**
+ * @param a
+ * @param b
+ */
+{template .inner2}
+{$a}{$b}
+{/template}`, "12", d{"a": 1}, true},
+
+		// test that explicit params are included in data="all"
+		{"data=all+param", "test.main", `{namespace test}
+/** @param a */
+{template .main}
+{call .inner data="$b"}
+  {param b: 2/}
+{/call}
+{/template}
+
+/**
+ * @param a
+ * @param b
+ */
+{template .inner}
+{call .inner2 data="all"/}
+{/template}
+
+/**
+ * @param a
+ * @param b
+ */
+{template .inner2}
+{$a}{$b}
+{/template}`, "12", d{"b": d{"a": 1}}, true},
+
+		// test multiple calls with different data sets
+		{"multiple data=all+param", "test.main", `{namespace test}
+/** @param a */
+{template .main}
+{call .inner data="all"}
+  {param a: 2/}
+{/call}
+{call .inner data="all"}
+  {param b: 3/}
+{/call}
+{/template}
+
+/**
+ * @param a
+ * @param? b
+ */
+{template .inner}
+{$a}{if $b}{$b}{/if}
+{/template}
+`, "213", d{"a": 1}, true},
+	})
+}
+
+type fakeBundle struct {
+	msgs       map[uint64]*soymsg.Message
+	pluralfunc po.PluralSelector
+}
+
+func (fb *fakeBundle) Message(id uint64) *soymsg.Message {
+	if fb == nil || fb.msgs == nil {
+		return nil
+	}
+	return fb.msgs[id]
+}
+
+func (fb *fakeBundle) Locale() string {
+	return "xx"
+}
+
+func (fb *fakeBundle) PluralCase(n int) int {
+	return fb.pluralfunc(n)
+}
+
+func pluralEnglish(n int) int {
+	if n == 1 {
+		return 0
+	}
+	return 1
+}
+
+func pluralCzech(n int) int {
+	switch {
+	case n == 1:
+		return 0
+	case n >= 2 && n <= 4:
+		return 1
+	default:
+		return 2
+	}
+}
+
+func newFakeBundle(msg, tran string, pl po.PluralSelector) *fakeBundle {
+	var sf, err = parse.SoyFile("", `{msg desc=""}`+msg+`{/msg}`)
+	if err != nil {
+		panic(err)
+	}
+	var msgnode = sf.Body[0].(*ast.MsgNode)
+	soymsg.SetPlaceholdersAndID(msgnode)
+	var m = soymsg.NewMessage(msgnode.ID, tran)
+	return &fakeBundle{map[uint64]*soymsg.Message{msgnode.ID: m}, pl}
+}
+
+func newFakePluralBundle(pluralVar, msg1, msg2 string, pl po.PluralSelector, msgstr []string) *fakeBundle {
+	var sf, err = parse.SoyFile("", `{msg desc=""}
+{plural `+pluralVar+`}
+  {case 1}`+msg1+`
+  {default}`+msg2+`
+{/plural}
+{/msg}`)
+	if err != nil {
+		panic(err)
+	}
+	var msgnode = sf.Body[0].(*ast.MsgNode)
+	soymsg.SetPlaceholdersAndID(msgnode)
+	var msg = newMessage(msgnode, msgstr)
+	return &fakeBundle{map[uint64]*soymsg.Message{msgnode.ID: &msg}, pl}
+}
+
+func newMessage(node *ast.MsgNode, msgstrs []string) soymsg.Message {
+	var cases []soymsg.PluralCase
+	for _, msgstr := range msgstrs {
+		// TODO: Ideally this would convert from PO plural form to CLDR plural class.
+		// Instead, just use PluralCase() to select one of these.
+		cases = append(cases, soymsg.PluralCase{
+			Spec:  soymsg.PluralSpec{soymsg.PluralSpecOther, -1}, // not used
+			Parts: soymsg.Parts(msgstr),
+		})
+	}
+	return soymsg.Message{node.ID, []soymsg.Part{soymsg.PluralPart{
+		VarName: node.Body.Children()[0].(*ast.MsgPluralNode).VarName,
+		Cases:   cases,
+	}}}
+}
+
+func TestMessages(t *testing.T) {
+	runNsExecTests(t, []nsExecTest{
+		{"no bundle", "test.main", []string{`{namespace test}
+{template .main}
+  {msg desc=""}
+    Hello world
+  {/msg}
+{/template}`}, "Hello world", nil, nil, true},
+
+		{"bundle lacks", "test.main", []string{`{namespace test}
+{template .main}
+  {msg desc=""}
+    Hello world
+  {/msg}
+{/template}`}, "Hello world", nil, newFakeBundle("foo", "bar", nil), true},
+
+		{"bundle has", "test.main", []string{`{namespace test}
+{template .main}
+  {msg desc=""}
+    Hello world
+  {/msg}
+{/template}`}, "Sup", nil, newFakeBundle("Hello world", "Sup", nil), true},
+
+		{"msg with variable & translation", "test.main", []string{`{namespace test}
+/** @param a */
+{template .main}
+  {msg desc=""}
+    a: {$a}
+  {/msg}
+{/template}`}, "a is 1", d{"a": 1}, newFakeBundle("a: {$a}", "a is {A}", nil), true},
+
+		{"msg w variables", "test.main", []string{`{namespace test}
+/** @param a */
+{template .main}
+  {msg desc=""}
+    {$a}{$a} xx {$a}{sp}
+  {/msg}
+{/template}`}, "11xxx1", d{"a": 1}, newFakeBundle("{$a}{$a} xx {$a}{sp}", "{A}{A}xxx{A}", nil), true},
+
+		{"msg w numbered placeholders", "test.main", []string{`{namespace test}
+/** @param a */
+{template .main}
+  {msg desc=""}
+    {$a.a}{$a.b.a}
+  {/msg}
+{/template}`}, "21", d{"a": d{"a": 1, "b": d{"a": 2}}},
+			newFakeBundle("{$a.a}{$a.b.a}", "{A_2}{A_1}", nil), true},
+
+		{"msg w html", "test.main", []string{`{namespace test}
+/** @param a */
+{template .main}
+  {msg desc=""}
+    Click <a>here</a>
+  {/msg}
+{/template}`}, "<a>Click here</a>", nil,
+			newFakeBundle("Click <a>here</a>", "{START_LINK}Click here{END_LINK}", nil), true},
+
+		{"plural, not found, singular", "test.main", []string{`{namespace test}
+/** @param n */
+{template .main}
+  {msg desc=""}
+    {plural $n}
+    {case 1}
+      one user
+    {default}
+      {$n} users
+    {/plural}
+  {/msg}
+{/template}`}, "one user", d{"n": 1},
+			nil, true},
+
+		{"plural, not found, plural", "test.main", []string{`{namespace test}
+/** @param n */
+{template .main}
+  {msg desc=""}
+    {plural $n}
+    {case 1}
+      one user
+    {default}
+      {$n} users
+    {/plural}
+  {/msg}
+{/template}`}, "11 users", d{"n": 11},
+			nil, true},
+
+		{"plural, singular", "test.main", []string{`{namespace test}
+/** @param n */
+{template .main}
+  {msg desc=""}
+    {plural $n}
+    {case 1}
+      one user
+    {default}
+      {$n} users
+    {/plural}
+  {/msg}
+{/template}`}, "|one user|", d{"n": 1},
+			newFakePluralBundle("$n", "one user", "{$n} users",
+				pluralEnglish, []string{"|one user|", "|({N_2}) users|"}),
+			true},
+
+		{"plural, plural", "test.main", []string{`{namespace test}
+/** @param n */
+{template .main}
+  {msg desc=""}
+    {plural $n}
+    {case 1}
+      one user
+    {default}
+      {$n} users
+    {/plural}
+  {/msg}
+{/template}`}, "|(10) users|", d{"n": 10},
+			newFakePluralBundle("$n", "one user", "{$n} users",
+				pluralEnglish, []string{"|one user|", "|({N_2}) users|"}),
+			true},
+
+		{"plural, few, czech", "test.main", []string{`{namespace test}
+/** @param n */
+{template .main}
+  {msg desc=""}
+    {plural $n}
+    {case 1}
+      one user
+    {default}
+      {$n} users
+    {/plural}
+  {/msg}
+{/template}`}, "|few (3) users|", d{"n": 3},
+			newFakePluralBundle("$n", "one user", "{$n} users",
+				pluralCzech, []string{"|one user|", "|few ({N_2}) users|", "|({N_2}) users|"}),
+			true},
+	})
+}
+
 // testing cross namespace stuff requires multiple file bodies
 type nsExecTest struct {
 	name         string
@@ -634,6 +1018,7 @@ type nsExecTest struct {
 	input        []string
 	output       string
 	data         interface{}
+	msgs         *fakeBundle
 	ok           bool
 }
 
@@ -653,11 +1038,11 @@ func TestAlias(t *testing.T) {
 {template .hello}
 Hello world
 {/template}`},
-			"Hello world", nil, true},
+			"Hello world", nil, nil, true},
 	})
 }
 
-// Helpers
+// helpers
 
 var globals = make(data.Map)
 var ij = make(data.Map)
@@ -672,7 +1057,6 @@ func exprtestwdata(name, expr, result string, data map[string]interface{}) execT
 		"{namespace test}{template ." + strings.Replace(name, " ", "_", -1) + "}" + expr + "{/template}",
 		result, data, true}
 }
-
 func exprtest(name, expr, result string) execTest {
 	return exprtestwdata(name, expr, result, nil)
 }
@@ -713,52 +1097,6 @@ func multidatatest(name, body string, successes []datatest, failures []errortest
 	return execTests
 }
 
-/** END COPY PASTA */
-
-func TestLog(t *testing.T) {
-	var otto = otto.New()
-	_, err := otto.Run(`
-var console_output = '';
-var console = {};
-console.log = function(arg) { console_output += arg; };
-var soy = {};
-soy.$$escapeHtml = function(arg) { return arg; };
-`)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	soyfile, err := parse.SoyFile("", `
-{namespace test}
-{template .log}
-{log}Hello {$name}.{/log}
-{/template}`)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	var buf bytes.Buffer
-	err = Write(&buf, soyfile, Options{})
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	_, err = otto.Run(buf.String())
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	_, err = otto.Run(`test.log({name: "Rob"});`)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	val, _ := otto.Get("console_output")
-	if val.String() != "Hello Rob." {
-		t.Errorf("got %q", val.String())
-	}
-}
-
 func runExecTests(t *testing.T, tests []execTest) {
 	var nstest []nsExecTest
 	for _, test := range tests {
@@ -768,6 +1106,7 @@ func runExecTests(t *testing.T, tests []execTest) {
 			[]string{test.input},
 			test.output,
 			test.data,
+			nil,
 			test.ok,
 		})
 	}
@@ -775,95 +1114,44 @@ func runExecTests(t *testing.T, tests []execTest) {
 }
 
 func runNsExecTests(t *testing.T, tests []nsExecTest) {
-	var js = initJs(t)
+	b := new(bytes.Buffer)
 	for _, test := range tests {
-		var js = js.Copy()
-
-		// Parse the templates, generate and run the compiled javascript.
-		var source bytes.Buffer
+		var registry = template.Registry{}
 		for _, input := range test.input {
-			soyfile, err := parse.SoyFile(test.name, input)
+			var tree, err = parse.SoyFile("", input)
 			if err != nil {
-				t.Error(err)
+				t.Errorf("%s: parse error: %s", test.name, err)
 				continue
 			}
-			parsepasses.SetNodeGlobals(soyfile, globals)
-
-			var buf bytes.Buffer
-			err = Write(&buf, soyfile, Options{})
-			if err != nil {
-				t.Error(err)
-				continue
-			}
-
-			_, err = js.Run(buf.String())
-			if err != nil {
-				if test.ok {
-					t.Errorf("compile error: %v\n%v", err, numberLines(&buf))
-				}
-				continue
-			}
-			source.Write(buf.Bytes())
+			registry.Add(tree)
 		}
+		parsepasses.SetGlobals(registry, globals)
+		parsepasses.ProcessMessages(registry)
 
-		// Convert test data to JSON and invoke the template.
-		var jsonData, _ = json.Marshal(test.data)
-		var ijJson, _ = json.Marshal(ij)
-		var renderStatement = fmt.Sprintf("%s(JSON.parse(%q), undefined, JSON.parse(%q));",
-			test.templateName, string(jsonData), string(ijJson))
-		switch actual, err := js.Run(renderStatement); {
-		case err != nil && test.ok:
-			t.Errorf("render error: %v\n%v\n%v", err, numberLines(&source), renderStatement)
-		case err == nil && !test.ok:
-			t.Errorf("expected error, got none:\n%v\n%v", numberLines(&source), renderStatement)
-		case test.ok && test.output != actual.String():
-			t.Errorf("expected:\n%v\n\nactual:\n%v\n%v\n%v",
-				test.output, actual.String(), numberLines(&source), renderStatement)
+		b.Reset()
+		var datamap data.Map
+		if test.data != nil {
+			datamap = data.New(test.data).(data.Map)
+		}
+		tofu := NewTofu(&registry).NewRenderer(test.templateName).
+			Inject(ij)
+		if test.msgs != nil {
+			tofu.WithMessages(test.msgs)
+		}
+		err := tofu.Execute(b, datamap)
+		switch {
+		case !test.ok && err == nil:
+			t.Errorf("%s: expected error; got none", test.name)
+			continue
+		case test.ok && err != nil:
+			t.Errorf("%s: unexpected execute error: %s", test.name, err)
+			continue
+		case !test.ok && err != nil:
+			// expected error, got one
+		}
+		result := b.String()
+		if result != test.output {
+			t.Errorf("%s: expected\n\t%q\ngot\n\t%q", test.name, test.output, result)
 		}
 	}
-}
-
-func initJs(t *testing.T) *otto.Otto {
-	var otto = otto.New()
-	soyutilsFile, err := os.Open("lib/soyutils.js")
-	if err != nil {
-		panic(err)
-	}
-	// remove any non-otto compatible regular expressions
-	var soyutilsBuf bytes.Buffer
-	var scanner = bufio.NewScanner(soyutilsFile)
-	var i = 1
-	for scanner.Scan() {
-		switch i {
-		case 2565, 2579, 2586:
-			// skip these regexes
-			// soy.esc.$$FILTER_FOR_FILTER_CSS_VALUE_
-			// soy.esc.$$FILTER_FOR_FILTER_HTML_ATTRIBUTES_
-			// soy.esc.$$FILTER_FOR_FILTER_HTML_ELEMENT_NAME_
-		default:
-			soyutilsBuf.Write(scanner.Bytes())
-			soyutilsBuf.Write([]byte("\n"))
-		}
-		i++
-	}
-	// load the soyutils library
-	_, err = otto.Run(soyutilsBuf.String())
-	if err != nil {
-		t.Errorf("soyutils error: %v", err)
-		panic(err)
-	}
-	return otto
-}
-
-func numberLines(soyfile io.Reader) string {
-	var buf bytes.Buffer
-	var scanner = bufio.NewScanner(soyfile)
-	var i = 1
-	for scanner.Scan() {
-		buf.WriteString(fmt.Sprintf("%03d ", i))
-		buf.Write(scanner.Bytes())
-		buf.WriteString("\n")
-		i++
-	}
-	return buf.String()
 }

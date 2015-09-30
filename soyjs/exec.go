@@ -1,619 +1,676 @@
-package soyjs
+package soyhtml
 
 import (
 	"bytes"
 	"fmt"
 	"io"
-	"strconv"
-	"strings"
-	"text/template"
+	"log"
+	"runtime"
+	"runtime/debug"
 
 	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
+	"github.com/robfig/soy/soymsg"
+	soyt "github.com/robfig/soy/template"
 )
 
-type state struct {
-	wr           io.Writer
-	node         ast.Node // current node, for errors
-	indentLevels int
-	namespace    string
-	bufferName   string
-	varnum       int
-	scope        scope
-	autoescape   ast.AutoescapeType
-	lastNode     ast.Node
-	options      Options
-}
+// Logger collects output from {log} commands.
+var Logger *log.Logger
 
-// Write writes the javascript represented by the given node to the given
-// writer.  The first error encountered is returned.
-func Write(out io.Writer, node ast.Node, options Options) (err error) {
-	defer errRecover(&err)
-	var s = &state{wr: out, options: options}
-	s.scope.push()
-	s.walk(node)
-	return nil
+// state represents the state of an execution.
+type state struct {
+	namespace  string
+	tmpl       soyt.Template
+	wr         io.Writer
+	node       ast.Node           // current node, for errors
+	registry   soyt.Registry      // the entire bundle of templates
+	val        data.Value         // temp value for expression being computed
+	context    scope              // variable scope
+	autoescape ast.AutoescapeType // escaping mode
+	ij         data.Map           // injected data available to all templates.
+	msgs       soymsg.Bundle      // replacement text for {msg} tags
 }
 
 // at marks the state to be on node n, for error reporting.
 func (s *state) at(node ast.Node) {
-	s.lastNode = s.node
 	s.node = node
 }
 
 // errorf formats the error and terminates processing.
 func (s *state) errorf(format string, args ...interface{}) {
-	panic(fmt.Sprintf(format, args...))
+	format = fmt.Sprintf("template %s:%d: %s", s.tmpl.Node.Name,
+		s.registry.LineNumber(s.tmpl.Node.Name, s.node), format)
+	panic(fmt.Errorf(format, args...))
 }
 
 // errRecover is the handler that turns panics into returns from the top
 // level of Parse.
-func errRecover(errp *error) {
-	e := recover()
-	if e != nil {
-		*errp = fmt.Errorf("%v", e)
+func (s *state) errRecover(errp *error) {
+	if e := recover(); e != nil {
+		switch e := e.(type) {
+		case runtime.Error:
+			*errp = fmt.Errorf("template %s:%d: %v\n%v", s.tmpl.Node.Name,
+				s.registry.LineNumber(s.tmpl.Node.Name, s.node), e, string(debug.Stack()))
+		case error:
+			*errp = e
+		default:
+			*errp = fmt.Errorf("template %s:%d: %v", s.tmpl.Node.Name,
+				s.registry.LineNumber(s.tmpl.Node.Name, s.node), e)
+		}
 	}
 }
 
-// walk recursively goes through each node and translates the nodes to
-// javascript, writing the result to s.wr
+// walk recursively goes through each node and executes the indicated logic and
+// writes the output
 func (s *state) walk(node ast.Node) {
+	s.val = data.Undefined{}
 	s.at(node)
 	switch node := node.(type) {
 	case *ast.SoyFileNode:
-		s.visitSoyFile(node)
-	case *ast.NamespaceNode:
-		s.visitNamespace(node)
-	case *ast.SoyDocNode:
-		return
+		for _, node := range node.Body {
+			s.walk(node)
+		}
 	case *ast.TemplateNode:
-		s.visitTemplate(node)
+		if node.Autoescape != ast.AutoescapeUnspecified {
+			s.autoescape = node.Autoescape
+		}
+		s.walk(node.Body)
 	case *ast.ListNode:
-		s.visitChildren(node)
+		for _, node := range node.Nodes {
+			s.walk(node)
+		}
 
 		// Output nodes ----------
-	case *ast.RawTextNode:
-		s.writeRawText(node.Text)
 	case *ast.PrintNode:
-		s.visitPrint(node)
+		s.evalPrint(node)
+	case *ast.RawTextNode:
+		if _, err := s.wr.Write(node.Text); err != nil {
+			s.errorf("%s", err)
+		}
 	case *ast.MsgNode:
-		s.visitMsg(node)
+		s.evalMsg(node)
 	case *ast.MsgHtmlTagNode:
-		s.writeRawText(node.Text)
+		if _, err := s.wr.Write(node.Text); err != nil {
+			s.errorf("%s", err)
+		}
 	case *ast.CssNode:
+		var prefix = ""
 		if node.Expr != nil {
-			s.jsln(s.bufferName, " += ", node.Expr, " + '-';")
+			prefix = s.eval(node.Expr).String() + "-"
 		}
-		s.writeRawText([]byte(node.Suffix))
+		if _, err := io.WriteString(s.wr, prefix+node.Suffix); err != nil {
+			s.errorf("%s", err)
+		}
 	case *ast.DebuggerNode:
-		s.jsln("debugger;")
+		// nothing to do
 	case *ast.LogNode:
-		s.bufferName += "_"
-		s.jsln("var ", s.bufferName, " = '';")
-		s.walk(node.Body)
-		s.jsln("console.log(", s.bufferName, ");")
-		s.bufferName = s.bufferName[:len(s.bufferName)-1]
+		Logger.Print(string(s.renderBlock(node.Body)))
 
-	// Control flow ----------
+		// Control flow ----------
 	case *ast.IfNode:
-		s.visitIf(node)
+		for _, cond := range node.Conds {
+			if cond.Cond == nil || s.eval(cond.Cond).Truthy() {
+				s.walk(cond.Body)
+				break
+			}
+		}
 	case *ast.ForNode:
-		s.visitFor(node)
+		var list, ok = s.eval(node.List).(data.List)
+		if !ok {
+			s.errorf("In for loop %q, %q does not resolve to a list.",
+				node.String(), node.List.String())
+		}
+		if len(list) == 0 {
+			if node.IfEmpty != nil {
+				s.walk(node.IfEmpty)
+			}
+			break
+		}
+		s.context.push()
+		for i, item := range list {
+			s.context.set(node.Var, item)
+			s.context.set(node.Var+"__index", data.Int(i))
+			s.context.set(node.Var+"__lastIndex", data.Int(len(list)-1))
+			s.walk(node.Body)
+		}
+		s.context.pop()
 	case *ast.SwitchNode:
-		s.visitSwitch(node)
+		var switchValue = s.eval(node.Value)
+		for _, caseNode := range node.Cases {
+			for _, caseValueNode := range caseNode.Values {
+				if switchValue.Equals(s.eval(caseValueNode)) {
+					s.walk(caseNode.Body)
+					return
+				}
+			}
+			if len(caseNode.Values) == 0 { // default/last case
+				s.walk(caseNode.Body)
+				return
+			}
+		}
 	case *ast.CallNode:
-		s.visitCall(node)
+		s.evalCall(node)
 	case *ast.LetValueNode:
-		s.jsln("var ", s.scope.makevar(node.Name), " = ", node.Expr, ";")
+		s.context.set(node.Name, s.eval(node.Expr))
 	case *ast.LetContentNode:
-		var oldBufferName = s.bufferName
-		s.bufferName = s.scope.makevar(node.Name)
-		s.jsln("var ", s.bufferName, " = '';")
-		s.walk(node.Body)
-		s.bufferName = oldBufferName
+		s.context.set(node.Name, data.String(s.renderBlock(node.Body)))
 
-	// Values ----------
+		// Values ----------
 	case *ast.NullNode:
-		s.js("null")
+		s.val = data.Null{}
 	case *ast.StringNode:
-		s.js("'")
-		template.JSEscape(s.wr, []byte(node.Value))
-		s.js("'")
+		s.val = data.String(node.Value)
 	case *ast.IntNode:
-		s.js(node.String())
+		s.val = data.Int(node.Value)
 	case *ast.FloatNode:
-		s.js(node.String())
+		s.val = data.Float(node.Value)
 	case *ast.BoolNode:
-		s.js(node.String())
+		s.val = data.Bool(node.True)
 	case *ast.GlobalNode:
-		s.visitGlobal(node)
+		s.val = node.Value
 	case *ast.ListLiteralNode:
-		s.js("[")
+		var items = make(data.List, len(node.Items))
 		for i, item := range node.Items {
-			if i != 0 {
-				s.js(",")
-			}
-			s.walk(item)
+			items[i] = s.eval(item)
 		}
-		s.js("]")
+		s.val = data.List(items)
 	case *ast.MapLiteralNode:
-		s.js("{")
-		var first = true
+		var items = make(data.Map, len(node.Items))
 		for k, v := range node.Items {
-			if !first {
-				s.js(",")
-			}
-			first = false
-			s.js(k, ":")
-			s.walk(v)
+			items[k] = s.eval(v)
 		}
-		s.js("}")
+		s.val = data.Map(items)
 	case *ast.FunctionNode:
-		s.visitFunction(node)
+		s.val = s.evalFunc(node)
 	case *ast.DataRefNode:
-		s.visitDataRef(node)
+		s.val = s.evalDataRef(node)
 
-	// Arithmetic operators ----------
+		// Arithmetic operators ----------
 	case *ast.NegateNode:
-		s.js("(-", node.Arg, ")")
+		switch arg := s.evaldef(node.Arg).(type) {
+		case data.Int:
+			s.val = data.Int(-arg)
+		case data.Float:
+			s.val = data.Float(-arg)
+		default:
+			s.errorf("can not negate non-number: %q", arg.String())
+		}
 	case *ast.AddNode:
-		s.op("+", node)
+		var arg1, arg2 = s.eval2def(node.Arg1, node.Arg2)
+		switch {
+		case isInt(arg1) && isInt(arg2):
+			s.val = data.Int(arg1.(data.Int) + arg2.(data.Int))
+		case isString(arg1) || isString(arg2):
+			s.val = data.String(arg1.String() + arg2.String())
+		default:
+			s.val = data.Float(toFloat(arg1) + toFloat(arg2))
+		}
 	case *ast.SubNode:
-		s.op("-", node)
+		var arg1, arg2 = s.eval2def(node.Arg1, node.Arg2)
+		switch {
+		case isInt(arg1) && isInt(arg2):
+			s.val = data.Int(arg1.(data.Int) - arg2.(data.Int))
+		default:
+			s.val = data.Float(toFloat(arg1) - toFloat(arg2))
+		}
 	case *ast.DivNode:
-		s.op("/", node)
+		var arg1, arg2 = s.eval2def(node.Arg1, node.Arg2)
+		s.val = data.Float(toFloat(arg1) / toFloat(arg2))
 	case *ast.MulNode:
-		s.op("*", node)
+		var arg1, arg2 = s.eval2def(node.Arg1, node.Arg2)
+		switch {
+		case isInt(arg1) && isInt(arg2):
+			s.val = data.Int(arg1.(data.Int) * arg2.(data.Int))
+		default:
+			s.val = data.Float(toFloat(arg1) * toFloat(arg2))
+		}
 	case *ast.ModNode:
-		s.op("%", node)
+		var arg1, arg2 = s.eval2def(node.Arg1, node.Arg2)
+		s.val = data.Int(arg1.(data.Int) % arg2.(data.Int))
 
 		// Arithmetic comparisons ----------
 	case *ast.EqNode:
-		s.op("==", node)
+		s.val = data.Bool(s.eval(node.Arg1).Equals(s.eval(node.Arg2)))
 	case *ast.NotEqNode:
-		s.op("!=", node)
+		s.val = data.Bool(!s.eval(node.Arg1).Equals(s.eval(node.Arg2)))
 	case *ast.LtNode:
-		s.op("<", node)
+		s.val = data.Bool(toFloat(s.evaldef(node.Arg1)) < toFloat(s.evaldef(node.Arg2)))
 	case *ast.LteNode:
-		s.op("<=", node)
+		s.val = data.Bool(toFloat(s.evaldef(node.Arg1)) <= toFloat(s.evaldef(node.Arg2)))
 	case *ast.GtNode:
-		s.op(">", node)
+		s.val = data.Bool(toFloat(s.evaldef(node.Arg1)) > toFloat(s.evaldef(node.Arg2)))
 	case *ast.GteNode:
-		s.op(">=", node)
+		s.val = data.Bool(toFloat(s.evaldef(node.Arg1)) >= toFloat(s.evaldef(node.Arg2)))
 
-	// Boolean operators ----------
+		// Boolean operators ----------
 	case *ast.NotNode:
-		s.js("!(", node.Arg, ")")
+		s.val = data.Bool(!s.eval(node.Arg).Truthy())
 	case *ast.AndNode:
-		s.op("&&", node)
+		s.val = data.Bool(s.eval(node.Arg1).Truthy() && s.eval(node.Arg2).Truthy())
 	case *ast.OrNode:
-		s.op("||", node)
+		s.val = data.Bool(s.eval(node.Arg1).Truthy() || s.eval(node.Arg2).Truthy())
 	case *ast.ElvisNode:
-		// ?: is specified to check for null.
-		s.js("(", node.Arg1, " != null ? ", node.Arg1, " : ", node.Arg2, ")")
-	case *ast.TernNode:
-		s.js("(", node.Arg1, "?", node.Arg2, ":", node.Arg3, ")")
-
-	default:
-		s.errorf("unknown node (%T): %v", node, node)
-	}
-}
-
-func (s *state) visitSoyFile(node *ast.SoyFileNode) {
-	s.jsln("// This file was automatically generated from ", node.Name, ".")
-	s.jsln("// Please don't edit this file by hand.")
-	s.jsln("")
-	s.visitChildren(node)
-}
-
-func (s *state) visitChildren(parent ast.ParentNode) {
-	for _, child := range parent.Children() {
-		s.walk(child)
-	}
-}
-
-func (s *state) visitNamespace(node *ast.NamespaceNode) {
-	s.namespace = node.Name
-	s.autoescape = node.Autoescape
-
-	// iterate through the dot segments.
-	var i = 0
-	for i < len(node.Name) {
-		var decl = "var "
-		var prev = i + 1
-		i = strings.Index(node.Name[prev:], ".")
-		if i == -1 {
-			i = len(node.Name)
+		var arg1 = s.eval(node.Arg1)
+		if arg1 != (data.Null{}) && arg1 != (data.Undefined{}) {
+			s.val = arg1
 		} else {
-			i += prev
+			s.val = s.eval(node.Arg2)
 		}
-		if strings.Contains(node.Name[:i], ".") {
-			decl = ""
+	case *ast.TernNode:
+		var arg1 = s.eval(node.Arg1)
+		if arg1.Truthy() {
+			s.val = s.eval(node.Arg2)
+		} else {
+			s.val = s.eval(node.Arg3)
 		}
-		s.jsln("if (typeof ", node.Name[:i], " == 'undefined') { ", decl, node.Name[:i], " = {}; }")
-	}
-}
 
-func (s *state) visitTemplate(node *ast.TemplateNode) {
-	var oldAutoescape = s.autoescape
-	if node.Autoescape != ast.AutoescapeUnspecified {
-		s.autoescape = node.Autoescape
-	}
-
-	// Determine if we need nullsafe initialization for opt_data
-	var allOptionalParams = false
-	if soydoc, ok := s.lastNode.(*ast.SoyDocNode); ok {
-		allOptionalParams = len(soydoc.Params) > 0
-		for _, param := range soydoc.Params {
-			if !param.Optional {
-				allOptionalParams = false
-			}
-		}
-	}
-
-	s.jsln("")
-	s.jsln(node.Name, " = function(opt_data, opt_sb, opt_ijData) {")
-	s.indentLevels++
-	if allOptionalParams {
-		s.jsln("opt_data = opt_data || {};")
-	}
-	s.jsln("var output = '';")
-	s.bufferName = "output"
-	s.walk(node.Body)
-	s.jsln("return output;")
-	s.indentLevels--
-	s.jsln("};")
-	s.autoescape = oldAutoescape
-}
-
-// TODO: unify print directives
-func (s *state) visitPrint(node *ast.PrintNode) {
-	var escape = s.autoescape
-	var directives []*ast.PrintDirectiveNode
-	for _, dir := range node.Directives {
-		var directive, ok = PrintDirectives[dir.Name]
-		if !ok {
-			s.errorf("Print directive %q not found", dir.Name)
-		}
-		if directive.CancelAutoescape {
-			escape = ast.AutoescapeOff
-		}
-		switch dir.Name {
-		case "id", "noAutoescape":
-			// no implementation, they just serve as a marker to cancel autoescape.
-		default:
-			directives = append(directives, dir)
-		}
-	}
-	if escape != ast.AutoescapeOff {
-		directives = append([]*ast.PrintDirectiveNode{{0, "escapeHtml", nil}}, directives...)
-	}
-
-	s.indent()
-	s.js(s.bufferName, " += ")
-	for _, dir := range directives {
-		s.js(PrintDirectives[dir.Name].Name, "(")
-	}
-	s.walk(node.Arg)
-	for i := range directives {
-		var dir = directives[len(directives)-1-i]
-		for _, arg := range dir.Args {
-			s.js(",")
-			s.walk(arg)
-		}
-		// soy specifies truncate adds ellipsis by default, so we have to pass
-		// doAddEllipsis = true to soy.$$truncate
-		if dir.Name == "truncate" && len(dir.Args) == 1 {
-			s.js(",true")
-		}
-		s.js(")")
-	}
-	s.js(";\n")
-}
-
-func (s *state) visitFunction(node *ast.FunctionNode) {
-	if fn, ok := Funcs[node.Name]; ok {
-		fn.Apply(s, node.Args)
-		return
-	}
-
-	switch node.Name {
-	case "isFirst":
-		// TODO: Add compile-time check that this is only called on loop variable.
-		s.js("(", s.scope.loopindex(), " == 0)")
-	case "isLast":
-		s.js("(", s.scope.loopindex(), " == ", s.scope.looplimit(), " - 1)")
-	case "index":
-		s.js(s.scope.loopindex())
 	default:
-		s.errorf("unimplemented function: %v", node.Name)
+		s.errorf("unknown node: %T", node)
 	}
 }
 
-func (s *state) visitDataRef(node *ast.DataRefNode) {
-	var expr string
-	if node.Key == "ij" {
-		expr = "opt_ijData"
-	} else if genVarName := s.scope.lookup(node.Key); genVarName != "" {
-		expr = genVarName
+func isInt(v data.Value) bool {
+	_, ok := v.(data.Int)
+	return ok
+}
+
+func isString(v data.Value) bool {
+	_, ok := v.(data.String)
+	return ok
+}
+
+func toFloat(v data.Value) float64 {
+	switch v := v.(type) {
+	case data.Int:
+		return float64(v)
+	case data.Float:
+		return float64(v)
+	case data.Undefined:
+		panic("not a number: undefined")
+	default:
+		panic(fmt.Sprintf("not a number: %v (%T)", v, v))
+	}
+}
+
+func (s *state) evalPrint(node *ast.PrintNode) {
+	s.walk(node.Arg)
+	if _, ok := s.val.(data.Undefined); ok {
+		s.errorf("In 'print' tag, expression %q evaluates to undefined.", node.Arg.String())
+	}
+	var escapeHtml = s.autoescape != ast.AutoescapeOff
+	var result = s.val
+	for _, directiveNode := range node.Directives {
+		var directive, ok = PrintDirectives[directiveNode.Name]
+		if !ok {
+			s.errorf("Print directive %q does not exist", directiveNode.Name)
+		}
+
+		if !checkNumArgs(directive.ValidArgLengths, len(directiveNode.Args)) {
+			s.errorf("Print directive %q called with %v args, expected one of: %v",
+				directiveNode.Name, len(directiveNode.Args), directive.ValidArgLengths)
+		}
+
+		var args = make([]data.Value, len(directiveNode.Args))
+		for i, arg := range directiveNode.Args {
+			args[i] = s.eval(arg)
+		}
+		func() {
+			defer func() {
+				if err := recover(); err != nil {
+					s.errorf("panic in %v: %v\nexecuted: %v(%q, %v)\n%v",
+						directiveNode, err,
+						directiveNode.Name, result, args,
+						string(debug.Stack()))
+				}
+			}()
+			result = directive.Apply(result, args)
+		}()
+		if directive.CancelAutoescape {
+			escapeHtml = false
+		}
+	}
+
+	var resultStr = result.String()
+	if escapeHtml {
+		htmlEscapeString(s.wr, resultStr)
 	} else {
-		expr = "opt_data." + node.Key
-	}
-
-	// Nullsafe access makes this complicated.
-	// FOO.BAR?.BAZ => (FOO.BAR == null ? null : FOO.BAR.BAZ)
-	for _, accessNode := range node.Access {
-		switch node := accessNode.(type) {
-		case *ast.DataRefIndexNode:
-			if node.NullSafe {
-				s.js("(", expr, " == null) ? null : ")
-			}
-			expr += "[" + strconv.Itoa(node.Index) + "]"
-		case *ast.DataRefKeyNode:
-			if node.NullSafe {
-				s.js("(", expr, " == null) ? null : ")
-			}
-			expr += "." + node.Key
-		case *ast.DataRefExprNode:
-			if node.NullSafe {
-				s.js("(", expr, " == null) ? null : ")
-			}
-			expr += "[" + s.block(node.Arg) + "]"
+		if _, err := io.WriteString(s.wr, resultStr); err != nil {
+			s.errorf("%s", err)
 		}
 	}
-	s.js(expr)
 }
 
-func (s *state) visitCall(node *ast.CallNode) {
-	var dataExpr = "{}"
-	if node.Data != nil {
-		dataExpr = s.block(node.Data)
-	} else if node.AllData {
-		dataExpr = "opt_data"
-	}
-
-	if len(node.Params) > 0 {
-		dataExpr = "soy.$$augmentMap(" + dataExpr + ", {"
-		for i, param := range node.Params {
-			if i > 0 {
-				dataExpr += ", "
-			}
-			switch param := param.(type) {
-			case *ast.CallParamValueNode:
-				dataExpr += param.Key + ": " + s.block(param.Value)
-			case *ast.CallParamContentNode:
-				var oldBufferName = s.bufferName
-				s.bufferName = s.scope.makevar("param")
-				s.jsln("var ", s.bufferName, " = '';")
-				s.walk(param.Content)
-				dataExpr += param.Key + ": " + s.bufferName
-				s.bufferName = oldBufferName
-			}
-		}
-		dataExpr += "})"
-	}
-	s.jsln(s.bufferName, " += ", node.Name, "(", dataExpr, ", opt_sb, opt_ijData);")
-}
-
-func (s *state) visitIf(node *ast.IfNode) {
-	s.indent()
-	for i, branch := range node.Conds {
-		if i > 0 {
-			s.js(" else ")
-		}
-		if branch.Cond != nil {
-			s.js("if (", branch.Cond, ") ")
-		}
-		s.js("{\n")
-		s.indentLevels++
-		s.walk(branch.Body)
-		s.indentLevels--
-		s.indent()
-		s.js("}")
-	}
-	s.js("\n")
-}
-
-func (s *state) visitFor(node *ast.ForNode) {
-	if rangeNode, ok := node.List.(*ast.FunctionNode); ok && rangeNode.Name == "range" {
-		s.visitForRange(node)
-	} else {
-		s.visitForeach(node)
-	}
-}
-
-func (s *state) visitForRange(node *ast.ForNode) {
-	var rangeNode = node.List.(*ast.FunctionNode)
-	var (
-		increment ast.Node = &ast.IntNode{0, 1}
-		init      ast.Node = &ast.IntNode{0, 0}
-		limit     ast.Node
-	)
-	switch len(rangeNode.Args) {
-	case 3:
-		increment = rangeNode.Args[2]
-		fallthrough
-	case 2:
-		init = rangeNode.Args[0]
-		limit = rangeNode.Args[1]
-	case 1:
-		limit = rangeNode.Args[0]
-	}
-
-	var varIndex,
-		varLimit = s.scope.pushForRange(node.Var)
-	defer s.scope.pop()
-	s.jsln("var ", varLimit, " = ", limit, ";")
-	s.jsln("for (var ", varIndex, " = ", init, "; ",
-		varIndex, " < ", varLimit, "; ",
-		varIndex, " += ", increment, ") {")
-	s.indentLevels++
-	s.walk(node.Body)
-	s.indentLevels--
-	s.jsln("}")
-}
-
-func (s *state) visitForeach(node *ast.ForNode) {
-	var itemData,
-		itemList,
-		itemListLen,
-		itemIndex = s.scope.pushForEach(node.Var)
-	defer s.scope.pop()
-	s.jsln("var ", itemList, " = ", node.List, ";")
-	s.jsln("var ", itemListLen, " = ", itemList, ".length;")
-	if node.IfEmpty != nil {
-		s.jsln("if (", itemListLen, " > 0) {")
-		s.indentLevels++
-	}
-	s.jsln("for (var ", itemIndex, " = 0; ", itemIndex, " < ", itemListLen, "; ", itemIndex, "++) {")
-	s.indentLevels++
-	s.jsln("var ", itemData, " = ", itemList, "[", itemIndex, "];")
-	s.walk(node.Body)
-	s.indentLevels--
-	s.jsln("}")
-	if node.IfEmpty != nil {
-		s.indentLevels--
-		s.jsln("} else {")
-		s.indentLevels++
-		s.walk(node.IfEmpty)
-		s.indentLevels--
-		s.jsln("}")
-	}
-}
-
-func (s *state) visitSwitch(node *ast.SwitchNode) {
-	s.jsln("switch (", node.Value, ") {")
-	s.indentLevels++
-	for _, switchCase := range node.Cases {
-		for _, switchCaseValue := range switchCase.Values {
-			s.jsln("case ", switchCaseValue, ":")
-		}
-		if len(switchCase.Values) == 0 {
-			s.jsln("default:")
-		}
-		s.indentLevels++
-		s.walk(switchCase.Body)
-		s.jsln("break;")
-		s.indentLevels--
-	}
-	s.indentLevels--
-	s.jsln("}")
-}
-
-// TODO: {msg} node translation is unimplemented
-func (s *state) visitMsg(node *ast.MsgNode) {
-	var pluralNode, ok = node.Body.Children()[0].(*ast.MsgPluralNode)
-	if !ok {
-		s.visitMsgBody(node)
+func (s *state) evalMsg(node *ast.MsgNode) {
+	// If no bundle was provided, walk the message sub-nodes.
+	if s.msgs == nil {
+		s.walkMsgBody(node.Body)
 		return
 	}
 
-	s.jsln("switch (", pluralNode.Value, ") {")
-	s.indentLevels++
-	for _, pluralCase := range pluralNode.Cases {
-		s.jsln("case ", pluralCase.Value, ":")
-		s.indentLevels++
-		s.visitMsgBody(pluralCase.Body)
-		s.jsln("break;")
-		s.indentLevels--
+	// Look up the message in the bundle.
+	var msg = s.msgs.Message(node.ID)
+	if msg == nil {
+		s.walkMsgBody(node.Body)
+		return
 	}
-	{
-		s.jsln("default:")
-		s.indentLevels++
-		s.visitMsgBody(pluralNode.Default)
-		s.indentLevels--
-	}
-	s.indentLevels--
-	s.jsln("}")
+
+	// Render each part.
+	s.evalMsgParts(node, msg.Parts)
 }
 
-func (s *state) visitMsgBody(node ast.ParentNode) {
+func (s *state) evalMsgParts(msgNode *ast.MsgNode, parts []soymsg.Part) {
+	for _, part := range parts {
+		switch part := part.(type) {
+
+		case soymsg.RawTextPart:
+			if _, err := io.WriteString(s.wr, part.Text); err != nil {
+				s.errorf("%s", err)
+			}
+
+		case soymsg.PlaceholderPart:
+			// Find the node corresponding to the placeholder, and walk it.
+			var phnode = msgNode.Placeholder(part.Name)
+			if phnode == nil {
+				s.errorf("failed to find placeholder %q in %q",
+					part.Name, soymsg.PlaceholderString(msgNode))
+			}
+			s.walk(phnode.Body)
+
+		case soymsg.PluralPart:
+			// Find the corresponding node for this part and evaluate the argument.
+			var (
+				pluralNode         = s.findPluralNode(msgNode, part.VarName)
+				pluralValue        = s.eval(pluralNode.Value)
+				pluralIntValue, ok = pluralValue.(data.Int)
+			)
+			if !ok {
+				s.errorf("plural argument must be integer, got %T", pluralValue)
+			}
+
+			// Execute the right plural case
+			var pluralCaseIndex = s.msgs.PluralCase(int(pluralIntValue))
+			if pluralCaseIndex >= len(part.Cases) {
+				s.errorf("plural case index out of bounds (n=%v, len(cases)=%v)",
+					pluralCaseIndex, len(part.Cases))
+			}
+			var pluralCase = part.Cases[pluralCaseIndex]
+			s.evalMsgParts(msgNode, pluralCase.Parts)
+		}
+	}
+}
+
+func (s *state) findPluralNode(node *ast.MsgNode, pluralVarName string) *ast.MsgPluralNode {
+	for _, plnode := range node.Body.Children() {
+		if plnode, ok := plnode.(*ast.MsgPluralNode); ok && plnode.VarName == pluralVarName {
+			return plnode
+		}
+	}
+	s.errorf("failed to find placeholder %q in %v", pluralVarName, node.Body)
+	panic("unreachable")
+}
+
+func (s *state) walkPlural(node *ast.MsgPluralNode) {
+	var val = s.eval(node.Value)
+	var intVal, ok = val.(data.Int)
+	if !ok {
+		s.errorf("plural argument must be integer, got %T", val)
+	}
+
+	// TODO: This only handles explicit numbers, not the CLDR classes.
+	for _, pluralCase := range node.Cases {
+		if int(intVal) == pluralCase.Value {
+			s.walkMsgBody(pluralCase.Body)
+			return
+		}
+	}
+	s.walkMsgBody(node.Default)
+}
+
+func (s *state) walkMsgBody(node ast.ParentNode) {
 	for _, n := range node.Children() {
 		switch n := n.(type) {
 		case *ast.RawTextNode:
 			s.walk(n)
 		case *ast.MsgPlaceholderNode:
 			s.walk(n.Body)
+		case *ast.MsgPluralNode:
+			s.walkPlural(n)
 		}
 	}
 }
 
-// visitGlobal constructs a primitive node from its value and uses walk to
-// render the right thing.
-func (s *state) visitGlobal(node *ast.GlobalNode) {
-	s.walk(s.nodeFromValue(node.Pos, node.Value))
+func (s *state) evalCall(node *ast.CallNode) {
+	// get template node we're calling
+	var calledTmpl, ok = s.registry.Template(node.Name)
+	if !ok {
+		s.errorf("failed to find template: %s", node.Name)
+	}
+
+	// sort out the data to pass
+	var callData scope
+	if node.AllData {
+		callData = s.context.alldata()
+		callData.push()
+	} else if node.Data != nil {
+		result, ok := s.eval(node.Data).(data.Map)
+		if !ok {
+			s.errorf("In 'call' command %q, the data reference %q does not resolve to a map.",
+				node.String(), node.Data.String())
+		}
+		callData = newScope(result)
+		callData.push()
+	} else {
+		callData = newScope(make(data.Map))
+	}
+
+	// resolve the params
+	for _, param := range node.Params {
+		switch param := param.(type) {
+		case *ast.CallParamValueNode:
+			callData.set(param.Key, s.eval(param.Value))
+		case *ast.CallParamContentNode:
+			callData.set(param.Key, data.String(s.renderBlock(param.Content)))
+		default:
+			s.errorf("unexpected call param type: %T", param)
+		}
+	}
+
+	callData.enter()
+	state := &state{
+		tmpl:       calledTmpl,
+		registry:   s.registry,
+		namespace:  calledTmpl.Namespace.Name,
+		autoescape: calledTmpl.Namespace.Autoescape,
+		wr:         s.wr,
+		context:    callData,
+		ij:         s.ij,
+		msgs:       s.msgs,
+	}
+	state.walk(calledTmpl.Node)
 }
 
-func (s *state) nodeFromValue(pos ast.Pos, val data.Value) ast.Node {
-	switch val := val.(type) {
-	case data.Undefined:
-		s.errorf("undefined value can not be converted to node")
-	case data.Null:
-		return &ast.NullNode{pos}
-	case data.Bool:
-		return &ast.BoolNode{pos, bool(val)}
-	case data.Int:
-		return &ast.IntNode{pos, int64(val)}
-	case data.Float:
-		return &ast.FloatNode{pos, float64(val)}
-	case data.String:
-		return &ast.StringNode{pos, "<unused>", string(val)}
-	case data.List:
-		var items = make([]ast.Node, len(val))
-		for i, item := range val {
-			items[i] = s.nodeFromValue(pos, item)
+// renderBlock is a helper that renders the given node to a temporary output
+// buffer and returns that result.  nothing is written to the main output.
+func (s *state) renderBlock(node ast.Node) []byte {
+	var buf bytes.Buffer
+	origWriter := s.wr
+	s.wr = &buf
+	s.walk(node)
+	s.wr = origWriter
+	return buf.Bytes()
+}
+
+func checkNumArgs(allowedNumArgs []int, numArgs int) bool {
+	for _, length := range allowedNumArgs {
+		if numArgs == length {
+			return true
 		}
-		return &ast.ListLiteralNode{pos, items}
-	case data.Map:
-		var items = make(map[string]ast.Node, len(val))
-		for k, v := range val {
-			items[k] = s.nodeFromValue(pos, v)
-		}
-		return &ast.MapLiteralNode{pos, items}
 	}
+	return false
+}
+
+func (s *state) evalFunc(node *ast.FunctionNode) data.Value {
+	if fn, ok := loopFuncs[node.Name]; ok {
+		return fn(s, node.Args[0].(*ast.DataRefNode).Key)
+	}
+	if fn, ok := Funcs[node.Name]; ok {
+		if !checkNumArgs(fn.ValidArgLengths, len(node.Args)) {
+			s.errorf("Function %q called with %v args, expected: %v",
+				node.Name, len(node.Args), fn.ValidArgLengths)
+		}
+
+		var args = make([]data.Value, len(node.Args))
+		for i, arg := range node.Args {
+			args[i] = s.eval(arg)
+		}
+		defer func() {
+			if err := recover(); err != nil {
+				s.errorf("panic in %s(%v): %v\n%v", node.Name, args, err, string(debug.Stack()))
+			}
+		}()
+		r := fn.Apply(args)
+		if r == nil {
+			return data.Null{}
+		}
+		return r
+	}
+	s.errorf("unrecognized function name: %s", node.Name)
 	panic("unreachable")
 }
 
-func (s *state) writeRawText(text []byte) {
-	s.indent()
-	s.js(s.bufferName, " += '")
-	template.JSEscape(s.wr, text)
-	s.js("';\n")
-}
-
-// block renders the given node to a temporary buffer and returns the string.
-func (s *state) block(node ast.Node) string {
-	var buf bytes.Buffer
-	(&state{wr: &buf, scope: s.scope}).walk(node)
-	return buf.String()
-}
-
-func (s *state) op(symbol string, node ast.ParentNode) {
-	var children = node.Children()
-	s.js("(", children[0], " ", symbol, " ", children[1], ")")
-}
-
-func (s *state) indent() {
-	for i := 0; i < s.indentLevels; i++ {
-		s.wr.Write([]byte("  "))
+func (s *state) evalDataRef(node *ast.DataRefNode) data.Value {
+	// get the initial value
+	var ref data.Value
+	if node.Key == "ij" {
+		if s.ij == nil {
+			s.errorf("Injected data not provided, yet referenced: %q", node.String())
+		}
+		ref = s.ij
+	} else {
+		ref = s.context.lookup(node.Key)
 	}
-}
+	if len(node.Access) == 0 {
+		return ref
+	}
 
-func (s *state) js(args ...interface{}) {
-	for _, arg := range args {
-		switch arg := arg.(type) {
-		case string:
-			s.wr.Write([]byte(arg))
-		case ast.Node:
-			s.walk(arg)
+	// handle the accesses
+	for i, accessNode := range node.Access {
+		// resolve the index or key to look up.
+		var (
+			index int = -1
+			key   string
+		)
+		switch node := accessNode.(type) {
+		case *ast.DataRefIndexNode:
+			index = node.Index
+		case *ast.DataRefKeyNode:
+			key = node.Key
+		case *ast.DataRefExprNode:
+			switch keyRef := s.eval(node.Arg).(type) {
+			case data.Int:
+				index = int(keyRef)
+			default:
+				key = keyRef.String()
+			}
 		default:
-			fmt.Fprintf(s.wr, "%v", arg)
+			s.errorf("unexpected access node: %T", node)
+		}
+
+		// use the key/index, depending on the data type we're accessing.
+		switch obj := ref.(type) {
+		case data.Undefined, data.Null:
+			if isNullSafeAccess(accessNode) {
+				return data.Null{}
+			}
+			s.errorf("%q is null or undefined",
+				(&ast.DataRefNode{node.Pos, node.Key, node.Access[:i]}).String())
+		case data.List:
+			if index == -1 {
+				s.errorf("%q is a list, but was accessed with a non-integer index",
+					(&ast.DataRefNode{node.Pos, node.Key, node.Access[:i]}).String())
+			}
+			ref = obj.Index(index)
+		case data.Map:
+			if key == "" {
+				s.errorf("%q is a map, and requires a string key to access",
+					(&ast.DataRefNode{node.Pos, node.Key, node.Access[:i]}).String())
+			}
+			ref = obj.Key(key)
+		default:
+			s.errorf("While evaluating \"%v\", encountered non-collection"+
+				" just before accessing \"%v\".", node, accessNode)
 		}
 	}
+
+	return ref
 }
 
-func (s *state) jsln(args ...interface{}) {
-	s.indent()
-	s.js(args...)
-	s.wr.Write([]byte("\n"))
+// isNullSafeAccess returns true if the data ref access node is a nullsafe
+// access.
+func isNullSafeAccess(n ast.Node) bool {
+	switch node := n.(type) {
+	case *ast.DataRefIndexNode:
+		return node.NullSafe
+	case *ast.DataRefKeyNode:
+		return node.NullSafe
+	case *ast.DataRefExprNode:
+		return node.NullSafe
+	}
+	panic("unexpected")
+}
+
+// eval2def is a helper for binary ops.  it evaluates the two given nodes and
+// requires the result of each to not be Undefined.
+func (s *state) eval2def(n1, n2 ast.Node) (data.Value, data.Value) {
+	return s.evaldef(n1), s.evaldef(n2)
+}
+
+func (s *state) eval(n ast.Node) data.Value {
+	var prev = s.node
+	s.walk(n)
+	s.node = prev
+	return s.val
+}
+
+func (s *state) evaldef(n ast.Node) data.Value {
+	var val = s.eval(n)
+	if _, ok := val.(data.Undefined); ok {
+		s.errorf("%v is undefined", n)
+	}
+	return val
+}
+
+var (
+	htmlQuot = []byte("&#34;") // shorter than "&quot;"
+	htmlApos = []byte("&#39;") // shorter than "&apos;" and apos was not in HTML until HTML5
+	htmlAmp  = []byte("&amp;")
+	htmlLt   = []byte("&lt;")
+	htmlGt   = []byte("&gt;")
+)
+
+// htmlEscapeString is a modified veresion of the stdlib HTMLEscape routine
+// escapes a string without making copies.
+func htmlEscapeString(w io.Writer, str string) {
+	last := 0
+	for i := 0; i < len(str); i++ {
+		var html []byte
+		switch str[i] {
+		case '"':
+			html = htmlQuot
+		case '\'':
+			html = htmlApos
+		case '&':
+			html = htmlAmp
+		case '<':
+			html = htmlLt
+		case '>':
+			html = htmlGt
+		default:
+			continue
+		}
+		io.WriteString(w, str[last:i])
+		w.Write(html)
+		last = i + 1
+	}
+	io.WriteString(w, str[last:])
 }
