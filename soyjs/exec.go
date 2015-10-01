@@ -144,7 +144,7 @@ func (s *state) walk(node ast.Node) {
 				s.js(",")
 			}
 			first = false
-			s.js(k, ":")
+			s.js("\"", k, "\"", ":")
 			s.walk(v)
 		}
 		s.js("}")
