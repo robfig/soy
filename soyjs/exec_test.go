@@ -627,6 +627,14 @@ func TestLet(t *testing.T) {
 	})
 }
 
+// Tests that a map with string keys with spaces is escaped correctly
+func TestLetMap(t *testing.T) {
+	runExecTests(t, []execTest{
+		exprtest("let", `{let $foo:['FooBar': 1234] /}{$foo['FooBar']}`, "1234"),
+		exprtest("let", `{let $foo:['Foo Bar': 1234] /}{$foo['Foo Bar']}`, "1234"),
+	})
+}
+
 // testing cross namespace stuff requires multiple file bodies
 type nsExecTest struct {
 	name         string
