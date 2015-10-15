@@ -19,5 +19,5 @@ var PrintDirectives = map[string]PrintDirective{
 	"escapeJsString":    {"soy.$$escapeJsString", true},
 	"bidiSpanWrap":      {"soy.$$bidiSpanWrap", false},
 	"bidiUnicodeWrap":   {"soy.$$bidiUnicodeWrap", false},
-	"json":              {"soy.$$json", true},
+	"json":              {"JSON.stringify", true},
 }
