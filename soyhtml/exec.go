@@ -486,7 +486,12 @@ func (s *state) evalCall(node *ast.CallNode) {
 		ij:         s.ij,
 		msgs:       s.msgs,
 	}
+	var err error
+	defer state.errRecover(&err)
 	state.walk(calledTmpl.Node)
+	if err != nil {
+		panic(err)
+	}
 }
 
 // renderBlock is a helper that renders the given node to a temporary output
