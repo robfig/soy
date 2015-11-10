@@ -39,8 +39,7 @@ func (s *state) at(node ast.Node) {
 
 // errorf formats the error and terminates processing.
 func (s *state) errorf(format string, args ...interface{}) {
-	format = fmt.Sprintf("template %s:%d: %s", s.tmpl.Node.Name,
-		s.registry.LineNumber(s.tmpl.Node.Name, s.node), format)
+	format = fmt.Sprintf("%s: %s", s.callAnnotation(), format)
 	panic(s.errFromNode(format, args...))
 }
 
@@ -54,19 +53,20 @@ func (s *state) errFromNode(format string, args ...interface{}) error {
 	)
 }
 
+func (s *state) callAnnotation() string {
+	return fmt.Sprintf("template %s:%d", s.tmpl.Node.Name,
+		s.registry.LineNumber(s.tmpl.Node.Name, s.node))
+}
+
 // errRecover is the handler that turns panics into returns from the top
 // level of Parse.
 func (s *state) errRecover(errp *error) {
 	if e := recover(); e != nil {
 		switch e := e.(type) {
 		case runtime.Error:
-			*errp = s.errFromNode("template %s:%d: %v\n%v", s.tmpl.Node.Name,
-				s.registry.LineNumber(s.tmpl.Node.Name, s.node), e, string(debug.Stack()))
-		case error:
-			*errp = e
+			*errp = s.errFromNode("%s: %v\n%v", s.callAnnotation(), e, string(debug.Stack()))
 		default:
-			*errp = s.errFromNode("template %s:%d: %v", s.tmpl.Node.Name,
-				s.registry.LineNumber(s.tmpl.Node.Name, s.node), e)
+			*errp = s.errFromNode("%s: %v", s.callAnnotation(), e)
 		}
 	}
 }
@@ -501,6 +501,13 @@ func (s *state) evalCall(node *ast.CallNode) {
 		ij:         s.ij,
 		msgs:       s.msgs,
 	}
+
+	defer func() {
+		if e := recover(); e != nil {
+			panic(fmt.Errorf("%s: %v", state.callAnnotation(), e))
+		}
+	}()
+
 	state.walk(calledTmpl.Node)
 }
 
