@@ -1188,6 +1188,7 @@ func (t *tree) recover(errp *error) {
 	if _, ok := e.(runtime.Error); ok {
 		panic(e)
 	}
+	t.lex.drain()
 	t.lex = nil
 	if str, ok := e.(string); ok {
 		*errp = errors.New(str)

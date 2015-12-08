@@ -320,6 +320,12 @@ func (l *lexer) nextItem() item {
 	return <-l.items
 }
 
+// drain drains the output so the lexing goroutine will exit.
+func (l *lexer) drain() {
+	for _ = range l.items {
+	}
+}
+
 // lex creates a new scanner for the input string.
 func lex(name, input string) *lexer {
 	l := &lexer{
