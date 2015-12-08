@@ -910,6 +910,36 @@ func TestRecognizeComments(t *testing.T) {
 	fails(t, "{nil}//}\n")
 }
 
+// regression: ensures that the lexer is drained (and thus its run goroutine cleaned up) on an aborted parse.
+func TestDrainsLexer(t *testing.T) {
+	var (
+		name  = ""
+		text  = "{namespace template alias if}"
+		lexer = lex(name, text)
+		tree  = &tree{
+			name:    name,
+			text:    text,
+			aliases: make(map[string]string),
+			lex:     lexer,
+		}
+		err error
+	)
+
+	func() {
+		defer tree.recover(&err)
+		tree.root = tree.itemList(itemEOF)
+	}()
+
+	if err == nil {
+		t.Error("expected error")
+	}
+
+	token, ok := <-lexer.items
+	if ok {
+		t.Errorf("input was not drained; got %v", token)
+	}
+}
+
 func works(t *testing.T, body string) {
 	_, err := SoyFile("", body)
 	if err != nil {
