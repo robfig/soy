@@ -785,9 +785,9 @@ func (t *tree) boolAttr(attrs map[string]string, key string, defaultValue bool) 
 // parseQuotedExpr ignores the current lex/parse state and parses the given
 // string as a standalone expression.
 func (t *tree) parseQuotedExpr(str string) ast.Node {
-	return (&tree{
-		lex: lexExpr("", str),
-	}).parseExpr(0)
+	var tt = &tree{lex: lexExpr("", str)}
+	defer tt.lex.drain()
+	return tt.parseExpr(0)
 }
 
 var precedence = map[itemType]int{
