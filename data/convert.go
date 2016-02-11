@@ -53,7 +53,10 @@ func NewWith(convert StructOptions, value interface{}) Value {
 	case reflect.String:
 		return String(v.String())
 	case reflect.Slice:
-		var slice []Value
+		if v.IsNil() {
+			return Null{}
+		}
+		slice := []Value{}
 		for i := 0; i < v.Len(); i++ {
 			slice = append(slice, NewWith(convert, v.Index(i).Interface()))
 		}
