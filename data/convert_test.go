@@ -11,6 +11,7 @@ type AInt struct{ A int }
 var jan1, _ = time.Parse(time.RFC3339, "2014-01-01T00:00:00Z")
 
 func TestNew(t *testing.T) {
+	var nilSlice []bool
 	tests := []struct{ input, expected interface{} }{
 		// basic types
 		{nil, Null{}},
@@ -20,6 +21,8 @@ func TestNew(t *testing.T) {
 		{uint32(0), Int(0)},
 		{float32(0), Float(0)},
 		{"", String("")},
+		{nilSlice, Null{}},
+		{[]bool{}, List{}},
 		{[]string{"a"}, List{String("a")}},
 		{[]interface{}{"a"}, List{String("a")}},
 		{map[string]string{}, Map{}},
