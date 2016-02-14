@@ -4,11 +4,14 @@ import (
 	"errors"
 	"io"
 
+	"github.com/robfig/soy/soymsg"
 	"github.com/robfig/soy/template"
 )
 
 // Options for js source generation.
-type Options struct{}
+type Options struct {
+	Messages soymsg.Bundle
+}
 
 // Generator provides an interface to a template registry capable of generating
 // javascript to execute the embodied templates.

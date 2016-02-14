@@ -11,6 +11,7 @@ import (
 
 	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
+	"github.com/robfig/soy/soymsg"
 )
 
 type state struct {
@@ -512,40 +513,94 @@ func (s *state) visitSwitch(node *ast.SwitchNode) {
 
 // TODO: {msg} node translation is unimplemented
 func (s *state) visitMsg(node *ast.MsgNode) {
-	var pluralNode, ok = node.Body.Children()[0].(*ast.MsgPluralNode)
-	if !ok {
-		s.visitMsgBody(node)
+	// If no bundle was provided, walk the message sub-nodes.
+	if s.options.Messages == nil {
+		s.visitMsgNode(node, node, nil)
 		return
 	}
 
-	s.jsln("switch (", pluralNode.Value, ") {")
+	// Look up the message in the bundle.
+	var msg = s.options.Messages.Message(node.ID)
+	if msg == nil {
+		s.visitMsgNode(node, node, nil)
+		return
+	}
+
+	s.visitMsgNode(node, node, msg.Parts)
+}
+
+func (s *state) visitMsgNode(n ast.ParentNode, root *ast.MsgNode, parts []soymsg.Part) {
+	for i, child := range n.Children() {
+		switch child := child.(type) {
+		case *ast.RawTextNode:
+			if parts != nil {
+				part := parts[i].(soymsg.RawTextPart)
+				s.writeRawText([]byte(part.Text))
+			} else {
+				s.walk(child)
+			}
+		case *ast.MsgPlaceholderNode:
+			if parts != nil {
+				part := parts[i].(soymsg.PlaceholderPart)
+
+				// Find the node corresponding to the placeholder, and walk it.
+				var phnode = root.Placeholder(part.Name)
+				if phnode == nil {
+					s.errorf("failed to find placeholder %q in %q",
+						part.Name, soymsg.PlaceholderString(root))
+				}
+				s.walk(phnode.Body)
+			} else {
+				s.walk(child.Body)
+			}
+		case *ast.MsgPluralNode:
+			if parts != nil {
+				part := parts[i].(soymsg.PluralPart)
+				s.jsln("switch (", child.Value, ") {")
+				s.indentLevels++
+				for i, pluralCase := range child.Cases {
+					casePart := part.Cases[i]
+					s.jsln("case ", pluralCase.Value, ":")
+					s.indentLevels++
+					s.visitMsgNode(pluralCase.Body, root, casePart.Parts)
+					s.jsln("break;")
+					s.indentLevels--
+				}
+				{
+					s.jsln("default:")
+					s.indentLevels++
+					// The last pluralcase part should be the default case.
+					casePart := part.Cases[len(child.Cases)-1]
+					s.visitMsgNode(child.Default, root, casePart.Parts)
+					s.indentLevels--
+				}
+				s.indentLevels--
+				s.jsln("}")
+			} else {
+				s.walkPlural(child, root)
+			}
+		}
+	}
+}
+
+func (s *state) walkPlural(n *ast.MsgPluralNode, root *ast.MsgNode) {
+	s.jsln("switch (", n.Value, ") {")
 	s.indentLevels++
-	for _, pluralCase := range pluralNode.Cases {
+	for _, pluralCase := range n.Cases {
 		s.jsln("case ", pluralCase.Value, ":")
 		s.indentLevels++
-		s.visitMsgBody(pluralCase.Body)
+		s.visitMsgNode(pluralCase.Body, root, nil)
 		s.jsln("break;")
 		s.indentLevels--
 	}
 	{
 		s.jsln("default:")
 		s.indentLevels++
-		s.visitMsgBody(pluralNode.Default)
+		s.visitMsgNode(n.Default, root, nil)
 		s.indentLevels--
 	}
 	s.indentLevels--
 	s.jsln("}")
-}
-
-func (s *state) visitMsgBody(node ast.ParentNode) {
-	for _, n := range node.Children() {
-		switch n := n.(type) {
-		case *ast.RawTextNode:
-			s.walk(n)
-		case *ast.MsgPlaceholderNode:
-			s.walk(n.Body)
-		}
-	}
 }
 
 // visitGlobal constructs a primitive node from its value and uses walk to
