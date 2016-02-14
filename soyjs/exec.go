@@ -11,6 +11,7 @@ import (
 
 	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
+	"github.com/robfig/soy/soymsg"
 )
 
 type state struct {
@@ -510,42 +511,117 @@ func (s *state) visitSwitch(node *ast.SwitchNode) {
 	s.jsln("}")
 }
 
-// TODO: {msg} node translation is unimplemented
 func (s *state) visitMsg(node *ast.MsgNode) {
-	var pluralNode, ok = node.Body.Children()[0].(*ast.MsgPluralNode)
-	if !ok {
-		s.visitMsgBody(node)
+	// If no bundle was provided, walk the message sub-nodes.
+	if s.options.Messages == nil {
+		s.visitMsgNode(node)
 		return
 	}
 
-	s.jsln("switch (", pluralNode.Value, ") {")
+	// Look up the message in the bundle.
+	var msg = s.options.Messages.Message(node.ID)
+	if msg == nil {
+		s.visitMsgNode(node)
+		return
+	}
+
+	// Render each part.
+	s.evalMsgParts(node, msg.Parts)
+}
+
+func (s *state) evalMsgParts(msgNode *ast.MsgNode, parts []soymsg.Part) {
+	for _, part := range parts {
+		switch part := part.(type) {
+
+		case soymsg.RawTextPart:
+			s.writeRawText([]byte(part.Text))
+
+		case soymsg.PlaceholderPart:
+			// Find the node corresponding to the placeholder, and walk it.
+			var phnode = msgNode.Placeholder(part.Name)
+			if phnode == nil {
+				s.errorf("failed to find placeholder %q in %q",
+					part.Name, soymsg.PlaceholderString(msgNode))
+			}
+			s.walk(phnode.Body)
+
+		case soymsg.PluralPart:
+			// Find the corresponding node for this part.
+			child := s.findPluralNode(msgNode, part.VarName)
+			s.jsln("switch (", child.Value, ") {")
+			s.indentLevels++
+
+			for i, pluralCase := range child.Cases {
+				casePart := part.Cases[i]
+				s.jsln("case ", pluralCase.Value, ":")
+				s.indentLevels++
+				s.evalMsgParts(msgNode, casePart.Parts)
+				s.jsln("break;")
+				s.indentLevels--
+			}
+			{
+				s.jsln("default:")
+				s.indentLevels++
+
+				// The last pluralcase part should be the default case.
+				casePart := part.Cases[len(part.Cases)-1]
+
+				// TODO: I don't think this is right.  We probably need to use the message bundle's
+				// PluralCase method to somehow add more case statements here, but I'm not sure.
+				if len(part.Cases) > len(child.Cases) {
+					casePart = part.Cases[len(child.Cases)]
+				}
+
+				s.evalMsgParts(msgNode, casePart.Parts)
+				s.indentLevels--
+			}
+			s.indentLevels--
+			s.jsln("}")
+		}
+	}
+}
+
+func (s *state) findPluralNode(node *ast.MsgNode, pluralVarName string) *ast.MsgPluralNode {
+	for _, plnode := range node.Body.Children() {
+		if plnode, ok := plnode.(*ast.MsgPluralNode); ok && plnode.VarName == pluralVarName {
+			return plnode
+		}
+	}
+	s.errorf("failed to find placeholder %q in %v", pluralVarName, node.Body)
+	panic("unreachable")
+}
+
+func (s *state) visitMsgNode(n ast.ParentNode) {
+	for _, child := range n.Children() {
+		switch child := child.(type) {
+		case *ast.RawTextNode:
+			s.walk(child)
+		case *ast.MsgPlaceholderNode:
+			s.walk(child.Body)
+		case *ast.MsgPluralNode:
+			s.walkPlural(child)
+		}
+	}
+}
+
+func (s *state) walkPlural(n *ast.MsgPluralNode) {
+	s.jsln("switch (", n.Value, ") {")
 	s.indentLevels++
-	for _, pluralCase := range pluralNode.Cases {
+	for _, pluralCase := range n.Cases {
 		s.jsln("case ", pluralCase.Value, ":")
 		s.indentLevels++
-		s.visitMsgBody(pluralCase.Body)
+		s.visitMsgNode(pluralCase.Body)
 		s.jsln("break;")
 		s.indentLevels--
 	}
 	{
 		s.jsln("default:")
 		s.indentLevels++
-		s.visitMsgBody(pluralNode.Default)
+		s.visitMsgNode(n.Default)
 		s.indentLevels--
 	}
 	s.indentLevels--
 	s.jsln("}")
-}
-
-func (s *state) visitMsgBody(node ast.ParentNode) {
-	for _, n := range node.Children() {
-		switch n := n.(type) {
-		case *ast.RawTextNode:
-			s.walk(n)
-		case *ast.MsgPlaceholderNode:
-			s.walk(n.Body)
-		}
-	}
 }
 
 // visitGlobal constructs a primitive node from its value and uses walk to
