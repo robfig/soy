@@ -54,7 +54,7 @@ func NewWith(convert StructOptions, value interface{}) Value {
 		return String(v.String())
 	case reflect.Slice:
 		if v.IsNil() {
-			return Null{}
+			return List(nil)
 		}
 		slice := []Value{}
 		for i := 0; i < v.Len(); i++ {
