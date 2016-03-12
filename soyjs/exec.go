@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"sort"
 	"strconv"
 	"strings"
 	"text/template"
@@ -138,14 +139,23 @@ func (s *state) walk(node ast.Node) {
 		s.js("]")
 	case *ast.MapLiteralNode:
 		s.js("{")
-		var first = true
-		for k, v := range node.Items {
+		var (
+			first = true
+			keys  = make([]string, len(node.Items))
+			i     = 0
+		)
+		for k, _ := range node.Items {
+			keys[i] = k
+			i++
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
 			if !first {
 				s.js(",")
 			}
 			first = false
 			s.js("\"", k, "\"", ":")
-			s.walk(v)
+			s.walk(node.Items[k])
 		}
 		s.js("}")
 	case *ast.FunctionNode:
