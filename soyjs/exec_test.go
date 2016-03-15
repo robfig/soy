@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/robertkrimen/otto"
-	"github.com/robfig/gettext/po"
 	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
 	"github.com/robfig/soy/parse"
@@ -729,8 +728,8 @@ func multidatatest(name, body string, successes []datatest, failures []errortest
 /** END COPY PASTA */
 
 type fakeBundle struct {
-	msgs       map[uint64]*soymsg.Message
-	pluralfunc po.PluralSelector
+	msgs   map[uint64]*soymsg.Message
+	locale string
 }
 
 func (fb *fakeBundle) Message(id uint64) *soymsg.Message {
@@ -741,11 +740,11 @@ func (fb *fakeBundle) Message(id uint64) *soymsg.Message {
 }
 
 func (fb *fakeBundle) Locale() string {
-	return "xx"
+	return fb.locale
 }
 
 func (fb *fakeBundle) PluralCase(n int) int {
-	return fb.pluralfunc(n)
+	return -1
 }
 
 func pluralEnglish(n int) int {
@@ -766,7 +765,7 @@ func pluralCzech(n int) int {
 	}
 }
 
-func newFakeBundle(msg, tran string, pl po.PluralSelector) *fakeBundle {
+func newFakeBundle(msg, tran, locale string) *fakeBundle {
 	var sf, err = parse.SoyFile("", `{msg desc=""}`+msg+`{/msg}`)
 	if err != nil {
 		panic(err)
@@ -774,10 +773,10 @@ func newFakeBundle(msg, tran string, pl po.PluralSelector) *fakeBundle {
 	var msgnode = sf.Body[0].(*ast.MsgNode)
 	soymsg.SetPlaceholdersAndID(msgnode)
 	var m = soymsg.NewMessage(msgnode.ID, tran)
-	return &fakeBundle{map[uint64]*soymsg.Message{msgnode.ID: m}, pl}
+	return &fakeBundle{map[uint64]*soymsg.Message{msgnode.ID: m}, locale}
 }
 
-func newFakePluralBundle(pluralVar, msg1, msg2 string, pl po.PluralSelector, msgstr []string) *fakeBundle {
+func newFakePluralBundle(pluralVar, msg1, msg2, locale string, msgstr []string) *fakeBundle {
 	var sf, err = parse.SoyFile("", `{msg desc=""}
 {plural `+pluralVar+`}
   {case 1}`+msg1+`
@@ -790,7 +789,7 @@ func newFakePluralBundle(pluralVar, msg1, msg2 string, pl po.PluralSelector, msg
 	var msgnode = sf.Body[0].(*ast.MsgNode)
 	soymsg.SetPlaceholdersAndID(msgnode)
 	var msg = newMessage(msgnode, msgstr)
-	return &fakeBundle{map[uint64]*soymsg.Message{msgnode.ID: &msg}, pl}
+	return &fakeBundle{map[uint64]*soymsg.Message{msgnode.ID: &msg}, locale}
 }
 
 func newMessage(node *ast.MsgNode, msgstrs []string) soymsg.Message {
@@ -823,14 +822,14 @@ func TestMessages(t *testing.T) {
   {msg desc=""}
     Hello world
   {/msg}
-{/template}`}, "Hello world", nil, true, newFakeBundle("foo", "bar", nil)},
+{/template}`}, "Hello world", nil, true, newFakeBundle("foo", "bar", "")},
 
 		{"bundle has", "test.main", []string{`{namespace test}
 {template .main}
   {msg desc=""}
     Hello world
   {/msg}
-{/template}`}, "Sup", nil, true, newFakeBundle("Hello world", "Sup", nil)},
+{/template}`}, "Sup", nil, true, newFakeBundle("Hello world", "Sup", "")},
 
 		{"msg with variable & translation", "test.main", []string{`{namespace test}
 /** @param a */
@@ -838,7 +837,7 @@ func TestMessages(t *testing.T) {
   {msg desc=""}
     a: {$a}
   {/msg}
-{/template}`}, "a is 1", d{"a": 1}, true, newFakeBundle("a: {$a}", "a is {A}", nil)},
+{/template}`}, "a is 1", d{"a": 1}, true, newFakeBundle("a: {$a}", "a is {A}", "")},
 
 		{"msg w variables", "test.main", []string{`{namespace test}
 /** @param a */
@@ -846,7 +845,7 @@ func TestMessages(t *testing.T) {
   {msg desc=""}
     {$a}{$a} xx {$a}{sp}
   {/msg}
-{/template}`}, "11xxx1", d{"a": 1}, true, newFakeBundle("{$a}{$a} xx {$a}{sp}", "{A}{A}xxx{A}", nil)},
+{/template}`}, "11xxx1", d{"a": 1}, true, newFakeBundle("{$a}{$a} xx {$a}{sp}", "{A}{A}xxx{A}", "")},
 
 		{"msg w numbered placeholders", "test.main", []string{`{namespace test}
 /** @param a */
@@ -855,7 +854,7 @@ func TestMessages(t *testing.T) {
     {$a.a}{$a.b.a}
   {/msg}
 {/template}`}, "21", d{"a": d{"a": 1, "b": d{"a": 2}}},
-			true, newFakeBundle("{$a.a}{$a.b.a}", "{A_2}{A_1}", nil)},
+			true, newFakeBundle("{$a.a}{$a.b.a}", "{A_2}{A_1}", "")},
 
 		{"msg w html", "test.main", []string{`{namespace test}
 /** @param a */
@@ -864,7 +863,7 @@ func TestMessages(t *testing.T) {
     Click <a>here</a>
   {/msg}
 {/template}`}, "<a>Click here</a>", nil,
-			true, newFakeBundle("Click <a>here</a>", "{START_LINK}Click here{END_LINK}", nil)},
+			true, newFakeBundle("Click <a>here</a>", "{START_LINK}Click here{END_LINK}", "")},
 
 		{"plural, not found, singular", "test.main", []string{`{namespace test}
 /** @param n */
@@ -907,7 +906,7 @@ func TestMessages(t *testing.T) {
   {/msg}
 {/template}`}, "|one user|", d{"n": 1}, true,
 			newFakePluralBundle("$n", "one user", "{$n} users",
-				pluralEnglish, []string{"|one user|", "|({N_2}) users|"})},
+				"en", []string{"|one user|", "|({N_2}) users|"})},
 
 		{"plural, plural", "test.main", []string{`{namespace test}
 /** @param n */
@@ -922,7 +921,7 @@ func TestMessages(t *testing.T) {
   {/msg}
 {/template}`}, "|(10) users|", d{"n": 10}, true,
 			newFakePluralBundle("$n", "one user", "{$n} users",
-				pluralEnglish, []string{"|one user|", "|({N_2}) users|"})},
+				"en", []string{"|one user|", "|({N_2}) users|"})},
 
 		{"plural, few, czech", "test.main", []string{`{namespace test}
 /** @param n */
@@ -937,7 +936,7 @@ func TestMessages(t *testing.T) {
   {/msg}
 {/template}`}, "|few (3) users|", d{"n": 3}, true,
 			newFakePluralBundle("$n", "one user", "{$n} users",
-				pluralCzech, []string{"|one user|", "|few ({N_2}) users|", "|({N_2}) users|"})},
+				"cs", []string{"|one user|", "|few ({N_2}) users|", "|({N_2}) users|"})},
 	})
 }
 
@@ -982,6 +981,25 @@ soy.$$escapeHtml = function(arg) { return arg; };
 	val, _ := otto.Get("console_output")
 	if val.String() != "Hello Rob." {
 		t.Errorf("got %q", val.String())
+	}
+}
+
+func TestPluralFuncs(t *testing.T) {
+	gentest := func(body string) string {
+		var funcs []string
+		for i := 0; i <= 10; i++ {
+			funcs = append(funcs, fmt.Sprintf("(function(n){%s})(%v);", body, i))
+		}
+
+		return strings.Join(funcs, "\n")
+	}
+	for locale, body := range pluralFuncBodies {
+		otto := otto.New()
+		script := gentest(body)
+		_, err := otto.Run(script)
+		if err != nil {
+			t.Errorf("plural func %s: runtime error: %v\n%v", locale, err, numberLines(strings.NewReader(script)))
+		}
 	}
 }
 

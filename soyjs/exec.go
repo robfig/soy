@@ -548,37 +548,55 @@ func (s *state) evalMsgParts(msgNode *ast.MsgNode, parts []soymsg.Part) {
 		case soymsg.PluralPart:
 			// Find the corresponding node for this part.
 			child := s.findPluralNode(msgNode, part.VarName)
-			s.jsln("switch (", child.Value, ") {")
+
+			s.jsln("var pluralIndex = function(n){")
+			s.indentLevels++
+			s.jsln(pluralFuncForLanguage(s.options.Messages.Locale()))
+			s.indentLevels--
+			s.jsln("}(", child.Value, ");")
+
+			s.jsln("switch (pluralIndex) {")
 			s.indentLevels++
 
-			for i, pluralCase := range child.Cases {
-				casePart := part.Cases[i]
-				s.jsln("case ", pluralCase.Value, ":")
+			for i, pluralPart := range part.Cases {
+				s.jsln("case ", i, ":")
 				s.indentLevels++
-				s.evalMsgParts(msgNode, casePart.Parts)
+				s.evalMsgParts(msgNode, pluralPart.Parts)
 				s.jsln("break;")
 				s.indentLevels--
 			}
-			{
-				s.jsln("default:")
-				s.indentLevels++
 
-				// The last pluralcase part should be the default case.
-				casePart := part.Cases[len(part.Cases)-1]
-
-				// TODO: I don't think this is right.  We probably need to use the message bundle's
-				// PluralCase method to somehow add more case statements here, but I'm not sure.
-				if len(part.Cases) > len(child.Cases) {
-					casePart = part.Cases[len(child.Cases)]
-				}
-
-				s.evalMsgParts(msgNode, casePart.Parts)
-				s.indentLevels--
-			}
 			s.indentLevels--
 			s.jsln("}")
 		}
 	}
+}
+
+var pluralFuncBodies = map[string]string{
+	"en": `if (n > 1) {
+		return 1;
+	}
+	return 0;`,
+
+	"cs": `switch (true) {
+	case (n === 1):
+		return 0;
+        break;
+	case (n >= 2 && n <= 4):
+		return 1;
+        break;
+	default:
+		return 2;
+        break;
+	}`,
+}
+
+func pluralFuncForLanguage(locale string) string {
+	if body, ok := pluralFuncBodies[locale]; ok {
+		return body
+	}
+
+	panic("no plural func found for language " + locale)
 }
 
 func (s *state) findPluralNode(node *ast.MsgNode, pluralVarName string) *ast.MsgPluralNode {
