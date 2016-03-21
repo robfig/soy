@@ -1035,7 +1035,7 @@ TESTS_LOOP:
 		var source bytes.Buffer
 		for _, input := range test.input {
 			if test.msgs != nil && test.msgs.locale != "" {
-				fbody, _ := pluralFuncBodies[test.msgs.locale]
+				fbody := pluralFuncBodies[test.msgs.locale]
 				js.Run(fmt.Sprintf(pluralFuncTmpl, fbody))
 			}
 
