@@ -549,13 +549,7 @@ func (s *state) evalMsgParts(msgNode *ast.MsgNode, parts []soymsg.Part) {
 			// Find the corresponding node for this part.
 			child := s.findPluralNode(msgNode, part.VarName)
 
-			s.jsln("var pluralIndex = function(n){")
-			s.indentLevels++
-			s.jsln(pluralFuncForLanguage(s.options.Messages.Locale()))
-			s.indentLevels--
-			s.jsln("}(", child.Value, ");")
-
-			s.jsln("switch (pluralIndex) {")
+			s.jsln("switch (soy.$$pluralIndex(", child.Value, ")) {")
 			s.indentLevels++
 
 			for i, pluralPart := range part.Cases {
@@ -570,33 +564,6 @@ func (s *state) evalMsgParts(msgNode *ast.MsgNode, parts []soymsg.Part) {
 			s.jsln("}")
 		}
 	}
-}
-
-var pluralFuncBodies = map[string]string{
-	"en": `if (n > 1) {
-		return 1;
-	}
-	return 0;`,
-
-	"cs": `switch (true) {
-	case (n === 1):
-		return 0;
-        break;
-	case (n >= 2 && n <= 4):
-		return 1;
-        break;
-	default:
-		return 2;
-        break;
-	}`,
-}
-
-func pluralFuncForLanguage(locale string) string {
-	if body, ok := pluralFuncBodies[locale]; ok {
-		return body
-	}
-
-	panic("no plural func found for language " + locale)
 }
 
 func (s *state) findPluralNode(node *ast.MsgNode, pluralVarName string) *ast.MsgPluralNode {
