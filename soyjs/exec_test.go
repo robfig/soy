@@ -984,23 +984,21 @@ soy.$$escapeHtml = function(arg) { return arg; };
 	}
 }
 
-func TestPluralFuncs(t *testing.T) {
-	gentest := func(body string) string {
-		var funcs []string
-		for i := 0; i <= 10; i++ {
-			funcs = append(funcs, fmt.Sprintf("(function(n){%s})(%v);", body, i))
-		}
+var pluralFuncBodies = map[string]string{
+	"en": `
+	if (n > 1) {
+		return 1;
+	}
+	return 0;`,
 
-		return strings.Join(funcs, "\n")
-	}
-	for locale, body := range pluralFuncBodies {
-		otto := otto.New()
-		script := gentest(body)
-		_, err := otto.Run(script)
-		if err != nil {
-			t.Errorf("plural func %s: runtime error: %v\n%v", locale, err, numberLines(strings.NewReader(script)))
-		}
-	}
+	"cs": `
+	if (n == 1) {
+		return 0;
+	} else if (n >= 2 && n <= 4) {
+		return 1;
+	} else {
+		return 2;
+	}`,
 }
 
 func runExecTests(t *testing.T, tests []execTest) {
@@ -1019,6 +1017,13 @@ func runExecTests(t *testing.T, tests []execTest) {
 	runNsExecTests(t, nstest)
 }
 
+var pluralFuncTmpl = `
+	var soy = soy || {};
+	soy.$$pluralIndex = function(n){
+		%s
+	};
+`
+
 func runNsExecTests(t *testing.T, tests []nsExecTest) {
 	var js = initJs(t)
 
@@ -1029,6 +1034,11 @@ TESTS_LOOP:
 		// Parse the templates, generate and run the compiled javascript.
 		var source bytes.Buffer
 		for _, input := range test.input {
+			if test.msgs != nil && test.msgs.locale != "" {
+				fbody, _ := pluralFuncBodies[test.msgs.locale]
+				js.Run(fmt.Sprintf(pluralFuncTmpl, fbody))
+			}
+
 			var registry = template.Registry{}
 			soyfile, err := parse.SoyFile(test.name, input)
 			if err != nil {
