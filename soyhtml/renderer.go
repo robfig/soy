@@ -42,7 +42,7 @@ func (t Renderer) Execute(wr io.Writer, obj data.Map) (err error) {
 
 	var autoescapeMode = tmpl.Namespace.Autoescape
 	if autoescapeMode == ast.AutoescapeUnspecified {
-		autoescapeMode = ast.AutoescapeOn
+		autoescapeMode = ast.AutoescapeStrict
 	}
 
 	var initialScope = newScope(obj)

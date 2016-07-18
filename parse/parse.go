@@ -612,6 +612,8 @@ func (t *tree) parseAutoescape(attrs map[string]string) ast.AutoescapeType {
 		return ast.AutoescapeOn
 	case "false":
 		return ast.AutoescapeOff
+	case "strict":
+		return ast.AutoescapeStrict
 	default:
 		t.errorf(`expected "true", "false", or "contextual" for autoescape, got %q`, val)
 	}
