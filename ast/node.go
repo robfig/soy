@@ -198,12 +198,13 @@ func (n *PrintDirectiveNode) String() string {
 		return "|" + n.Name
 	}
 	var expr = "|" + n.Name + ":"
-	var first = false
+	var first = true
 	for _, arg := range n.Args {
-		if first {
+		if !first {
 			expr += ","
 		}
 		expr += arg.String()
+		first = false
 	}
 	return expr
 }
