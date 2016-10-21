@@ -1041,9 +1041,9 @@ func newBinaryOpNode(t item, n1, n2 ast.Node) ast.Node {
 	case itemLte:
 		return &ast.LteNode{op(bin, "<=")}
 	case itemOr:
-		return &ast.OrNode{op(bin, " or ")}
+		return &ast.OrNode{op(bin, "or")}
 	case itemAnd:
-		return &ast.AndNode{op(bin, " and ")}
+		return &ast.AndNode{op(bin, "and")}
 	case itemElvis:
 		return &ast.ElvisNode{op(bin, "?:")}
 	}
