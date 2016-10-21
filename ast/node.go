@@ -828,7 +828,7 @@ type BinaryOpNode struct {
 }
 
 func (n *BinaryOpNode) String() string {
-	return n.Arg1.String() + n.Name + n.Arg2.String()
+	return n.Arg1.String() + " " + n.Name + " " + n.Arg2.String()
 }
 
 func (n *BinaryOpNode) Children() []Node {
