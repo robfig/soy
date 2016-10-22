@@ -1029,7 +1029,7 @@ func newBinaryOpNode(t item, n1, n2 ast.Node) ast.Node {
 	case itemSub:
 		return &ast.SubNode{op(bin, "-")}
 	case itemEq:
-		return &ast.EqNode{op(bin, "=")}
+		return &ast.EqNode{op(bin, "==")}
 	case itemNotEq:
 		return &ast.NotEqNode{op(bin, "!=")}
 	case itemGt:
