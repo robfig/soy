@@ -26,15 +26,19 @@ type soyFile struct{ name, content string }
 // Bundle is a collection of soy content (templates and globals).  It acts as
 // input for the soy compiler.
 type Bundle struct {
-	files   []soyFile
-	globals data.Map
-	err     error
-	watcher *fsnotify.Watcher
+	files     []soyFile
+	globals   data.Map
+	err       error
+	watcher   *fsnotify.Watcher
+	watchDirs map[string]bool
 }
 
 // NewBundle returns an empty bundle.
 func NewBundle() *Bundle {
-	return &Bundle{globals: make(data.Map)}
+	return &Bundle{
+		globals:   make(data.Map),
+		watchDirs: make(map[string]bool),
+	}
 }
 
 // WatchFiles tells soy to watch any template files added to this bundle,
@@ -47,6 +51,16 @@ func (b *Bundle) WatchFiles(watch bool) *Bundle {
 	return b
 }
 
+func (b *Bundle) WatchDir(path string) *Bundle {
+	if b.err == nil && b.watcher != nil {
+		if !b.watchDirs[path] {
+			b.err = b.watcher.Watch(path)
+			b.watchDirs[path] = true
+		}
+	}
+	return b
+}
+
 // AddTemplateDir adds all *.soy files found within the given directory
 // (including sub-directories) to the bundle.
 func (b *Bundle) AddTemplateDir(root string) *Bundle {
@@ -55,6 +69,7 @@ func (b *Bundle) AddTemplateDir(root string) *Bundle {
 			return err
 		}
 		if info.IsDir() {
+			b.WatchDir(path)
 			return nil
 		}
 		if !strings.HasSuffix(path, ".soy") {
@@ -66,6 +81,7 @@ func (b *Bundle) AddTemplateDir(root string) *Bundle {
 	if err != nil {
 		b.err = err
 	}
+
 	return b
 }
 
@@ -76,9 +92,10 @@ func (b *Bundle) AddTemplateFile(filename string) *Bundle {
 	if err != nil {
 		b.err = err
 	}
-	if b.err == nil && b.watcher != nil {
-		b.err = b.watcher.Watch(filename)
-	}
+
+	path, _ := filepath.Split(filename)
+	b.WatchDir(path)
+
 	return b.AddTemplateString(filename, string(content))
 }
 
