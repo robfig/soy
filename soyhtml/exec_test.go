@@ -792,6 +792,22 @@ func TestCallData(t *testing.T) {
 {$a}{if $b}{$b}{/if}
 {/template}
 `, "213", d{"a": 1}, true},
+
+		// test only defined params are passed through
+		{"no impliclit data=all for invoked template", "test.main", `{namespace test}
+/** @param a */		
+{template .main}
+{call .inner data="all" /}
+{/template}
+
+/**
+ * @param a
+ * @param? b
+ */
+{template .inner}
+{$a}{$b}
+{/template}
+`, "1", d{"a": 1, "b": 2}, true},
 	})
 }
 
