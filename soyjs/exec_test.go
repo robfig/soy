@@ -547,7 +547,9 @@ func TestAutoescapeModes(t *testing.T) {
 	})
 }
 
-var helloWorldTemplate = `{namespace examples.simple}
+var helloWorldTemplate = `
+{namespace examples.simple}
+
 /**
  * Says hello to the world.
  */
@@ -587,7 +589,8 @@ var helloWorldTemplate = `{namespace examples.simple}
   {ifempty}
     No additional people to greet.
   {/foreach}
-{/template}`
+{/template}
+`
 
 // TestHelloWorld executes the Hello World tutorial on the Soy Templates site.
 func TestHelloWorld(t *testing.T) {
@@ -607,6 +610,52 @@ func TestHelloWorld(t *testing.T) {
 		{"additional names", "examples.simple.helloNames", helloWorldTemplate,
 			"Hello Ana!<br>Hello Bob!<br>Hello Cid!<br>Hello Dee!",
 			d{"name": "Ana", "additionalNames": []string{"Bob", "Cid", "Dee"}},
+			true,
+		},
+	})
+}
+
+var identicalParamNameTemplate = `
+{namespace test}
+
+/**
+ * A wrapper template to call .helloNameIdentical.
+ * Uses a let variable with same name as param passed to .helloNameIdentical.
+ * @param param
+ */
+{template .helloWrapperIdentical}
+	{let $name: $param ?: 'world' /}
+	{call .helloNameIdentical data="all"}
+		{param name: $name /}
+	{/call}
+{/template}
+
+/**
+ * @param name
+ */
+{template .helloNameIdentical}
+  Hello {$name}!
+{/template}
+`
+
+// TestIdenticalParamName checks that proper JS compilation when using params and vars of the same name within templates.
+func TestIdenticalParamName(t *testing.T) {
+	runExecTests(t, []execTest{
+		{"normal wrapper call without param", "test.helloWrapperIdentical", identicalParamNameTemplate,
+			"Hello world!",
+			d{},
+			true,
+		},
+
+		{"normal wrapper call with param", "test.helloWrapperIdentical", identicalParamNameTemplate,
+			"Hello Ana!",
+			d{"param": "Ana"},
+			true,
+		},
+
+		{"normal call with param", "test.helloNameIdentical", identicalParamNameTemplate,
+			"Hello Ana!",
+			d{"name": "Ana"},
 			true,
 		},
 	})
