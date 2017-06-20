@@ -270,6 +270,8 @@ func (s *state) visitTemplate(node *ast.TemplateNode) {
 	}
 	s.jsln("var output = '';")
 	s.bufferName = "output"
+	s.scope.push()
+	defer s.scope.pop()
 	s.walk(node.Body)
 	s.jsln("return output;")
 	s.indentLevels--
