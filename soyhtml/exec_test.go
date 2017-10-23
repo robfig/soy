@@ -362,6 +362,20 @@ func TestLog(t *testing.T) {
 	}
 }
 
+func TestNilLogger(t *testing.T) {
+	originalLogger := Logger
+	defer func() { Logger = originalLogger }()
+
+	var buf bytes.Buffer
+	Logger = nil
+	runExecTests(t, []execTest{
+		exprtestwdata("log", "{log} Hello {$name} // comment\n{/log}", ``, d{"name": "Rob"}),
+	})
+	if strings.TrimSpace(buf.String()) != "" {
+		t.Errorf("logger should have been empty: %q", buf.String())
+	}
+}
+
 func TestDebugger(t *testing.T) {
 	runExecTests(t, []execTest{
 		exprtest("debugger", `{debugger}`, ``),
