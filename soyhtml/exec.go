@@ -98,7 +98,11 @@ func (s *state) walk(node ast.Node) {
 	case *ast.DebuggerNode:
 		// nothing to do
 	case *ast.LogNode:
-		Logger.Print(string(s.renderBlock(node.Body)))
+		// Render the node to capture any additional errors
+		rendered := s.renderBlock(node.Body)
+		if Logger != nil {
+			Logger.Print(string(rendered))
+		}
 
 		// Control flow ----------
 	case *ast.IfNode:
