@@ -314,6 +314,14 @@ func (s *state) evalPrint(node *ast.PrintNode) {
 	}
 	var escapeHtml = s.autoescape != ast.AutoescapeOff
 	var result = s.val
+
+	for _, directiveName := range ObligatoryPrintDirectiveNames {
+		node.Directives = append(node.Directives, &ast.PrintDirectiveNode{
+			Pos:  node.Position(),
+			Name: directiveName,
+		})
+	}
+
 	for _, directiveNode := range node.Directives {
 		var directive, ok = PrintDirectives[directiveNode.Name]
 		if !ok {
