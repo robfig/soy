@@ -35,6 +35,11 @@ var PrintDirectives = map[string]PrintDirective{
 	"json":              {directiveJson, []int{0}, true},
 }
 
+// ObligatoryPrintDirectives are always called
+// These directives can't take arguments
+// Callers may add their own print directives to this list.
+var ObligatoryPrintDirectiveNames = []string{}
+
 func directiveInsertWordBreaks(value data.Value, args []data.Value) data.Value {
 	var (
 		input    = template.HTMLEscapeString(value.String())
