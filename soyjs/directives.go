@@ -21,3 +21,8 @@ var PrintDirectives = map[string]PrintDirective{
 	"bidiUnicodeWrap":   {"soy.$$bidiUnicodeWrap", false},
 	"json":              {"JSON.stringify", true},
 }
+
+// ObligatoryPrintDirectiveNames are always called
+// These directives can't take arguments
+// Callers may add their own print directives to this list.
+var ObligatoryPrintDirectiveNames = []string{}

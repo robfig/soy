@@ -283,6 +283,14 @@ func (s *state) visitTemplate(node *ast.TemplateNode) {
 func (s *state) visitPrint(node *ast.PrintNode) {
 	var escape = s.autoescape
 	var directives []*ast.PrintDirectiveNode
+
+	for _, directiveName := range ObligatoryPrintDirectiveNames {
+		node.Directives = append(node.Directives, &ast.PrintDirectiveNode{
+			Pos:  node.Position(),
+			Name: directiveName,
+		})
+	}
+
 	for _, dir := range node.Directives {
 		var directive, ok = PrintDirectives[dir.Name]
 		if !ok {
