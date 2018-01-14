@@ -283,7 +283,15 @@ func (s *state) visitTemplate(node *ast.TemplateNode) {
 func (s *state) visitPrint(node *ast.PrintNode) {
 	var escape = s.autoescape
 	var directives []*ast.PrintDirectiveNode
-	for _, dir := range node.Directives {
+
+	directivesToApply := node.Directives
+	for _, directiveName := range ObligatoryPrintDirectiveNames {
+		directivesToApply = append(directivesToApply, &ast.PrintDirectiveNode{
+			Pos:  node.Position(),
+			Name: directiveName,
+		})
+	}
+	for _, dir := range directivesToApply {
 		var directive, ok = PrintDirectives[dir.Name]
 		if !ok {
 			s.errorf("Print directive %q not found", dir.Name)
