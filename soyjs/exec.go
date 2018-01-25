@@ -201,9 +201,9 @@ func (s *state) walk(node ast.Node) {
 		s.op("||", node)
 	case *ast.ElvisNode:
 		// ?: is specified to check for null.
-		s.js("(", node.Arg1, " != null ? ", node.Arg1, " : ", node.Arg2, ")")
+		s.js("((", node.Arg1, ") != null ? ", node.Arg1, " : ", node.Arg2, ")")
 	case *ast.TernNode:
-		s.js("(", node.Arg1, "?", node.Arg2, ":", node.Arg3, ")")
+		s.js("((", node.Arg1, ") ?", node.Arg2, ":", node.Arg3, ")")
 
 	default:
 		s.errorf("unknown node (%T): %v", node, node)
