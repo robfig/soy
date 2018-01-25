@@ -341,6 +341,18 @@ func TestDataRefs(t *testing.T) {
 		exprtestwdata("exprkeynullsafe on null map", "{$foo?['bar']}", "null", d{"foo": nil}),
 		exprtestwdata("exprkeyarith", "{$foo['b'+('a'+'r')]}", "result", d{"foo": d{"bar": "result"}}),
 
+		// nullsafe + elvis
+		exprtestwdata("elvis and nullsafe key", "{$foo?.bar ?: 'hello'}", "hello", d{}),
+		exprtestwdata("elvis and nullsafe key success", "{$foo?.bar ?: 'hello'}", "hi", d{"foo": d{"bar": "hi"}}),
+		exprtestwdata("elvis and nullsafe key half success", "{$foo?.bar ?: 'hello'}", "hello", d{"foo": d{}}),
+		exprtestwdata("elvis and nullsafe index ", "{$foo?[0] ?: 'hello'}", "hello", d{}),
+		exprtestwdata("elvis and nullsafe index success", "{$foo?[0] ?: 'hello'}", "a", d{"foo": []interface{}{"a", "b", "c", "d"}}),
+		exprtestwdata("elvis and nullsafe index half success", "{$foo?[0] ?: 'hello'}", "hello", d{"foo": []interface{}{}}),
+		exprtestwdata("elvis and nullsafe expr", "{$foo?['bar'] ?: 'hello'}", "hello", d{}),
+		exprtestwdata("elvis and nullsafe expr success", "{$foo?['bar'] ?: 'hello'}", "hi", d{"foo": d{"bar": "hi"}}),
+		exprtestwdata("elvis and nullsafe expr half success", "{$foo?['bar'] ?: 'hello'}", "hello", d{"foo": d{}}),
+		exprtestwdata("elvis and nullsafe chain", "{$foo?.bar?.baz ?: 'hello'}", "hello", d{"foo": d{"bar": d{}}}),
+
 		// DIFFERENCE: More tests on nullsafe navigation.
 		exprtestwdata("nullsafe battle royale",
 			"{$foo[2].bar?.baz?['bar']?[3].boo[3]}", "null", d{
