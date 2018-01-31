@@ -18,7 +18,7 @@ import (
 )
 
 func usage() {
-	fmt.Fprintln(os.Stderr, `xgettext-soy is a tool to extract messages from Soy templates.
+	fmt.Fprint(os.Stderr, `xgettext-soy is a tool to extract messages from Soy templates.
 
 Usage:
 
