@@ -477,6 +477,14 @@ func TestPrintDirectives(t *testing.T) {
 	})
 }
 
+func TestObligatoryPrintDirectives(t *testing.T) {
+	ObligatoryPrintDirectiveNames = []string{"noAutoescape"}
+	runExecTests(t, []execTest{
+		exprtest("sanitized html", "{'<a>'}", "<a>"),
+	})
+	ObligatoryPrintDirectiveNames = []string{}
+}
+
 func TestGlobals(t *testing.T) {
 	globals["app.global_str"] = data.New("abc")
 	globals["GLOBAL_INT"] = data.New(5)

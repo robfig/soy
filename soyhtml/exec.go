@@ -300,14 +300,15 @@ func (s *state) evalPrint(node *ast.PrintNode) {
 	var escapeHtml = s.autoescape != ast.AutoescapeOff
 	var result = s.val
 
+	directivesToApply := node.Directives
 	for _, directiveName := range ObligatoryPrintDirectiveNames {
-		node.Directives = append(node.Directives, &ast.PrintDirectiveNode{
+		directivesToApply = append(directivesToApply, &ast.PrintDirectiveNode{
 			Pos:  node.Position(),
 			Name: directiveName,
 		})
 	}
 
-	for _, directiveNode := range node.Directives {
+	for _, directiveNode := range directivesToApply {
 		var directive, ok = PrintDirectives[directiveNode.Name]
 		if !ok {
 			s.errorf("Print directive %q does not exist", directiveNode.Name)
