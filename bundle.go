@@ -30,6 +30,7 @@ type Bundle struct {
 	globals               data.Map
 	err                   error
 	watcher               *fsnotify.Watcher
+	parsepasses           []func(template.Registry) error
 	recompilationCallback func(*template.Registry)
 }
 
@@ -125,6 +126,13 @@ func (b *Bundle) SetRecompilationCallback(c func(*template.Registry)) *Bundle {
 	return b
 }
 
+// AddParsePass adds a function to the bundle that will be called
+// after the soy is parsed
+func (b *Bundle) AddParsePass(f func(template.Registry) error) *Bundle {
+	b.parsepasses = append(b.parsepasses, f)
+	return b
+}
+
 // Compile parses all of the soy files in this bundle, verifies a number of
 // rules about data references, and returns the completed template registry.
 func (b *Bundle) Compile() (*template.Registry, error) {
@@ -145,6 +153,11 @@ func (b *Bundle) Compile() (*template.Registry, error) {
 	}
 
 	// Apply the post-parse processing
+	for _, parsepass := range b.parsepasses {
+		if err := parsepass(registry); err != nil {
+			return nil, err
+		}
+	}
 	if err := parsepasses.CheckDataRefs(registry); err != nil {
 		return nil, err
 	}
