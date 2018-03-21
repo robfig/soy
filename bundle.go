@@ -14,7 +14,7 @@ import (
 	"github.com/robfig/soy/parsepasses"
 	"github.com/robfig/soy/soyhtml"
 	"github.com/robfig/soy/template"
-	"gopkg.in/fsnotify.v0"
+	"github.com/howeyc/fsnotify"
 )
 
 // Logger is used to print notifications and compile errors when using the
