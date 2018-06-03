@@ -29,12 +29,10 @@ func TestIsErrFilePos(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			got := errortypes.IsErrFilePos(test.in)
-			if got != test.out {
-				t.Errorf("Expected %v, got %v", test.out, got)
-			}
-		})
+		got := errortypes.IsErrFilePos(test.in)
+		if got != test.out {
+			t.Errorf("%s: Expected %v, got %v", test.name, test.out, got)
+		}
 	}
 }
 
@@ -66,26 +64,24 @@ func TestToErrFilePos(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			got := errortypes.ToErrFilePos(test.in)
-			if test.expectNil && got != nil {
-				t.Errorf("expected ErrFilePos to be nil")
+		got := errortypes.ToErrFilePos(test.in)
+		if test.expectNil && got != nil {
+			t.Errorf("%s: expected ErrFilePos to be nil", test.name)
+		}
+		if !test.expectNil {
+			if got == nil {
+				t.Errorf("%s: expected ErrFilePos to be non-nil", test.name)
+				return
 			}
-			if !test.expectNil {
-				if got == nil {
-					t.Errorf("expected ErrFilePos to be non-nil")
-					return
-				}
-				if got.File() != test.expectedFilename {
-					t.Errorf("expected file '%s', got '%s'", test.expectedFilename, got.File())
-				}
-				if got.Line() != test.expectedLine {
-					t.Errorf("expected line %d, got %d", test.expectedLine, got.Line())
-				}
-				if got.Col() != test.expectedCol {
-					t.Errorf("expected col %d, got %d", test.expectedCol, got.Col())
-				}
+			if got.File() != test.expectedFilename {
+				t.Errorf("%s: expected file '%s', got '%s'", test.name, test.expectedFilename, got.File())
 			}
-		})
+			if got.Line() != test.expectedLine {
+				t.Errorf("%s: expected line %d, got %d", test.name, test.expectedLine, got.Line())
+			}
+			if got.Col() != test.expectedCol {
+				t.Errorf("%s: expected col %d, got %d", test.name, test.expectedCol, got.Col())
+			}
+		}
 	}
 }
