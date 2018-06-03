@@ -26,8 +26,6 @@ func IsErrFilePos(err error) bool {
 	if err == nil {
 		return false
 	}
-	err = rootCause(err)
-
 	_, isErrFilePos := err.(ErrFilePos)
 	return isErrFilePos
 }
@@ -38,25 +36,10 @@ func ToErrFilePos(err error) ErrFilePos {
 	if err == nil {
 		return nil
 	}
-	err = rootCause(err)
 	if out, isErrFilePos := err.(ErrFilePos); isErrFilePos {
 		return out
 	}
 	return nil
-}
-
-func rootCause(err error) error {
-	type causer interface {
-		Cause() error
-	}
-
-	for {
-		if e, ok := err.(causer); ok {
-			err = e.Cause()
-		} else {
-			return err
-		}
-	}
 }
 
 var _ ErrFilePos = &errFilePos{}

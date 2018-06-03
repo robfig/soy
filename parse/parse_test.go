@@ -8,7 +8,7 @@ import (
 
 	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
-	"github.com/theothertomelliott/soy/errortypes"
+	"github.com/robfig/soy/errortypes"
 )
 
 type parseTest struct {

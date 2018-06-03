@@ -10,8 +10,8 @@ import (
 
 	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
+	"github.com/robfig/soy/errortypes"
 	soyt "github.com/robfig/soy/template"
-	"github.com/theothertomelliott/soy/errortypes"
 )
 
 // Logger collects output from {log} commands.

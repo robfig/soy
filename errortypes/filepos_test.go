@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/theothertomelliott/soy/errortypes"
+	"github.com/robfig/soy/errortypes"
 )
 
 func TestIsErrFilePos(t *testing.T) {
@@ -26,22 +26,6 @@ func TestIsErrFilePos(t *testing.T) {
 			name: "new ErrFilePos",
 			in:   errortypes.NewErrFilePosf("file.soy", 1, 2, "message"),
 			out:  true,
-		},
-		{
-			name: "wrapped error",
-			in: wrapErr(
-				errortypes.NewErrFilePosf("file.soy", 1, 2, "message"),
-			),
-			out: true,
-		},
-		{
-			name: "multi wrapped error",
-			in: wrapErr(
-				wrapErr(
-					errortypes.NewErrFilePosf("file.soy", 1, 2, "message"),
-				),
-			),
-			out: true,
 		},
 	}
 	for _, test := range tests {
@@ -80,16 +64,6 @@ func TestToErrFilePos(t *testing.T) {
 			expectedLine:     1,
 			expectedCol:      2,
 		},
-		{
-			name: "wrapped error",
-			in: wrapErr(
-				errortypes.NewErrFilePosf("file2.soy", 3, 4, "message"),
-			),
-			expectNil:        false,
-			expectedFilename: "file2.soy",
-			expectedLine:     3,
-			expectedCol:      4,
-		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -114,22 +88,4 @@ func TestToErrFilePos(t *testing.T) {
 			}
 		})
 	}
-}
-
-func wrapErr(err error) error {
-	return &wrappedError{
-		cause: err,
-	}
-}
-
-type wrappedError struct {
-	cause error
-}
-
-func (w *wrappedError) Error() string {
-	return "wrapped"
-}
-
-func (w *wrappedError) Cause() error {
-	return w.cause
 }
