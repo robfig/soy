@@ -100,5 +100,10 @@ func (r *Registry) ColNumber(templateName string, node ast.Node) int {
 
 // Filename identifies the filename containing the specified template
 func (r *Registry) Filename(templateName string) string {
-	return r.fileByTemplateName[templateName]
+	var f, ok = r.fileByTemplateName[templateName]
+	if !ok {
+		log.Println("template not found:", templateName)
+		return ""
+	}
+	return f
 }

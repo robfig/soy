@@ -9,10 +9,9 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/robfig/soy/errortypes"
-
 	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
+	"github.com/robfig/soy/errortypes"
 )
 
 // tree is the parsed representation of a single soy file.
