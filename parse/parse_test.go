@@ -8,6 +8,7 @@ import (
 
 	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
+	"github.com/robfig/soy/errortypes"
 )
 
 type parseTest struct {
@@ -810,6 +811,15 @@ func TestRecognizeComments(t *testing.T) {
 	fails(t, "{nil}//}\n")
 }
 
+func TestErrorFilePos(t *testing.T) {
+	failsWithErrFilePos(t, "{blah /* { */ blah}", 1, 7)
+	failsWithErrFilePos(t,
+		"{foreach $item in $items}\n"+
+			"{$item\n"+
+			"{/foreach}\n",
+		3, 2)
+}
+
 func works(t *testing.T, body string) {
 	_, err := SoyFile("", body, nil)
 	if err != nil {
@@ -821,5 +831,27 @@ func fails(t *testing.T, body string) {
 	_, err := SoyFile("", body, nil)
 	if err == nil {
 		t.Errorf("should fail: %s", body)
+	}
+}
+
+func failsWithErrFilePos(t *testing.T, body string, expectedLine, expectedCol int) {
+	_, err := SoyFile("filename.soy", body, nil)
+	if err == nil {
+		t.Errorf("should fail: %s", body)
+		return
+	}
+	efp, ok := err.(errortypes.ErrFilePos)
+	if !ok {
+		t.Errorf("expected an error with file position, got: %v", err)
+		return
+	}
+	if efp.File() != "filename.soy" {
+		t.Errorf("expected filename 'filename.soy', got: %s. error was '%v'", efp.File(), err)
+	}
+	if efp.Line() != expectedLine {
+		t.Errorf("expected line %d, got %d. error was '%v'", expectedLine, efp.Line(), err)
+	}
+	if efp.Col() != expectedCol {
+		t.Errorf("expected col %d, got %d. error was '%v'", expectedCol, efp.Col(), err)
 	}
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
+	"github.com/robfig/soy/errortypes"
 	soyt "github.com/robfig/soy/template"
 )
 
@@ -38,7 +39,17 @@ func (s *state) at(node ast.Node) {
 func (s *state) errorf(format string, args ...interface{}) {
 	format = fmt.Sprintf("template %s:%d: %s", s.tmpl.Node.Name,
 		s.registry.LineNumber(s.tmpl.Node.Name, s.node), format)
-	panic(fmt.Errorf(format, args...))
+	panic(s.errFromNode(format, args...))
+}
+
+func (s *state) errFromNode(format string, args ...interface{}) error {
+	return errortypes.NewErrFilePosf(
+		s.registry.Filename(s.tmpl.Node.Name),
+		s.registry.LineNumber(s.tmpl.Node.Name, s.node),
+		s.registry.ColNumber(s.tmpl.Node.Name, s.node),
+		format,
+		args...,
+	)
 }
 
 // errRecover is the handler that turns panics into returns from the top
@@ -47,12 +58,12 @@ func (s *state) errRecover(errp *error) {
 	if e := recover(); e != nil {
 		switch e := e.(type) {
 		case runtime.Error:
-			*errp = fmt.Errorf("template %s:%d: %v\n%v", s.tmpl.Node.Name,
+			*errp = s.errFromNode("template %s:%d: %v\n%v", s.tmpl.Node.Name,
 				s.registry.LineNumber(s.tmpl.Node.Name, s.node), e, string(debug.Stack()))
 		case error:
 			*errp = e
 		default:
-			*errp = fmt.Errorf("template %s:%d: %v", s.tmpl.Node.Name,
+			*errp = s.errFromNode("template %s:%d: %v", s.tmpl.Node.Name,
 				s.registry.LineNumber(s.tmpl.Node.Name, s.node), e)
 		}
 	}

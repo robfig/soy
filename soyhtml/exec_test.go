@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/robfig/soy/data"
+	"github.com/robfig/soy/errortypes"
 	"github.com/robfig/soy/parse"
 	"github.com/robfig/soy/template"
 )
@@ -796,12 +797,17 @@ type nsExecTest struct {
 	output       string
 	data         interface{}
 	ok           bool
+	errFilename  string
+	errLine      int
+	errCol       int
 }
 
 func TestAlias(t *testing.T) {
 	runNsExecTests(t, []nsExecTest{
-		{"alias", "test.alias",
-			[]string{`
+		{
+			name:         "alias",
+			templateName: "test.alias",
+			input: []string{`
 {namespace test}
 {alias foo.bar.baz}
 
@@ -814,7 +820,33 @@ func TestAlias(t *testing.T) {
 {template .hello}
 Hello world
 {/template}`},
-			"Hello world", nil, true},
+			output: "Hello world",
+			data:   nil,
+			ok:     true,
+		},
+	})
+}
+
+func TestErrFilePos(t *testing.T) {
+	runNsExecTests(t, []nsExecTest{
+		{
+			name:         "undefined param",
+			templateName: "test.foo",
+			input: []string{`{namespace test}
+
+/**
+ * @param missing
+ */
+{template .foo}
+    {$missing}
+{/template}`},
+			output:      "",
+			data:        nil,
+			ok:          false,
+			errFilename: "file0.soy",
+			errLine:     7,
+			errCol:      15,
+		},
 	})
 }
 
@@ -877,12 +909,12 @@ func runExecTests(t *testing.T, tests []execTest) {
 	var nstest []nsExecTest
 	for _, test := range tests {
 		nstest = append(nstest, nsExecTest{
-			test.name,
-			test.templateName,
-			[]string{test.input},
-			test.output,
-			test.data,
-			test.ok,
+			name:         test.name,
+			templateName: test.templateName,
+			input:        []string{test.input},
+			output:       test.output,
+			data:         test.data,
+			ok:           test.ok,
 		})
 	}
 	runNsExecTests(t, nstest)
@@ -892,8 +924,8 @@ func runNsExecTests(t *testing.T, tests []nsExecTest) {
 	b := new(bytes.Buffer)
 	for _, test := range tests {
 		var registry = template.Registry{}
-		for _, input := range test.input {
-			var tree, err = parse.SoyFile("", input, globals)
+		for fileIndex, input := range test.input {
+			var tree, err = parse.SoyFile(fmt.Sprintf("file%d.soy", fileIndex), input, globals)
 			if err != nil {
 				t.Errorf("%s: parse error: %s", test.name, err)
 				continue
@@ -918,6 +950,23 @@ func runNsExecTests(t *testing.T, tests []nsExecTest) {
 			continue
 		case !test.ok && err != nil:
 			// expected error, got one
+			if test.errFilename != "" {
+				// Filename provided, check cols and rows
+				efp, ok := err.(errortypes.ErrFilePos)
+				if !ok {
+					t.Errorf("expected an error with file position, got: %v", err)
+					return
+				}
+				if efp.File() != test.errFilename {
+					t.Errorf("expected filename '%s', got: '%s'. error was '%v'", test.errFilename, efp.File(), err)
+				}
+				if efp.Line() != test.errLine {
+					t.Errorf("expected line %d, got %d. error was '%v'", test.errLine, efp.Line(), err)
+				}
+				if efp.Col() != test.errCol {
+					t.Errorf("expected col %d, got %d. error was '%v'", test.errCol, efp.Col(), err)
+				}
+			}
 		}
 		result := b.String()
 		if result != test.output {

@@ -11,6 +11,7 @@ import (
 
 	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
+	"github.com/robfig/soy/errortypes"
 )
 
 // tree is the parsed representation of a single soy file.
@@ -1104,7 +1105,15 @@ func (t *tree) errorf(format string, args ...interface{}) {
 	t.root = nil
 	format = fmt.Sprintf("template %s:%d:%d: %s", t.name,
 		t.lex.lineNumber(tok.pos), t.lex.columnNumber(tok.pos), format)
-	panic(fmt.Errorf(format, args...))
+	panic(
+		errortypes.NewErrFilePosf(
+			t.name,
+			t.lex.lineNumber(tok.pos),
+			t.lex.columnNumber(tok.pos),
+			format,
+			args,
+		),
+	)
 }
 
 // error terminates processing.

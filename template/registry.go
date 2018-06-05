@@ -16,12 +16,16 @@ type Registry struct {
 
 	// sourceByTemplateName maps FQ template name to the input source it came from.
 	sourceByTemplateName map[string]string
+	fileByTemplateName   map[string]string
 }
 
 // Add the given soy file node (and all contained templates) to this registry.
 func (r *Registry) Add(soyfile *ast.SoyFileNode) error {
 	if r.sourceByTemplateName == nil {
 		r.sourceByTemplateName = make(map[string]string)
+	}
+	if r.fileByTemplateName == nil {
+		r.fileByTemplateName = make(map[string]string)
 	}
 	var ns *ast.NamespaceNode
 	for _, node := range soyfile.Body {
@@ -56,6 +60,7 @@ func (r *Registry) Add(soyfile *ast.SoyFileNode) error {
 		}
 		r.Templates = append(r.Templates, Template{sdn, tn, ns})
 		r.sourceByTemplateName[tn.Name] = soyfile.Text
+		r.fileByTemplateName[tn.Name] = soyfile.Name
 	}
 	return nil
 }
@@ -80,4 +85,25 @@ func (r *Registry) LineNumber(templateName string, node ast.Node) int {
 		return 0
 	}
 	return 1 + strings.Count(src[:node.Position()], "\n")
+}
+
+// ColNumber computes the column number in the relevant line of input source for the given node
+// within the given template.
+func (r *Registry) ColNumber(templateName string, node ast.Node) int {
+	var src, ok = r.sourceByTemplateName[templateName]
+	if !ok {
+		log.Println("template not found:", templateName)
+		return 0
+	}
+	return 1 + int(node.Position()) - strings.LastIndex(src[:node.Position()], "\n")
+}
+
+// Filename identifies the filename containing the specified template
+func (r *Registry) Filename(templateName string) string {
+	var f, ok = r.fileByTemplateName[templateName]
+	if !ok {
+		log.Println("template not found:", templateName)
+		return ""
+	}
+	return f
 }
