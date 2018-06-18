@@ -24,6 +24,7 @@ func TestUnquote(t *testing.T) {
 		{`'a'`, "a"},
 		{`'\n'`, "\n"},
 		{`'\u2222'`, "\u2222"},
+		{`'\\'`, "\\"},
 	}
 	for _, test := range tests {
 		actual, err := unquoteString(test.input)
