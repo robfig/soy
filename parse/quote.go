@@ -82,7 +82,7 @@ func unquoteString(s string) (string, error) {
 			}
 		}
 
-		escaping = r == '\\'
+		escaping = ((r == '\\') && !escaping)
 		if !escaping {
 			result = append(result, r)
 		}
