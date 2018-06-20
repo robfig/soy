@@ -10,6 +10,8 @@ func TestQuote(t *testing.T) {
 		{"\u2222", "'\u2222'"}, // (doesn't turn it back into escape sequence)
 		{"Aa`! \n \r \t \\ ' \"", "'Aa`! \\n \\r \\t \\\\ \\' \"'"},
 		{"\u2222 \uEEEE \u9EC4 \u607A", "'\u2222 \uEEEE \u9EC4 \u607A'"},
+		{"\\.", `'\\.'`},
+		{"\\\n", `'\\\n'`},
 	}
 	for _, test := range tests {
 		if quoteString(test.input) != test.output {
@@ -24,6 +26,9 @@ func TestUnquote(t *testing.T) {
 		{`'a'`, "a"},
 		{`'\n'`, "\n"},
 		{`'\u2222'`, "\u2222"},
+		{`'\\'`, "\\"},
+		{`'\\.'`, "\\."},
+		{`'\\\n'`, "\\\n"},
 	}
 	for _, test := range tests {
 		actual, err := unquoteString(test.input)
