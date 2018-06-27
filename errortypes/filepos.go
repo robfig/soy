@@ -13,7 +13,7 @@ type ErrFilePos interface {
 // NewErrFilePosf creates an error conforming to the ErrFilePos interface.
 func NewErrFilePosf(file string, line, col int, format string, args ...interface{}) error {
 	return &errFilePos{
-		error: fmt.Errorf(format, args),
+		error: fmt.Errorf(format, args...),
 		file:  file,
 		line:  line,
 		col:   col,
