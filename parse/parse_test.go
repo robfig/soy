@@ -965,7 +965,6 @@ func fails(t *testing.T, body string) {
 }
 
 func failsWithErrFilePos(t *testing.T, body string, expectedLine, expectedCol int) {
-	t.Helper()
 	_, err := SoyFile("filename.soy", body)
 	if err == nil {
 		t.Errorf("should fail: %s", body)
