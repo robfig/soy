@@ -1230,7 +1230,7 @@ func (t *tree) errorf(format string, args ...interface{}) {
 			t.lex.lineNumber(tok.pos),
 			t.lex.columnNumber(tok.pos),
 			format,
-			args,
+			args...,
 		),
 	)
 }
