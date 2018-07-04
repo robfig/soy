@@ -388,7 +388,7 @@ func runCheckerTests(t *testing.T, tests []checkerTest) {
 			err  error
 		)
 		for _, body := range test.body {
-			tree, err = parse.SoyFile("", body, nil)
+			tree, err = parse.SoyFile("", body)
 			if err != nil {
 				t.Error(err)
 				continue

@@ -11,6 +11,7 @@ import (
 	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
 	"github.com/robfig/soy/errortypes"
+	"github.com/robfig/soy/soymsg"
 	soyt "github.com/robfig/soy/template"
 )
 
@@ -28,6 +29,7 @@ type state struct {
 	context    scope              // variable scope
 	autoescape ast.AutoescapeType // escaping mode
 	ij         data.Map           // injected data available to all templates.
+	msgs       soymsg.Bundle      // replacement text for {msg} tags
 }
 
 // at marks the state to be on node n, for error reporting.
@@ -37,8 +39,7 @@ func (s *state) at(node ast.Node) {
 
 // errorf formats the error and terminates processing.
 func (s *state) errorf(format string, args ...interface{}) {
-	format = fmt.Sprintf("template %s:%d: %s", s.tmpl.Node.Name,
-		s.registry.LineNumber(s.tmpl.Node.Name, s.node), format)
+	format = fmt.Sprintf("%s: %s", s.callAnnotation(), format)
 	panic(s.errFromNode(format, args...))
 }
 
@@ -52,19 +53,20 @@ func (s *state) errFromNode(format string, args ...interface{}) error {
 	)
 }
 
+func (s *state) callAnnotation() string {
+	return fmt.Sprintf("template %s:%d", s.tmpl.Node.Name,
+		s.registry.LineNumber(s.tmpl.Node.Name, s.node))
+}
+
 // errRecover is the handler that turns panics into returns from the top
 // level of Parse.
 func (s *state) errRecover(errp *error) {
 	if e := recover(); e != nil {
 		switch e := e.(type) {
 		case runtime.Error:
-			*errp = s.errFromNode("template %s:%d: %v\n%v", s.tmpl.Node.Name,
-				s.registry.LineNumber(s.tmpl.Node.Name, s.node), e, string(debug.Stack()))
-		case error:
-			*errp = e
+			*errp = s.errFromNode("%s: %v\n%v", s.callAnnotation(), e, string(debug.Stack()))
 		default:
-			*errp = s.errFromNode("template %s:%d: %v", s.tmpl.Node.Name,
-				s.registry.LineNumber(s.tmpl.Node.Name, s.node), e)
+			*errp = s.errFromNode("%s: %v", s.callAnnotation(), e)
 		}
 	}
 }
@@ -97,7 +99,11 @@ func (s *state) walk(node ast.Node) {
 			s.errorf("%s", err)
 		}
 	case *ast.MsgNode:
-		s.walk(node.Body)
+		s.evalMsg(node)
+	case *ast.MsgHtmlTagNode:
+		if _, err := s.wr.Write(node.Text); err != nil {
+			s.errorf("%s", err)
+		}
 	case *ast.CssNode:
 		var prefix = ""
 		if node.Expr != nil {
@@ -308,6 +314,14 @@ func (s *state) evalPrint(node *ast.PrintNode) {
 	}
 	var escapeHtml = s.autoescape != ast.AutoescapeOff
 	var result = s.val
+
+	for _, directiveName := range ObligatoryPrintDirectiveNames {
+		node.Directives = append(node.Directives, &ast.PrintDirectiveNode{
+			Pos:  node.Position(),
+			Name: directiveName,
+		})
+	}
+
 	for _, directiveNode := range node.Directives {
 		var directive, ok = PrintDirectives[directiveNode.Name]
 		if !ok {
@@ -349,6 +363,105 @@ func (s *state) evalPrint(node *ast.PrintNode) {
 	}
 }
 
+func (s *state) evalMsg(node *ast.MsgNode) {
+	// If no bundle was provided, walk the message sub-nodes.
+	if s.msgs == nil {
+		s.walkMsgBody(node.Body)
+		return
+	}
+
+	// Look up the message in the bundle.
+	var msg = s.msgs.Message(node.ID)
+	if msg == nil {
+		s.walkMsgBody(node.Body)
+		return
+	}
+
+	// Render each part.
+	s.evalMsgParts(node, msg.Parts)
+}
+
+func (s *state) evalMsgParts(msgNode *ast.MsgNode, parts []soymsg.Part) {
+	for _, part := range parts {
+		switch part := part.(type) {
+
+		case soymsg.RawTextPart:
+			if _, err := io.WriteString(s.wr, part.Text); err != nil {
+				s.errorf("%s", err)
+			}
+
+		case soymsg.PlaceholderPart:
+			// Find the node corresponding to the placeholder, and walk it.
+			var phnode = msgNode.Placeholder(part.Name)
+			if phnode == nil {
+				s.errorf("failed to find placeholder %q in %q",
+					part.Name, soymsg.PlaceholderString(msgNode))
+			}
+			s.walk(phnode.Body)
+
+		case soymsg.PluralPart:
+			// Find the corresponding node for this part and evaluate the argument.
+			var (
+				pluralNode         = s.findPluralNode(msgNode, part.VarName)
+				pluralValue        = s.eval(pluralNode.Value)
+				pluralIntValue, ok = pluralValue.(data.Int)
+			)
+			if !ok {
+				s.errorf("plural argument must be integer, got %T", pluralValue)
+			}
+
+			// Execute the right plural case
+			var pluralCaseIndex = s.msgs.PluralCase(int(pluralIntValue))
+			if pluralCaseIndex >= len(part.Cases) {
+				s.errorf("plural case index out of bounds (n=%v, len(cases)=%v)",
+					pluralCaseIndex, len(part.Cases))
+			}
+			var pluralCase = part.Cases[pluralCaseIndex]
+			s.evalMsgParts(msgNode, pluralCase.Parts)
+		}
+	}
+}
+
+func (s *state) findPluralNode(node *ast.MsgNode, pluralVarName string) *ast.MsgPluralNode {
+	for _, plnode := range node.Body.Children() {
+		if plnode, ok := plnode.(*ast.MsgPluralNode); ok && plnode.VarName == pluralVarName {
+			return plnode
+		}
+	}
+	s.errorf("failed to find placeholder %q in %v", pluralVarName, node.Body)
+	panic("unreachable")
+}
+
+func (s *state) walkPlural(node *ast.MsgPluralNode) {
+	var val = s.eval(node.Value)
+	var intVal, ok = val.(data.Int)
+	if !ok {
+		s.errorf("plural argument must be integer, got %T", val)
+	}
+
+	// TODO: This only handles explicit numbers, not the CLDR classes.
+	for _, pluralCase := range node.Cases {
+		if int(intVal) == pluralCase.Value {
+			s.walkMsgBody(pluralCase.Body)
+			return
+		}
+	}
+	s.walkMsgBody(node.Default)
+}
+
+func (s *state) walkMsgBody(node ast.ParentNode) {
+	for _, n := range node.Children() {
+		switch n := n.(type) {
+		case *ast.RawTextNode:
+			s.walk(n)
+		case *ast.MsgPlaceholderNode:
+			s.walk(n.Body)
+		case *ast.MsgPluralNode:
+			s.walkPlural(n)
+		}
+	}
+}
+
 func (s *state) evalCall(node *ast.CallNode) {
 	// get template node we're calling
 	var calledTmpl, ok = s.registry.Template(node.Name)
@@ -368,6 +481,7 @@ func (s *state) evalCall(node *ast.CallNode) {
 				node.String(), node.Data.String())
 		}
 		callData = newScope(result)
+		callData.push()
 	} else {
 		callData = newScope(make(data.Map))
 	}
@@ -378,7 +492,7 @@ func (s *state) evalCall(node *ast.CallNode) {
 		case *ast.CallParamValueNode:
 			callData.set(param.Key, s.eval(param.Value))
 		case *ast.CallParamContentNode:
-			callData.set(param.Key, data.New(string(s.renderBlock(param.Content))))
+			callData.set(param.Key, data.String(s.renderBlock(param.Content)))
 		default:
 			s.errorf("unexpected call param type: %T", param)
 		}
@@ -393,7 +507,15 @@ func (s *state) evalCall(node *ast.CallNode) {
 		wr:         s.wr,
 		context:    callData,
 		ij:         s.ij,
+		msgs:       s.msgs,
 	}
+
+	defer func() {
+		if e := recover(); e != nil {
+			panic(fmt.Errorf("%s: %v", state.callAnnotation(), e))
+		}
+	}()
+
 	state.walk(calledTmpl.Node)
 }
 

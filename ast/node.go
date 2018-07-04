@@ -298,17 +298,109 @@ func (i *IdentNode) String() string {
 	return i.Ident
 }
 
+// MsgNode represents a localized message.
 type MsgNode struct {
 	Pos
-	Desc string
-	Body Node
+	ID      uint64
+	Meaning string
+	Desc    string
+	Body    ParentNode // top-level children: RawTextNode, MsgPlaceholderNode, MsgPluralNode
 }
 
 func (n *MsgNode) String() string {
-	return fmt.Sprintf("{msg desc=%q}", n.Desc)
+	var meaning = " "
+	if n.Meaning != "" {
+		meaning = fmt.Sprintf(" meaning=%q ", n.Meaning)
+	}
+	return fmt.Sprintf("{msg%sdesc=%q}%s{/msg}", meaning, n.Desc, n.Body.String())
 }
 
 func (n *MsgNode) Children() []Node {
+	return n.Body.Children()
+}
+
+// Placeholder returns a placeholder node with the given name within this
+// message node.  It requires placeholder names to have been calculated.
+func (n *MsgNode) Placeholder(name string) *MsgPlaceholderNode {
+	var q = n.Body.Children()
+	for len(q) > 0 {
+		var node Node
+		node, q = q[0], q[1:]
+		switch node := node.(type) {
+		case *MsgPlaceholderNode:
+			if node.Name == name {
+				return node
+			}
+		default:
+			if node, ok := node.(ParentNode); ok {
+				q = append(q, node.Children()...)
+			}
+		}
+	}
+	return nil
+}
+
+type MsgPlaceholderNode struct {
+	Pos
+	Name string
+	Body Node
+}
+
+func (n *MsgPlaceholderNode) String() string {
+	return n.Body.String()
+}
+
+func (n *MsgPlaceholderNode) Children() []Node {
+	return []Node{n.Body}
+}
+
+type MsgHtmlTagNode struct {
+	Pos
+	Text []byte
+}
+
+func (n *MsgHtmlTagNode) String() string {
+	return string(n.Text)
+}
+
+type MsgPluralNode struct {
+	Pos
+	VarName string
+	Value   Node
+	Cases   []*MsgPluralCaseNode
+	Default ParentNode
+}
+
+func (n *MsgPluralNode) String() string {
+	var expr = "{plural " + n.Value.String() + "}"
+	for _, caseNode := range n.Cases {
+		expr += caseNode.String()
+	}
+	expr += "{default}" + n.Default.String()
+	return expr + "{/plural}"
+}
+
+func (n *MsgPluralNode) Children() []Node {
+	var children []Node
+	children = append(children, n.Value)
+	for _, plCase := range n.Cases {
+		children = append(children, plCase)
+	}
+	children = append(children, n.Default)
+	return children
+}
+
+type MsgPluralCaseNode struct {
+	Pos
+	Value int
+	Body  ParentNode // top level children: RawTextNode, MsgPlaceholderNode
+}
+
+func (n *MsgPluralCaseNode) String() string {
+	return "{case " + strconv.Itoa(n.Value) + "}" + n.Body.String()
+}
+
+func (n *MsgPluralCaseNode) Children() []Node {
 	return []Node{n.Body}
 }
 
@@ -736,7 +828,7 @@ type BinaryOpNode struct {
 }
 
 func (n *BinaryOpNode) String() string {
-	return n.Arg1.String() + n.Name + n.Arg2.String()
+	return n.Arg1.String() + " " + n.Name + " " + n.Arg2.String()
 }
 
 func (n *BinaryOpNode) Children() []Node {

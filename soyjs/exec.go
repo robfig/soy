@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"sort"
 	"strconv"
 	"strings"
 	"text/template"
 
 	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
-	"github.com/robfig/soy/soyhtml"
+	"github.com/robfig/soy/soymsg"
 )
 
 type state struct {
@@ -78,7 +79,9 @@ func (s *state) walk(node ast.Node) {
 	case *ast.PrintNode:
 		s.visitPrint(node)
 	case *ast.MsgNode:
-		s.walk(node.Body)
+		s.visitMsg(node)
+	case *ast.MsgHtmlTagNode:
+		s.writeRawText(node.Text)
 	case *ast.CssNode:
 		if node.Expr != nil {
 			s.jsln(s.bufferName, " += ", node.Expr, " + '-';")
@@ -137,14 +140,23 @@ func (s *state) walk(node ast.Node) {
 		s.js("]")
 	case *ast.MapLiteralNode:
 		s.js("{")
-		var first = true
-		for k, v := range node.Items {
+		var (
+			first = true
+			keys  = make([]string, len(node.Items))
+			i     = 0
+		)
+		for k, _ := range node.Items {
+			keys[i] = k
+			i++
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
 			if !first {
 				s.js(",")
 			}
 			first = false
-			s.js(k, ":")
-			s.walk(v)
+			s.js("\"", k, "\"", ":")
+			s.walk(node.Items[k])
 		}
 		s.js("}")
 	case *ast.FunctionNode:
@@ -189,9 +201,9 @@ func (s *state) walk(node ast.Node) {
 		s.op("||", node)
 	case *ast.ElvisNode:
 		// ?: is specified to check for null.
-		s.js("(", node.Arg1, " != null ? ", node.Arg1, " : ", node.Arg2, ")")
+		s.js("((", node.Arg1, ") != null ? ", node.Arg1, " : ", node.Arg2, ")")
 	case *ast.TernNode:
-		s.js("(", node.Arg1, "?", node.Arg2, ":", node.Arg3, ")")
+		s.js("((", node.Arg1, ") ?", node.Arg2, ":", node.Arg3, ")")
 
 	default:
 		s.errorf("unknown node (%T): %v", node, node)
@@ -258,6 +270,8 @@ func (s *state) visitTemplate(node *ast.TemplateNode) {
 	}
 	s.jsln("var output = '';")
 	s.bufferName = "output"
+	s.scope.push()
+	defer s.scope.pop()
 	s.walk(node.Body)
 	s.jsln("return output;")
 	s.indentLevels--
@@ -270,7 +284,7 @@ func (s *state) visitPrint(node *ast.PrintNode) {
 	var escape = s.autoescape
 	var directives []*ast.PrintDirectiveNode
 	for _, dir := range node.Directives {
-		var directive, ok = soyhtml.PrintDirectives[dir.Name]
+		var directive, ok = PrintDirectives[dir.Name]
 		if !ok {
 			s.errorf("Print directive %q not found", dir.Name)
 		}
@@ -291,7 +305,7 @@ func (s *state) visitPrint(node *ast.PrintNode) {
 	s.indent()
 	s.js(s.bufferName, " += ")
 	for _, dir := range directives {
-		s.js("soy.$$", dir.Name, "(")
+		s.js(PrintDirectives[dir.Name].Name, "(")
 	}
 	s.walk(node.Arg)
 	for i := range directives {
@@ -414,10 +428,10 @@ func (s *state) visitIf(node *ast.IfNode) {
 }
 
 func (s *state) visitFor(node *ast.ForNode) {
-	if _, isForeach := node.List.(*ast.DataRefNode); isForeach {
-		s.visitForeach(node)
-	} else {
+	if rangeNode, ok := node.List.(*ast.FunctionNode); ok && rangeNode.Name == "range" {
 		s.visitForRange(node)
+	} else {
+		s.visitForeach(node)
 	}
 }
 
@@ -493,6 +507,104 @@ func (s *state) visitSwitch(node *ast.SwitchNode) {
 		s.indentLevels++
 		s.walk(switchCase.Body)
 		s.jsln("break;")
+		s.indentLevels--
+	}
+	s.indentLevels--
+	s.jsln("}")
+}
+
+func (s *state) visitMsg(node *ast.MsgNode) {
+	// If no bundle was provided, walk the message sub-nodes.
+	if s.options.Messages == nil {
+		s.visitMsgNode(node)
+		return
+	}
+
+	// Look up the message in the bundle.
+	var msg = s.options.Messages.Message(node.ID)
+	if msg == nil {
+		s.visitMsgNode(node)
+		return
+	}
+
+	// Render each part.
+	s.evalMsgParts(node, msg.Parts)
+}
+
+func (s *state) evalMsgParts(msgNode *ast.MsgNode, parts []soymsg.Part) {
+	for _, part := range parts {
+		switch part := part.(type) {
+
+		case soymsg.RawTextPart:
+			s.writeRawText([]byte(part.Text))
+
+		case soymsg.PlaceholderPart:
+			// Find the node corresponding to the placeholder, and walk it.
+			var phnode = msgNode.Placeholder(part.Name)
+			if phnode == nil {
+				s.errorf("failed to find placeholder %q in %q",
+					part.Name, soymsg.PlaceholderString(msgNode))
+			}
+			s.walk(phnode.Body)
+
+		case soymsg.PluralPart:
+			// Find the corresponding node for this part.
+			child := s.findPluralNode(msgNode, part.VarName)
+
+			s.jsln("switch (soy.$$pluralIndex(", child.Value, ")) {")
+			s.indentLevels++
+
+			for i, pluralPart := range part.Cases {
+				s.jsln("case ", i, ":")
+				s.indentLevels++
+				s.evalMsgParts(msgNode, pluralPart.Parts)
+				s.jsln("break;")
+				s.indentLevels--
+			}
+
+			s.indentLevels--
+			s.jsln("}")
+		}
+	}
+}
+
+func (s *state) findPluralNode(node *ast.MsgNode, pluralVarName string) *ast.MsgPluralNode {
+	for _, plnode := range node.Body.Children() {
+		if plnode, ok := plnode.(*ast.MsgPluralNode); ok && plnode.VarName == pluralVarName {
+			return plnode
+		}
+	}
+	s.errorf("failed to find placeholder %q in %v", pluralVarName, node.Body)
+	panic("unreachable")
+}
+
+func (s *state) visitMsgNode(n ast.ParentNode) {
+	for _, child := range n.Children() {
+		switch child := child.(type) {
+		case *ast.RawTextNode:
+			s.walk(child)
+		case *ast.MsgPlaceholderNode:
+			s.walk(child.Body)
+		case *ast.MsgPluralNode:
+			s.walkPlural(child)
+		}
+	}
+}
+
+func (s *state) walkPlural(n *ast.MsgPluralNode) {
+	s.jsln("switch (", n.Value, ") {")
+	s.indentLevels++
+	for _, pluralCase := range n.Cases {
+		s.jsln("case ", pluralCase.Value, ":")
+		s.indentLevels++
+		s.visitMsgNode(pluralCase.Body)
+		s.jsln("break;")
+		s.indentLevels--
+	}
+	{
+		s.jsln("default:")
+		s.indentLevels++
+		s.visitMsgNode(n.Default)
 		s.indentLevels--
 	}
 	s.indentLevels--

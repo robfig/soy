@@ -20,6 +20,8 @@ func TestNew(t *testing.T) {
 		{uint32(0), Int(0)},
 		{float32(0), Float(0)},
 		{"", String("")},
+		{[]bool(nil), List(nil)},
+		{[]bool{}, List{}},
 		{[]string{"a"}, List{String("a")}},
 		{[]interface{}{"a"}, List{String("a")}},
 		{map[string]string{}, Map{}},

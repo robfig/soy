@@ -159,6 +159,29 @@ var lexTests = []lexTest{
 		tEOF,
 	}},
 
+	{"plural", `{plural $boo}
+{case 1}One boo
+{default}Multiple boo
+{/plural}`, []item{
+		tLeft,
+		{itemPlural, 0, "plural"},
+		{itemDollarIdent, 0, "$boo"},
+		tRight,
+		tLeft,
+		{itemCase, 0, "case"},
+		{itemInteger, 0, "1"},
+		tRight,
+		{itemText, 0, "One boo\n"},
+		tLeft,
+		{itemDefault, 0, "default"},
+		tRight,
+		{itemText, 0, "Multiple boo\n"},
+		tLeft,
+		{itemPluralEnd, 0, "/plural"},
+		tRight,
+		tEOF,
+	}},
+
 	{"call", `{call .other data="all"/}`, []item{
 		tLeft,
 		{itemCall, 0, "call"},
@@ -317,9 +340,12 @@ var lexTests = []lexTest{
 		tEOF,
 	}},
 
-	{"msg", `{msg desc="msg description"}Hello{/msg}`, []item{
+	{"msg", `{msg meaning="verb" desc="msg description"}Hello{/msg}`, []item{
 		tLeft,
 		{itemMsg, 0, "msg"},
+		{itemIdent, 0, "meaning"},
+		{itemEquals, 0, "="},
+		{itemString, 0, `"verb"`},
 		{itemIdent, 0, "desc"},
 		{itemEquals, 0, "="},
 		{itemString, 0, `"msg description"`},

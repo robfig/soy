@@ -11,8 +11,12 @@ import (
 	"testing"
 
 	"github.com/robertkrimen/otto"
+	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
 	"github.com/robfig/soy/parse"
+	"github.com/robfig/soy/parsepasses"
+	"github.com/robfig/soy/soymsg"
+	"github.com/robfig/soy/template"
 )
 
 // TODO: test all types of globals
@@ -337,6 +341,18 @@ func TestDataRefs(t *testing.T) {
 		exprtestwdata("exprkeynullsafe on null map", "{$foo?['bar']}", "null", d{"foo": nil}),
 		exprtestwdata("exprkeyarith", "{$foo['b'+('a'+'r')]}", "result", d{"foo": d{"bar": "result"}}),
 
+		// nullsafe + elvis
+		exprtestwdata("elvis and nullsafe key", "{$foo?.bar ?: 'hello'}", "hello", d{}),
+		exprtestwdata("elvis and nullsafe key success", "{$foo?.bar ?: 'hello'}", "hi", d{"foo": d{"bar": "hi"}}),
+		exprtestwdata("elvis and nullsafe key half success", "{$foo?.bar ?: 'hello'}", "hello", d{"foo": d{}}),
+		exprtestwdata("elvis and nullsafe index ", "{$foo?[0] ?: 'hello'}", "hello", d{}),
+		exprtestwdata("elvis and nullsafe index success", "{$foo?[0] ?: 'hello'}", "a", d{"foo": []interface{}{"a", "b", "c", "d"}}),
+		exprtestwdata("elvis and nullsafe index half success", "{$foo?[0] ?: 'hello'}", "hello", d{"foo": []interface{}{}}),
+		exprtestwdata("elvis and nullsafe expr", "{$foo?['bar'] ?: 'hello'}", "hello", d{}),
+		exprtestwdata("elvis and nullsafe expr success", "{$foo?['bar'] ?: 'hello'}", "hi", d{"foo": d{"bar": "hi"}}),
+		exprtestwdata("elvis and nullsafe expr half success", "{$foo?['bar'] ?: 'hello'}", "hello", d{"foo": d{}}),
+		exprtestwdata("elvis and nullsafe chain", "{$foo?.bar?.baz ?: 'hello'}", "hello", d{"foo": d{"bar": d{}}}),
+
 		// DIFFERENCE: More tests on nullsafe navigation.
 		exprtestwdata("nullsafe battle royale",
 			"{$foo[2].bar?.baz?['bar']?[3].boo[3]}", "null", d{
@@ -381,6 +397,18 @@ func TestSpecialChars(t *testing.T) {
 		exprtest("nil avoids space", "abc{nil}\ndef", "abcdef"),
 		exprtest("without sp there is no space", "abc\n<a>", "abc<a>"),
 		exprtest("sp adds space", "abc{sp}\n<a>", "abc <a>"),
+	})
+}
+
+func TestForeachElvis(t *testing.T) {
+	runExecTests(t, []execTest{
+		exprtest("foreachelvislet", `{template .foo}
+			{let $list: null ?: [] /}
+			{foreach $l in $list}{/foreach}
+			{/template}`, ""),
+		exprtest("foreachelvisinline", `{template .foo}
+			{foreach $l in null ?: []}{/foreach}
+			{/template}`, ""),
 	})
 }
 
@@ -531,7 +559,9 @@ func TestAutoescapeModes(t *testing.T) {
 	})
 }
 
-var helloWorldTemplate = `{namespace examples.simple}
+var helloWorldTemplate = `
+{namespace examples.simple}
+
 /**
  * Says hello to the world.
  */
@@ -571,7 +601,8 @@ var helloWorldTemplate = `{namespace examples.simple}
   {ifempty}
     No additional people to greet.
   {/foreach}
-{/template}`
+{/template}
+`
 
 // TestHelloWorld executes the Hello World tutorial on the Soy Templates site.
 func TestHelloWorld(t *testing.T) {
@@ -596,6 +627,52 @@ func TestHelloWorld(t *testing.T) {
 	})
 }
 
+var identicalParamNameTemplate = `
+{namespace test}
+
+/**
+ * A wrapper template to call .helloNameIdentical.
+ * Uses a let variable with same name as param passed to .helloNameIdentical.
+ * @param param
+ */
+{template .helloWrapperIdentical}
+	{let $name: $param ?: 'world' /}
+	{call .helloNameIdentical data="all"}
+		{param name: $name /}
+	{/call}
+{/template}
+
+/**
+ * @param name
+ */
+{template .helloNameIdentical}
+  Hello {$name}!
+{/template}
+`
+
+// TestIdenticalParamName checks that proper JS compilation when using params and vars of the same name within templates.
+func TestIdenticalParamName(t *testing.T) {
+	runExecTests(t, []execTest{
+		{"normal wrapper call without param", "test.helloWrapperIdentical", identicalParamNameTemplate,
+			"Hello world!",
+			d{},
+			true,
+		},
+
+		{"normal wrapper call with param", "test.helloWrapperIdentical", identicalParamNameTemplate,
+			"Hello Ana!",
+			d{"param": "Ana"},
+			true,
+		},
+
+		{"normal call with param", "test.helloNameIdentical", identicalParamNameTemplate,
+			"Hello Ana!",
+			d{"name": "Ana"},
+			true,
+		},
+	})
+}
+
 /** TestStructData */
 
 func TestLet(t *testing.T) {
@@ -614,6 +691,14 @@ func TestLet(t *testing.T) {
 	})
 }
 
+// Tests that a map with string keys with spaces is escaped correctly
+func TestLetMap(t *testing.T) {
+	runExecTests(t, []execTest{
+		exprtest("let", `{let $foo:['FooBar': 1234] /}{$foo['FooBar']}`, "1234"),
+		exprtest("let", `{let $foo:['Foo Bar': 1234] /}{$foo['Foo Bar']}`, "1234"),
+	})
+}
+
 // testing cross namespace stuff requires multiple file bodies
 type nsExecTest struct {
 	name         string
@@ -622,6 +707,7 @@ type nsExecTest struct {
 	output       string
 	data         interface{}
 	ok           bool
+	msgs         *fakeBundle
 }
 
 func TestAlias(t *testing.T) {
@@ -640,7 +726,7 @@ func TestAlias(t *testing.T) {
 {template .hello}
 Hello world
 {/template}`},
-			"Hello world", nil, true},
+			"Hello world", nil, true, nil},
 	})
 }
 
@@ -702,6 +788,219 @@ func multidatatest(name, body string, successes []datatest, failures []errortest
 
 /** END COPY PASTA */
 
+type fakeBundle struct {
+	msgs   map[uint64]*soymsg.Message
+	locale string
+}
+
+func (fb *fakeBundle) Message(id uint64) *soymsg.Message {
+	if fb == nil || fb.msgs == nil {
+		return nil
+	}
+	return fb.msgs[id]
+}
+
+func (fb *fakeBundle) Locale() string {
+	return fb.locale
+}
+
+func (fb *fakeBundle) PluralCase(n int) int {
+	return -1
+}
+
+func pluralEnglish(n int) int {
+	if n == 1 {
+		return 0
+	}
+	return 1
+}
+
+func pluralCzech(n int) int {
+	switch {
+	case n == 1:
+		return 0
+	case n >= 2 && n <= 4:
+		return 1
+	default:
+		return 2
+	}
+}
+
+func newFakeBundle(msg, tran, locale string) *fakeBundle {
+	var sf, err = parse.SoyFile("", `{msg desc=""}`+msg+`{/msg}`)
+	if err != nil {
+		panic(err)
+	}
+	var msgnode = sf.Body[0].(*ast.MsgNode)
+	soymsg.SetPlaceholdersAndID(msgnode)
+	var m = soymsg.NewMessage(msgnode.ID, tran)
+	return &fakeBundle{map[uint64]*soymsg.Message{msgnode.ID: m}, locale}
+}
+
+func newFakePluralBundle(pluralVar, msg1, msg2, locale string, msgstr []string) *fakeBundle {
+	var sf, err = parse.SoyFile("", `{msg desc=""}
+{plural `+pluralVar+`}
+  {case 1}`+msg1+`
+  {default}`+msg2+`
+{/plural}
+{/msg}`)
+	if err != nil {
+		panic(err)
+	}
+	var msgnode = sf.Body[0].(*ast.MsgNode)
+	soymsg.SetPlaceholdersAndID(msgnode)
+	var msg = newMessage(msgnode, msgstr)
+	return &fakeBundle{map[uint64]*soymsg.Message{msgnode.ID: &msg}, locale}
+}
+
+func newMessage(node *ast.MsgNode, msgstrs []string) soymsg.Message {
+	var cases []soymsg.PluralCase
+	for _, msgstr := range msgstrs {
+		// TODO: Ideally this would convert from PO plural form to CLDR plural class.
+		// Instead, just use PluralCase() to select one of these.
+		cases = append(cases, soymsg.PluralCase{
+			Spec:  soymsg.PluralSpec{soymsg.PluralSpecOther, -1}, // not used
+			Parts: soymsg.Parts(msgstr),
+		})
+	}
+	return soymsg.Message{node.ID, []soymsg.Part{soymsg.PluralPart{
+		VarName: node.Body.Children()[0].(*ast.MsgPluralNode).VarName,
+		Cases:   cases,
+	}}}
+}
+
+func TestMessages(t *testing.T) {
+	runNsExecTests(t, []nsExecTest{
+		{"no bundle", "test.main", []string{`{namespace test}
+{template .main}
+  {msg desc=""}
+    Hello world
+  {/msg}
+{/template}`}, "Hello world", nil, true, nil},
+
+		{"bundle lacks", "test.main", []string{`{namespace test}
+{template .main}
+  {msg desc=""}
+    Hello world
+  {/msg}
+{/template}`}, "Hello world", nil, true, newFakeBundle("foo", "bar", "")},
+
+		{"bundle has", "test.main", []string{`{namespace test}
+{template .main}
+  {msg desc=""}
+    Hello world
+  {/msg}
+{/template}`}, "Sup", nil, true, newFakeBundle("Hello world", "Sup", "")},
+
+		{"msg with variable & translation", "test.main", []string{`{namespace test}
+/** @param a */
+{template .main}
+  {msg desc=""}
+    a: {$a}
+  {/msg}
+{/template}`}, "a is 1", d{"a": 1}, true, newFakeBundle("a: {$a}", "a is {A}", "")},
+
+		{"msg w variables", "test.main", []string{`{namespace test}
+/** @param a */
+{template .main}
+  {msg desc=""}
+    {$a}{$a} xx {$a}{sp}
+  {/msg}
+{/template}`}, "11xxx1", d{"a": 1}, true, newFakeBundle("{$a}{$a} xx {$a}{sp}", "{A}{A}xxx{A}", "")},
+
+		{"msg w numbered placeholders", "test.main", []string{`{namespace test}
+/** @param a */
+{template .main}
+  {msg desc=""}
+    {$a.a}{$a.b.a}
+  {/msg}
+{/template}`}, "21", d{"a": d{"a": 1, "b": d{"a": 2}}},
+			true, newFakeBundle("{$a.a}{$a.b.a}", "{A_2}{A_1}", "")},
+
+		{"msg w html", "test.main", []string{`{namespace test}
+/** @param a */
+{template .main}
+  {msg desc=""}
+    Click <a>here</a>
+  {/msg}
+{/template}`}, "<a>Click here</a>", nil,
+			true, newFakeBundle("Click <a>here</a>", "{START_LINK}Click here{END_LINK}", "")},
+
+		{"plural, not found, singular", "test.main", []string{`{namespace test}
+/** @param n */
+{template .main}
+  {msg desc=""}
+    {plural $n}
+    {case 1}
+      one user
+    {default}
+      {$n} users
+    {/plural}
+  {/msg}
+{/template}`}, "one user", d{"n": 1},
+			true, nil},
+
+		{"plural, not found, plural", "test.main", []string{`{namespace test}
+/** @param n */
+{template .main}
+  {msg desc=""}
+    {plural $n}
+    {case 1}
+      one user
+    {default}
+      {$n} users
+    {/plural}
+  {/msg}
+{/template}`}, "11 users", d{"n": 11},
+			true, nil},
+
+		{"plural, singular", "test.main", []string{`{namespace test}
+/** @param n */
+{template .main}
+  {msg desc=""}
+    {plural $n}
+    {case 1}
+      one user
+    {default}
+      {$n} users
+    {/plural}
+  {/msg}
+{/template}`}, "|one user|", d{"n": 1}, true,
+			newFakePluralBundle("$n", "one user", "{$n} users",
+				"en", []string{"|one user|", "|({N_2}) users|"})},
+
+		{"plural, plural", "test.main", []string{`{namespace test}
+/** @param n */
+{template .main}
+  {msg desc=""}
+    {plural $n}
+    {case 1}
+      one user
+    {default}
+      {$n} users
+    {/plural}
+  {/msg}
+{/template}`}, "|(10) users|", d{"n": 10}, true,
+			newFakePluralBundle("$n", "one user", "{$n} users",
+				"en", []string{"|one user|", "|({N_2}) users|"})},
+
+		{"plural, few, czech", "test.main", []string{`{namespace test}
+/** @param n */
+{template .main}
+  {msg desc=""}
+    {plural $n}
+    {case 1}
+      one user
+    {default}
+      {$n} users
+    {/plural}
+  {/msg}
+{/template}`}, "|few (3) users|", d{"n": 3}, true,
+			newFakePluralBundle("$n", "one user", "{$n} users",
+				"cs", []string{"|one user|", "|few ({N_2}) users|", "|({N_2}) users|"})},
+	})
+}
+
 func TestLog(t *testing.T) {
 	var otto = otto.New()
 	_, err := otto.Run(`
@@ -719,7 +1018,7 @@ soy.$$escapeHtml = function(arg) { return arg; };
 {namespace test}
 {template .log}
 {log}Hello {$name}.{/log}
-{/template}`, nil)
+{/template}`)
 	if err != nil {
 		t.Error(err)
 		return
@@ -746,6 +1045,23 @@ soy.$$escapeHtml = function(arg) { return arg; };
 	}
 }
 
+var pluralFuncBodies = map[string]string{
+	"en": `
+	if (n > 1) {
+		return 1;
+	}
+	return 0;`,
+
+	"cs": `
+	if (n == 1) {
+		return 0;
+	} else if (n >= 2 && n <= 4) {
+		return 1;
+	} else {
+		return 2;
+	}`,
+}
+
 func runExecTests(t *testing.T, tests []execTest) {
 	var nstest []nsExecTest
 	for _, test := range tests {
@@ -756,38 +1072,63 @@ func runExecTests(t *testing.T, tests []execTest) {
 			test.output,
 			test.data,
 			test.ok,
+			nil,
 		})
 	}
 	runNsExecTests(t, nstest)
 }
 
+var pluralFuncTmpl = `
+	var soy = soy || {};
+	soy.$$pluralIndex = function(n){
+		%s
+	};
+`
+
 func runNsExecTests(t *testing.T, tests []nsExecTest) {
 	var js = initJs(t)
+
+TESTS_LOOP:
 	for _, test := range tests {
 		var js = js.Copy()
 
 		// Parse the templates, generate and run the compiled javascript.
 		var source bytes.Buffer
 		for _, input := range test.input {
-			soyfile, err := parse.SoyFile(test.name, input, globals)
-			if err != nil {
-				t.Error(err)
-				continue
+			if test.msgs != nil && test.msgs.locale != "" {
+				fbody := pluralFuncBodies[test.msgs.locale]
+				js.Run(fmt.Sprintf(pluralFuncTmpl, fbody))
 			}
 
-			var buf bytes.Buffer
-			err = Write(&buf, soyfile, Options{})
+			var registry = template.Registry{}
+			soyfile, err := parse.SoyFile(test.name, input)
 			if err != nil {
-				t.Error(err)
-				continue
+				t.Errorf("%s: soyfile parse error: %v", test.name, err)
+				continue TESTS_LOOP
+			}
+			if err := registry.Add(soyfile); err != nil {
+				if test.ok {
+					t.Errorf("%s: registry add error: %v", test.name, err)
+				}
+				continue TESTS_LOOP
+			}
+			parsepasses.SetGlobals(registry, globals)
+			parsepasses.ProcessMessages(registry)
+
+			var buf bytes.Buffer
+			// TODO: Should loop over SoyFiles and add to buffer
+			err = Write(&buf, registry.SoyFiles[0], Options{Messages: test.msgs})
+			if err != nil {
+				t.Errorf("%s: write error: %v", test.name, err)
+				continue TESTS_LOOP
 			}
 
 			_, err = js.Run(buf.String())
 			if err != nil {
 				if test.ok {
-					t.Errorf("compile error: %v\n%v", err, numberLines(&buf))
+					t.Errorf("%s: compile error: %v\n%v", test.name, err, numberLines(&buf))
 				}
-				continue
+				continue TESTS_LOOP
 			}
 			source.Write(buf.Bytes())
 		}
@@ -799,12 +1140,12 @@ func runNsExecTests(t *testing.T, tests []nsExecTest) {
 			test.templateName, string(jsonData), string(ijJson))
 		switch actual, err := js.Run(renderStatement); {
 		case err != nil && test.ok:
-			t.Errorf("render error: %v\n%v\n%v", err, numberLines(&source), renderStatement)
+			t.Errorf("render error (%s): %v\n%v\n%v", test.name, err, numberLines(&source), renderStatement)
 		case err == nil && !test.ok:
-			t.Errorf("expected error, got none:\n%v\n%v", numberLines(&source), renderStatement)
+			t.Errorf("expected error, got none (%s):\n%v\n%v", test.name, numberLines(&source), renderStatement)
 		case test.ok && test.output != actual.String():
-			t.Errorf("expected:\n%v\n\nactual:\n%v\n%v\n%v",
-				test.output, actual.String(), numberLines(&source), renderStatement)
+			t.Errorf("expected (%s):\n%v\n\nactual:\n%v\n%v\n%v",
+				test.name, test.output, actual.String(), numberLines(&source), renderStatement)
 		}
 	}
 }
