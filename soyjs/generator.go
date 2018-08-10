@@ -8,9 +8,17 @@ import (
 	"github.com/robfig/soy/template"
 )
 
+type JSFormatter interface {
+	Template(name string) (string, string)
+	Call(name string) (string, string)
+	Directive(PrintDirective) string
+	Function(Func) string
+}
+
 // Options for js source generation.
 type Options struct {
-	Messages soymsg.Bundle
+	Messages  soymsg.Bundle
+	Formatter JSFormatter
 }
 
 // Generator provides an interface to a template registry capable of generating

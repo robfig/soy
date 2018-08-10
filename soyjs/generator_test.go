@@ -21,7 +21,7 @@ soy.$$escapeHtml = function(arg) { return arg; };
 		return
 	}
 
-	Funcs["capitalize"] = Func{func(js JSWriter, args []ast.Node) {
+	Funcs["capitalize"] = Func{"capitalize", func(js JSWriter, args []ast.Node) {
 		js.Write("(", args[0], ".charAt(0).toUpperCase() + ", args[0], ".slice(1))")
 	}, []int{1}}
 	defer delete(Funcs, "capitalize")
