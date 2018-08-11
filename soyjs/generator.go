@@ -8,6 +8,24 @@ import (
 	"github.com/robfig/soy/template"
 )
 
+// The JSFormatter interface allows for callers to choose which
+// version of Javascript they would like soyjs to output. To
+// maintain backwards compatibility, if no JSFormatter is specified
+// in the Options, soyjs will default to the ES5Formatter implemented
+// in exec.go
+//
+// Template returns two values, the name of the template to save
+// in the defined functions map, and how the function should be defined.
+//
+// Call returns two values, the name of the template to save
+// in the called functions map, and a string that is written
+// into the imports
+//
+// Directive takes in a PrintDirective and returns a string
+// that is written into the imports
+//
+// Function takes in a Func and returns a string
+// that is written into the imports
 type JSFormatter interface {
 	Template(name string) (string, string)
 	Call(name string) (string, string)
@@ -16,6 +34,8 @@ type JSFormatter interface {
 }
 
 // Options for js source generation.
+// When no Formatter is defined, soyjs
+// will default to ES5Formatter from exec.go
 type Options struct {
 	Messages  soymsg.Bundle
 	Formatter JSFormatter
