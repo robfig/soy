@@ -29,87 +29,6 @@ type state struct {
 	funcsInFile  map[string]bool
 }
 
-// ES5Formatter implements the JSFormatter interface
-// and creates Javascript files following the ES5
-// Javascript format (without imports)
-type ES5Formatter struct{}
-
-// ES6Formatter implements the JSFormatter interface
-// and creates Javascript files following the ES6
-// Javascript format (with imports)
-type ES6Formatter struct{}
-
-var _ JSFormatter = (*ES6Formatter)(nil)
-var _ JSFormatter = (*ES5Formatter)(nil)
-
-// Template returns two values, the name of the template to save
-// in the defined functions map, and how the function should be defined.
-// For ES5, the function is not exported, but defined globally
-func (f ES5Formatter) Template(name string) (string, string) {
-	return name, name + " = function"
-}
-
-// Call returns two values, the name of the template to save
-// in the called functions map, and a string that is written
-// into the imports - for ES5, there are no imports
-func (f ES5Formatter) Call(name string) (string, string) {
-	return name, ""
-}
-
-// Directive takes in a PrintDirective and returns a string
-// that is written into the imports - for ES5, there
-// are no imports
-func (f ES5Formatter) Directive(dir PrintDirective) string {
-	return ""
-}
-
-// Function takes in a Func and returns a string
-// that is written into the imports - for ES5, there
-// are no imports
-func (f ES5Formatter) Function(fn Func) string {
-	return ""
-}
-
-// es6Identifier creates an ES6 compatible function name
-// without periods. It replaces all periods, which usually
-// denominate namespaces in soy, with a double underscore.
-// For example, from the file
-// {namespace say}
-// {template .hello_world}
-// Hello World
-// {/template}
-// when es6Identifier is called on say.hello_world,
-// it will return say__hello_world
-func es6Identifier(s string) string {
-	return strings.Replace(s, ".", "__", -1)
-}
-
-// Template returns two values, the name of the template to save
-// in the defined functions map, and how the function should be defined.
-// For ES5, the function is not defined globally, but exported
-func (f ES6Formatter) Template(name string) (string, string) {
-	return es6Identifier(name), "export function " + es6Identifier(name)
-}
-
-// Call returns two values, the name of the template to save
-// in the called functions map, and a string that is written
-// into the imports
-func (f ES6Formatter) Call(name string) (string, string) {
-	return es6Identifier(name), "import { " + es6Identifier(name) + " } from '" + name + ".js';"
-}
-
-// Directive takes in a PrintDirective and returns a string
-// that is written into the imports
-func (f ES6Formatter) Directive(dir PrintDirective) string {
-	return "import { " + es6Identifier(dir.Name) + " } from '" + dir.Name + ".js';"
-}
-
-// Function takes in a Func and returns a string
-// that is written into the imports
-func (f ES6Formatter) Function(fn Func) string {
-	return "import { " + es6Identifier(fn.Name) + " } from '" + fn.Name + ".js';"
-}
-
 func difference(a map[string]string, b map[string]bool) []string {
 	new := []string{}
 	for key1 := range a {
@@ -789,7 +708,13 @@ func (s *state) writeRawText(text []byte) {
 // block renders the given node to a temporary buffer and returns the string.
 func (s *state) block(node ast.Node) string {
 	var buf bytes.Buffer
-	(&state{wr: &buf, scope: s.scope, options: s.options, funcsCalled: s.funcsCalled, funcsInFile: s.funcsInFile}).walk(node)
+	(&state{
+	    wr: &buf,
+	    scope: s.scope,
+	    options: s.options,
+	    funcsCalled: s.funcsCalled,
+	    funcsInFile: s.funcsInFile,
+	}).walk(node)
 	return buf.String()
 }
 
