@@ -1049,16 +1049,14 @@ soy.$$escapeHtml = function(arg) { return arg; };
 
 func TestES6(t *testing.T) {
 	bundle := soy.NewBundle()
-	bundle.AddTemplateString("test_formatter.soy", `
-	{namespace test}
-	{template .formatter}
+	bundle.AddTemplateString("test_formatter.soy", `{namespace test}
+{template .formatter}
 	{call say.hello /}
-	{/template}`)
-	bundle.AddTemplateString("say_hello.soy", `
-	{namespace say}
-	{template .hello}
+{/template}`)
+	bundle.AddTemplateString("say_hello.soy", `{namespace say}
+{template .hello}
 	Hello World!
-	{/template}`)
+{/template}`)
 	registry, err := bundle.Compile()
 	if err != nil {
 		t.Error(err)
