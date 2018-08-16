@@ -10,7 +10,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/andreyvit/diff"
 	"github.com/robertkrimen/otto"
+	"github.com/robfig/soy"
 	"github.com/robfig/soy/ast"
 	"github.com/robfig/soy/data"
 	"github.com/robfig/soy/parse"
@@ -1042,6 +1044,58 @@ soy.$$escapeHtml = function(arg) { return arg; };
 	val, _ := otto.Get("console_output")
 	if val.String() != "Hello Rob." {
 		t.Errorf("got %q", val.String())
+	}
+}
+
+func TestES6(t *testing.T) {
+	bundle := soy.NewBundle()
+	bundle.AddTemplateString("test_formatter.soy", `{namespace test}
+{template .formatter}
+	{call say.hello /}
+{/template}`)
+	bundle.AddTemplateString("say_hello.soy", `{namespace say}
+{template .hello}
+	Hello World!
+{/template}`)
+	registry, err := bundle.Compile()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	expected := []string{
+		`import { say__hello } from 'say.hello.js';
+
+// This file was automatically generated from test_formatter.soy.
+// Please don't edit this file by hand.
+
+if (typeof test == 'undefined') { var test = {}; }
+
+export function test__formatter(opt_data, opt_sb, opt_ijData) {
+  var output = '';
+  output += say__hello({}, opt_sb, opt_ijData);
+  return output;
+};`,
+		`// This file was automatically generated from say_hello.soy.
+// Please don't edit this file by hand.
+
+if (typeof say == 'undefined') { var say = {}; }
+
+export function say__hello(opt_data, opt_sb, opt_ijData) {
+  var output = '';
+  output += 'Hello World!';
+  return output;
+};`,
+	}
+	for i, soyfile := range registry.SoyFiles {
+		var buf bytes.Buffer
+		err := Write(&buf, soyfile, Options{Formatter: ES6Formatter{}})
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		if a, e := strings.TrimSpace(buf.String()), strings.TrimSpace(expected[i]); a != e {
+			t.Errorf("ES6 Error, did not get expected results:\n%v", diff.LineDiff(e, a))
+		}
 	}
 }
 

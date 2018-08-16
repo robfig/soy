@@ -9,8 +9,11 @@ import (
 )
 
 // Options for js source generation.
+// When no Formatter is defined, soyjs
+// will default to ES5Formatter from exec.go
 type Options struct {
-	Messages soymsg.Bundle
+	Messages  soymsg.Bundle
+	Formatter JSFormatter
 }
 
 // Generator provides an interface to a template registry capable of generating

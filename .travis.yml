@@ -6,6 +6,7 @@ go:
 install:
   - go get golang.org/x/tools/cmd/cover || true
   - go get code.google.com/p/go.tools/cmd/cover || true
+  - go get github.com/andreyvit/diff
   - go get github.com/robertkrimen/otto
   - go get github.com/howeyc/fsnotify
   - go get github.com/robfig/gettext/po

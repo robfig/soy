@@ -1,6 +1,8 @@
 package soyjs
 
-import "github.com/robfig/soy/ast"
+import (
+	"github.com/robfig/soy/ast"
+)
 
 // JSWriter is provided to functions to write to the generated javascript.
 type JSWriter interface {
@@ -16,29 +18,38 @@ func (s *state) Write(args ...interface{}) {
 
 // Func represents a soy function that may invoked within a template.
 type Func struct {
+	Name            string
 	Apply           func(js JSWriter, args []ast.Node)
 	ValidArgLengths []int
 }
 
+var funcs = []Func{
+	{"isNonnull", funcIsNonnull, []int{1}},
+	{"length", funcLength, []int{1}},
+	{"keys", builtinFunc("getMapKeys"), []int{1}},
+	{"augmentMap", builtinFunc("augmentMap"), []int{2}},
+	{"round", funcRound, []int{1, 2}},
+	{"floor", funcFloor, []int{1}},
+	{"ceiling", funcCeiling, []int{1}},
+	{"min", funcMin, []int{2}},
+	{"max", funcMax, []int{2}},
+	{"randomInt", funcRandomInt, []int{1}},
+	{"strContains", funcStrContains, []int{2}},
+	{"hasData", funcHasData, []int{0}},
+	{"bidiGlobalDir", funcBidiGlobalDir, []int{0}},
+	{"bidiDirAttr", funcBidiDirAttr, []int{0}},
+	{"bidiStartEdge", funcBidiStartEdge, []int{0}},
+	{"bidiEndEdge", funcBidiEndEdge, []int{0}},
+}
+
 // Funcs contains the available soy functions.
 // Callers may add custom functions to this map.
-var Funcs = map[string]Func{
-	"isNonnull":     {funcIsNonnull, []int{1}},
-	"length":        {funcLength, []int{1}},
-	"keys":          {builtinFunc("getMapKeys"), []int{1}},
-	"augmentMap":    {builtinFunc("augmentMap"), []int{2}},
-	"round":         {funcRound, []int{1, 2}},
-	"floor":         {funcFloor, []int{1}},
-	"ceiling":       {funcCeiling, []int{1}},
-	"min":           {funcMin, []int{2}},
-	"max":           {funcMax, []int{2}},
-	"randomInt":     {funcRandomInt, []int{1}},
-	"strContains":   {funcStrContains, []int{2}},
-	"hasData":       {funcHasData, []int{0}},
-	"bidiGlobalDir": {funcBidiGlobalDir, []int{0}},
-	"bidiDirAttr":   {funcBidiDirAttr, []int{0}},
-	"bidiStartEdge": {funcBidiStartEdge, []int{0}},
-	"bidiEndEdge":   {funcBidiEndEdge, []int{0}},
+var Funcs = make(map[string]Func, len(funcs))
+
+func init() {
+	for _, f := range funcs {
+		Funcs[f.Name] = f
+	}
 }
 
 // builtinFunc returns a function that writes a call to a soy.$$ builtin func.

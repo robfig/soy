@@ -25,15 +25,54 @@ type state struct {
 	autoescape   ast.AutoescapeType
 	lastNode     ast.Node
 	options      Options
+	funcsCalled  map[string]string
+	funcsInFile  map[string]bool
+}
+
+func difference(a map[string]string, b map[string]bool) []string {
+	new := []string{}
+	for key1 := range a {
+		if _, ok := b[key1]; !ok {
+			new = append(new, key1)
+		}
+	}
+	return new
 }
 
 // Write writes the javascript represented by the given node to the given
 // writer.  The first error encountered is returned.
 func Write(out io.Writer, node ast.Node, options Options) (err error) {
 	defer errRecover(&err)
-	var s = &state{wr: out, options: options}
+
+	if options.Formatter == nil {
+		options.Formatter = &ES5Formatter{}
+	}
+
+	var (
+		tmpOut     = &bytes.Buffer{}
+		importsBuf = &bytes.Buffer{}
+		s          = &state{
+			wr:          tmpOut,
+			options:     options,
+			funcsCalled: map[string]string{},
+			funcsInFile: map[string]bool{},
+		}
+	)
+
 	s.scope.push()
 	s.walk(node)
+
+	if len(s.funcsCalled) > 0 {
+		for _, f := range difference(s.funcsCalled, s.funcsInFile) {
+			importsBuf.WriteString(s.funcsCalled[f])
+			importsBuf.WriteRune('\n')
+		}
+		importsBuf.WriteRune('\n')
+	}
+
+	out.Write(importsBuf.Bytes())
+	out.Write(tmpOut.Bytes())
+
 	return nil
 }
 
@@ -145,7 +184,7 @@ func (s *state) walk(node ast.Node) {
 			keys  = make([]string, len(node.Items))
 			i     = 0
 		)
-		for k, _ := range node.Items {
+		for k := range node.Items {
 			keys[i] = k
 			i++
 		}
@@ -263,7 +302,9 @@ func (s *state) visitTemplate(node *ast.TemplateNode) {
 	}
 
 	s.jsln("")
-	s.jsln(node.Name, " = function(opt_data, opt_sb, opt_ijData) {")
+	callName, callStyle := s.options.Formatter.Template(node.Name)
+	s.jsln(callStyle, "(opt_data, opt_sb, opt_ijData) {")
+	s.funcsInFile[callName] = true
 	s.indentLevels++
 	if allOptionalParams {
 		s.jsln("opt_data = opt_data || {};")
@@ -296,6 +337,9 @@ func (s *state) visitPrint(node *ast.PrintNode) {
 			// no implementation, they just serve as a marker to cancel autoescape.
 		default:
 			directives = append(directives, dir)
+			if impt := s.options.Formatter.Directive(directive); impt != "" {
+				s.funcsCalled[dir.Name] = impt
+			}
 		}
 	}
 	if escape != ast.AutoescapeOff {
@@ -327,6 +371,9 @@ func (s *state) visitPrint(node *ast.PrintNode) {
 func (s *state) visitFunction(node *ast.FunctionNode) {
 	if fn, ok := Funcs[node.Name]; ok {
 		fn.Apply(s, node.Args)
+		if impt := s.options.Formatter.Function(fn); impt != "" {
+			s.funcsCalled[node.Name] = impt
+		}
 		return
 	}
 
@@ -405,7 +452,11 @@ func (s *state) visitCall(node *ast.CallNode) {
 		}
 		dataExpr += "})"
 	}
-	s.jsln(s.bufferName, " += ", node.Name, "(", dataExpr, ", opt_sb, opt_ijData);")
+	callName, importString := s.options.Formatter.Call(node.Name)
+	s.jsln(s.bufferName, " += ", callName, "(", dataExpr, ", opt_sb, opt_ijData);")
+	if importString != "" {
+		s.funcsCalled[callName] = importString
+	}
 }
 
 func (s *state) visitIf(node *ast.IfNode) {
@@ -657,7 +708,13 @@ func (s *state) writeRawText(text []byte) {
 // block renders the given node to a temporary buffer and returns the string.
 func (s *state) block(node ast.Node) string {
 	var buf bytes.Buffer
-	(&state{wr: &buf, scope: s.scope}).walk(node)
+	(&state{
+	    wr: &buf,
+	    scope: s.scope,
+	    options: s.options,
+	    funcsCalled: s.funcsCalled,
+	    funcsInFile: s.funcsInFile,
+	}).walk(node)
 	return buf.String()
 }
 
