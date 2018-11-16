@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/robfig/soy/data"
 	"github.com/robfig/soy/parse"
 	"github.com/robfig/soy/parsepasses"
 	"github.com/robfig/soy/soyhtml"
 	"github.com/robfig/soy/template"
-	"github.com/howeyc/fsnotify"
 )
 
 // Logger is used to print notifications and compile errors when using the
@@ -79,7 +79,7 @@ func (b *Bundle) AddTemplateFile(filename string) *Bundle {
 		b.err = err
 	}
 	if b.err == nil && b.watcher != nil {
-		b.err = b.watcher.Watch(filename)
+		b.err = b.watcher.Add(filename)
 	}
 	return b.AddTemplateString(filename, string(content))
 }
@@ -183,12 +183,12 @@ func (b *Bundle) CompileToTofu() (*soyhtml.Tofu, error) {
 func (b *Bundle) recompiler(reg *template.Registry) {
 	for {
 		select {
-		case ev := <-b.watcher.Event:
+		case ev := <-b.watcher.Events:
 			// If it's a rename, then fsnotify has removed the watch.
 			// Add it back, after a delay.
-			if ev.IsRename() || ev.IsDelete() {
+			if ev.Op == fsnotify.Rename || ev.Op == fsnotify.Remove {
 				time.Sleep(10 * time.Millisecond)
-				if err := b.watcher.Watch(ev.Name); err != nil {
+				if err := b.watcher.Add(ev.Name); err != nil {
 					Logger.Println(err)
 				}
 			}
@@ -215,7 +215,7 @@ func (b *Bundle) recompiler(reg *template.Registry) {
 			*reg = *registry
 			Logger.Printf("update successful (%v)", ev)
 
-		case err := <-b.watcher.Error:
+		case err := <-b.watcher.Errors:
 			// Nothing to do with errors
 			Logger.Println(err)
 		}
