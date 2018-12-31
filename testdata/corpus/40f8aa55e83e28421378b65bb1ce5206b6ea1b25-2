@@ -1,0 +1,11 @@
+ hello{foreach $name i≈Ø⁄¶>£ç¸n $names}
+    {call .helloName}
+     {param name: $name /}
+    {/call}    {if not isLast($name}
+      <br>  // brek after every line except thelast
+    {/if}
+  {ifempty}
+    /# If names list i empty, say "Hello wold".
+    {call .helloWorld /}
+  {/foreach}
+{/template}

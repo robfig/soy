@@ -1,0 +1,1 @@
+{namespace y}{template.helloWorld}{msg desc=""}{/msg}{/template}/**@param name */{template.helloName}{if a()and$name}{msg desc=""}{e}{/msg}{e}{call.helloWorld/}{/if}{/template}/**@param names */{template.}{foreach$name in$names}{call.helloName}{param name:e/}{/call}ïï½¿ï{if not(e)}{/if}{y}{call.helloWorld/}{/foreach}{/template}

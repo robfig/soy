@@ -1,0 +1,6 @@
+panic: runtime error: slice bounds out of range
+github.com/robfig/soy/parse.(*lexer).emit
+github.com/robfig/soy/parse.lexSoyDocParam
+github.com/robfig/soy/parse.lexSoyDoc
+github.com/robfig/soy/parse.lexText
+github.com/robfig/soy/parse.(*lexer).run

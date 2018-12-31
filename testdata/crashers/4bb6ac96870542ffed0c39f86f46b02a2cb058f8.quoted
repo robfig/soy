@@ -1,0 +1,77 @@
+	"// Copyright 2008 Go" +
+	"ogle Inc.\n//\n// Lice" +
+	"nsed under the Apach" +
+	"e License, Version 2" +
+	".0 (the \"License\");\n" +
+	"// you may not use t" +
+	"his file except in c" +
+	"ompliance with the L" +
+	"icense.\n// You may o" +
+	"btain a copy of the " +
+	"License at\n//\n//    " +
+	" http://www.apache.o" +
+	"rg/licenses/LICENSE-" +
+	"2.0\n//\n// Unless req" +
+	"uired by applicable " +
+	"law or agreed to in " +
+	"writing, software\n//" +
+	" distributed under t" +
+	"he License is distri" +
+	"buted on an \"AS IS\" " +
+	"BASIS,\n// WITHOUT WA" +
+	"RRANTIES OR CONDITIO" +
+	"NS OF ANY KIND, eith" +
+	"er express or implie" +
+	"d.\n// See the Licens" +
+	"e for the specific l" +
+	"anguage governing pe" +
+	"rmissions and\n// lim" +
+	"itations under the L" +
+	"icense.\n\n// Simple e" +
+	"xamples.\n// Author: " +
+	"Kai Huang\n\n{namespac" +
+	"e soy.examples.simpl" +
+	"e}\n\n\n/**\n * Says hel" +
+	"lo to the world.\n */" +
+	"\n{template .helloWor" +
+	"ld}\n  {msg desc=\"Say" +
+	"s hello to the world" +
+	".\"}\n    Hello world!" +
+	"\n  {/msg}\n{/template" +
+	"}\n\n\n/**\n * Says hell" +
+	"o to a person (or to" +
+	" the world if no per" +
+	"son is given).\n * @p" +
+	"aram? name The name " +
+	"of the person to say" +
+	" hello to.\n */\n{temp" +
+	"late .helloName}\n  {" +
+	"if hasData() and $na" +
+	"me}\n    {msg desc=Sa" +
+	"ys hello to a person" +
+	".\"}\n      Hello {$na" +
+	"me}!\n    {/msg}\n  {e" +
+	"lse}\n    {call .hell" +
+	"oWorld /}\n  {/if}\n{/" +
+	"template}\n\n\n/**\n * S" +
+	"ay hello to a list o" +
+	"f people.\n * @param " +
+	"names List of names " +
+	"of the people to say" +
+	" hello to.\n */\n{temp" +
+	"late .helloNames}\n  " +
+	"{foreach $name in $n" +
+	"ames}\n    {call .hel" +
+	"loName}\n      {param" +
+	" name: $name /}\n    " +
+	"{/call}\n    {if not " +
+	"isLast($name)}\n     " +
+	" <br>  // break afte" +
+	"r every line except " +
+	"the last\n    {/if}\n " +
+	" {ifempty}\n    // If" +
+	" names list is empty" +
+	", say \"Hello world\"." +
+	"\n    {call .helloWor" +
+	"ld /}\n  {/foreach}\n{" +
+	"/template}\n"

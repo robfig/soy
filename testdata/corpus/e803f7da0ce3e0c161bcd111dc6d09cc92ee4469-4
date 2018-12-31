@@ -1,0 +1,20 @@
+{y}{template.}{/template}{template.}{''}{p}{p}{l}{l}{/template}{template.}{p}{l}{n}{r}{t}{b}{b}{literal}F{/literal}{/template}{template.}{print''}{''}{1}{o}{1+o}{T}{L}{/template}{template. autoescape="true"}{l}{l}{/template}{template. autoescape="false"}{l}{l}{/template}{template.}{msg desc=""}{plural$}{case 1}{default}{s}{/plural}{/msg}{/template}{template.}{e}{switch$}{case''}{case'',''}{t}{/switch}{/template}{template.}{foreach$ in$}{if(n)}{e()}{e}{/if}{p}{if$==1}{n}{e}{n}{n}{/if}{y}{/foreach}{/template}{template.}{for$ in range()}{i}{s}{/for}{for$ in range(2)}{i}{p}{/for}{/template}{template.}{call./}{call. data="l"/}{call. data="o"/}{/template}{template.}{foreach$ in$}{call. data="l"}{param n:n/}{/call}{if(n)%2==0}{call.}{param e:$/}{param n:$/}{/call}{/if}{/foreach}{/template}{template.}{call.}{param e:$/}{param n}{switch(3)}{case 0}{case1}{case2}{/switch}{/param}{/call}{/template}{template. private="true"}{if (a()and$)}{msg desc=""}{/msg}{elseif notn}{msg desc=""}{e}{/msg}{e}{msg desc=""}{e}{n}{/msg}{/if}{/template}/* */{template. autoescape="contextual"}{call.} //
+{param kind="htmle)}/Ùèø/"}{ ""}{ }{
+""""}{}{
+.}{ ''''"""""""""""""".
+    {sp}{$student.year < 2000 ? round($student.year - 1905, -1) + 's' : '00s'}.
+    // Equivalent to previous line.
+    {sp}{if $student.year < 2000}{round($student.year - 1905, -1)}{else}00{/if}s.
+
+    <br>
+  {/foreach}
+
+{/template}
+
+
+/**
+ * Demo double braces.
+ * @param setName The name of the infinite set.
+ * @param setMembers List of the first few members of the set.
+ */
+{template .demoDoublΩ

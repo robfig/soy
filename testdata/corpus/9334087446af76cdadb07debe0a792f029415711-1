@@ -1,0 +1,27 @@
+//
+{namespace y}{template.}{msg desc=""}{/msg}{/template}/**@param?e*/{template.}{if a()and$}{msg desc="Says hello to a person."}
+      Hello {$name}!
+    {/msg}
+  {else}
+    {call .helloWorld /}
+  {/if}
+{/template}
+
+
+/**
+ * Say hello to a list of people.
+ * @param names List of names of the people to say hello to.
+ */
+{template .helloNames}
+  {foreach $name in $names}
+    {call .helloName}
+      {param name: $name /}
+    {/call}
+    {if not isLast($name)}
+      <br>  // break after every line except the last
+    {/if}
+  {ifempty}
+    // If names list is empty, say "Hello world".
+    {call .helloWorld /}
+  {/foreach}
+{/template}

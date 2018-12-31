@@ -1,0 +1,241 @@
+	"{namespacey}{templat" +
+	"e.}whitespace.\n  htt" +
+	"p://www.google.com<b" +
+	"r>\n{/template}\n\n\n jo" +
+	"ining.\n */\n{template" +
+	".demoLineJoining}\n\n " +
+	" irst line or start " +
+	"of the second line, " +
+	"the two\n  d by addin" +
+	"g a space.\n  First\n " +
+	" second.<br>\n\n  oin " +
+	"location (end of the" +
+	" first line or start" +
+	" of\n   be joined wit" +
+	"hout adding a space." +
+	"\n   at end of first " +
+	"line:\n  <i>First</i>" +
+	"\n  second.<br>\n  t s" +
+	"tart of second line:" +
+	"\n  First\n  {''}secon" +
+	"d.<br>\n\n  e a space " +
+	"would not normally b" +
+	"e added (because\n  y" +
+	" tag), use the {sp} " +
+	"tag.\n  <i>First</i>{" +
+	"sp}\n  second.<br>\n\n " +
+	" joining location wh" +
+	"ere a space would no" +
+	"rmally be\n  {l}(empt" +
+	"y string), but cause" +
+	"s the line-joining\n " +
+	"  preventing the lin" +
+	"e-joining space.\n  F" +
+	"irst{il}\n  second.<b" +
+	"r>\n\n{/template}\n\n\nt " +
+	"commands.\n */\n{templ" +
+	"ate .demoRawTextComm" +
+	"ands}\n  <pre>\n  hara" +
+	"cters.\n  Space      " +
+	" : AA{sp}BB<br>\n  Em" +
+	"pty string: AA{nil}B" +
+	"B<br>\n  New line    " +
+	": AA{n}BB<br>\n  Carr" +
+	"iage ret: AA{r}BB<br" +
+	">\n  Tab         : AA" +
+	"{t}BB<br>\n  Left bra" +
+	"ce  : AA{lb}BB<br>\n " +
+	" Right brace : AA{rb" +
+	"}BB<br>\n\n  l block.\n" +
+	"  ot stripped, so th" +
+	"e new line and 2-spa" +
+	"ce indent\n   in the " +
+	"output exactly as wr" +
+	"itten.\n  Literal    " +
+	" : {literal}F{/liter" +
+	"al}\n  </pre>\n{/templ" +
+	"ate}\n\n\n * @param two" +
+	" Preferably the numb" +
+	"er 2.\n */\n{template " +
+	".demoPrint}  {print'" +
+	"Boo!'}<br>  a string" +
+	"\n  {'oo!'}<br>  'pri" +
+	"nt' is implied\n  {1 " +
+	"+ 2}<br>   of an exp" +
+	"ression\n  {$boo}<br>" +
+	"  data value\n  {1+ $" +
+	"two}<br>  ession tha" +
+	"t uses a data value\n" +
+	"  {LOBAL_INT}, {GLOB" +
+	"AL_BOOL}.<br>  globa" +
+	"ls\n{/template}\n\n\n/* " +
+	"print directives.\n *" +
+	" @param longVarName " +
+	"Some ridiculously lo" +
+	"ng variable name.\n *" +
+	" @param elementId Th" +
+	"e id for an element." +
+	"\n * @param cssClass " +
+	"A CSS class name.\n e" +
+	"moPrintDirectives}\n " +
+	" insertWordBreaks:<b" +
+	"r>\n  <div style=\"wid" +
+	"th:150px; border:1px" +
+	" solid #00CC00\">\n   " +
+	" {$longVarName}<br> " +
+	" // will run outside" +
+	" the div border\n    " +
+	"{$longVarName |inser" +
+	"tWordBreaks:5}<br>  " +
+	"// will be allowed t" +
+	"o wrap\n  </div>\n\n  i" +
+	"d:<br>\n  // The 'id'" +
+	" and 'class' attribu" +
+	"tes of this span wil" +
+	"l not be needlessly " +
+	"autoescaped because " +
+	"they\n  // are marked" +
+	" with the print dire" +
+	"ctive '|id'.\n  // No" +
+	"te: Only use '|id' w" +
+	"ith identifiers like" +
+	" id and class (other" +
+	"wise use '|noAutoesc" +
+	"ape').\n  <span id=\"{" +
+	"$elementId|id}\" clas" +
+	"s=\"{$cssClass|id}\" s" +
+	"tyle=\"border:1px sol" +
+	"id #000000\">\n    Hel" +
+	"lo\n  </span>\n{/templ" +
+	"ate}\n\n\n/**\n * Demo a" +
+	"utoescape true.\n * @" +
+	"param italicHtml A s" +
+	"tring surrounded by " +
+	"HTML italics tags.\n " +
+	"*/\n{template .demoAu" +
+	"toescapeTrue autoesc" +
+	"ape=\"true\"}   the 't" +
+	"emplate' tag for dem" +
+	"onstration. Usually\n" +
+	"   the attribute's d" +
+	"efault value.\n  trat" +
+	"es the good practice" +
+	" of adding the suffi" +
+	"x\n  ain HTML tags an" +
+	"d are known to be sa" +
+	"fe.\n\n  {italicHtml}<" +
+	"br>  tags to appear " +
+	"literally\n  {$italic" +
+	"Html |noAutoescape}<" +
+	"br>  e prevents auto" +
+	"escaping\n{/template}" +
+	"\n\nA string surrounde" +
+	"d by HTML italics ta" +
+	"gs.\n */\n{template .d" +
+	"emoAutoescapeFalse a" +
+	"utoescape=\"false\"}  " +
+	"e cross-site scripti" +
+	"ng bugs may slip thr" +
+	"ough.\n\n  {italicHtml" +
+	"}<br>   will be appl" +
+	"ied\n  {$italicHtml |" +
+	"escapeHtml}<br>   ap" +
+	"plies HTML escaping\n" +
+	"{/template}\n\n/* mo\xb6'" +
+	"msg'.\n * @param name" +
+	" The name of the per" +
+	"son to say hello to." +
+	"\n * @param labsUrl T" +
+	"he URL of the unrele" +
+	"ased 'Labs' feature." +
+	"\n person.\"}\n    Hell" +
+	"o {$name}!\n  {/msg}<" +
+	"br>\n\n  {msg desc=\"Li" +
+	"nk to the unreleased" +
+	" 'Labs' feature.\"}\n " +
+	"   Click <a href=\"{$" +
+	"labsUrl}\">here</a> t" +
+	"o access Labs.\n  {/m" +
+	"sg}<br>\n\n  // The 'm" +
+	"eaning' attribute is" +
+	" used when you have " +
+	"two messages that ar" +
+	"e exactly the same s" +
+	"tring in\n  // Englis" +
+	"h, but may be transl" +
+	"ated to different st" +
+	"rings in other langu" +
+	"ages. The 'meaning' " +
+	"attribute\n  // shoul" +
+	"d then be a short st" +
+	"ring that distinguis" +
+	"hes the two strings," +
+	" and will be used fo" +
+	"r\n  // generating di" +
+	"fferent message ids." +
+	" The 'meaning' will " +
+	"not be shown to tran" +
+	"slators, so you must" +
+	"\n  // still communic" +
+	"ate all the details " +
+	"in the 'desc' text.\n" +
+	"  {msg meaning=\"noun" +
+	"\" desc=\"The word 'Ar" +
+	"chive' used as a nou" +
+	"n, i.e. an informati" +
+	"on store.\"}\n    Arch" +
+	"ive\n  {/msg}<br>\n  {" +
+	"msg meaning=\"verb\" d" +
+	"esc=\"The word 'Archi" +
+	"ve' used as a verb, " +
+	"i.e. to store inform" +
+	"ation.\"}\n    Archive" +
+	"\n  {/msg}<br>\n\n{/tem" +
+	"plate}\n\n\n/**\n * Demo" +
+	" 'if'.\n * @param pi " +
+	"An approximate value" +
+	" for pi.\n nd($pi, 2)" +
+	" == 3.14}\n    {msg d" +
+	"esc=\"Example: 3.1416" +
+	" is a good approxima" +
+	"tion of pi.\"}\n      " +
+	"{$pi} is a good appr" +
+	"oximation of pi.\n   " +
+	" {/msg}\n  {elseif ro" +
+	"und($pi) == 3}\n    {" +
+	"msg desc=\"Example: 3" +
+	".1 is a bad approxim" +
+	"ation of pi.\"}\n     " +
+	" {$pi} is a bad appr" +
+	"oximation of pi.\n   " +
+	" {/msg}\n  {else}\n   " +
+	" {msg desc=\"Example:" +
+	" 5 is nowhere near t" +
+	"he value of pi.\"}\n  " +
+	"    {$pi} is nowhere" +
+	" near the value of p" +
+	"i.\n    {/msg}\n  {/if" +
+	"}\n  <br>\n{/template}" +
+	"\n\n\n/**\n * Demo 'plur" +
+	"al'.\n * @param eggs " +
+	"The number of eggs y" +
+	"ou need to buy\n */\n{" +
+	"template .demoPlural" +
+	"}   {msg desc=\"he nu" +
+	"mber of eggs you nee" +
+	"d.\"}\n      {plural $" +
+	"eggs}\n        {case " +
+	"1}You have one egg\n " +
+	"       {default}You " +
+	"have {$eggs} eggs\n  " +
+	"    {/plural}\n    {/" +
+	"msg}\n  <br>\n{/templa" +
+	"te}\n\n\name The name o" +
+	"f a kid.\n */\n{templa" +
+	"te .demoSwitch}\n  De" +
+	"ar {$name}, &nbsp;\n\n" +
+	"  {switch $name}\n   " +
+	" {case 'Go'}\n      Y" +
+	"ou've been bad this " +
+	"year.\n    {case 'Fay" +
+	"', 'I\\y'"

@@ -1,0 +1,99 @@
+program hanged (timeout 10 seconds)
+
+SIGABRT: abort
+PC=0x1009704 m=0 sigcode=0
+
+goroutine 1 [running]:
+runtime.lock(0xc0003ec4d8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/goroot/src/runtime/lock_sema.go:37 +0x34 fp=0xc0000a0f20 sp=0xc0000a0ee8 pc=0x1009704
+runtime.chanrecv(0xc0003ec480, 0xc0000a1000, 0x11c3401, 0x1730101)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/goroot/src/runtime/chan.go:456 +0x77 fp=0xc0000a0fb0 sp=0xc0000a0f20 pc=0x1005217
+runtime.chanrecv2(0xc0003ec480, 0xc0000a1000, 0xc0000a1001)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/goroot/src/runtime/chan.go:407 +0x2b fp=0xc0000a0fe0 sp=0xc0000a0fb0 pc=0x100518b
+github.com/robfig/soy/parse.(*lexer).drain(0xc0003f61c0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:325 +0x93 fp=0xc0000a1030 sp=0xc0000a0fe0 pc=0x11387f3
+github.com/robfig/soy/parse.(*tree).recover(0xc0003dd900, 0xc0000a1df8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/parse.go:1191 +0x11c fp=0xc0000a1090 sp=0xc0000a1030 pc=0x114f5ec
+runtime.call32(0x0, 0x11f0298, 0xc0000200b0, 0x1000000010)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/goroot/src/runtime/asm_amd64.s:522 +0x3b fp=0xc0000a10c0 sp=0xc0000a1090 pc=0x10539db
+panic(0x11c3440, 0xc0003e6f90)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/goroot/src/runtime/panic.go:513 +0x1b9 fp=0xc0000a1150 sp=0xc0000a10c0 pc=0x1029189
+github.com/robfig/soy/parse.(*tree).errorf(0xc0003dd900, 0xc000014a50, 0x24, 0xc0000a1290, 0x2, 0x2)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/parse.go:1227 +0x375 fp=0xc0000a1220 sp=0xc0000a1150 pc=0x1150105
+github.com/robfig/soy/parse.(*tree).unexpected(0xc0003dd900, 0x10, 0x3ea, 0xc0003f49e6, 0x4, 0xc000012f80, 0x1d)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/parse.go:1214 +0x183 fp=0xc0000a12e0 sp=0xc0000a1220 pc=0x114fc93
+github.com/robfig/soy/parse.(*tree).expect(0xc0003dd900, 0xc, 0x11e7404, 0x9, 0x7, 0x3e6, 0xc0003f49e5, 0x1)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/parse.go:1204 +0x29f fp=0xc0000a13a8 sp=0xc0000a12e0 pc=0x114fa2f
+github.com/robfig/soy/parse.(*tree).parseAttrs(0xc0003dd900, 0xc0003e6f30, 0x3, 0x3, 0x11f0788)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/parse.go:563 +0x24a fp=0xc0000a1488 sp=0xc0000a13a8 pc=0x1146c7a
+github.com/robfig/soy/parse.(*tree).parseMsg(0xc0003dd900, 0x42, 0x3e0, 0xc0003f49dd, 0x3, 0xc00005a000, 0xc00005a000)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/parse.go:581 +0xa0 fp=0xc0000a1500 sp=0xc0000a1488 pc=0x11470c0
+github.com/robfig/soy/parse.(*tree).beginTag(0xc0003dd900, 0x3e0, 0xc0003f49dd)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/parse.go:141 +0x893 fp=0xc0000a15b8 sp=0xc0000a1500 pc=0x1140bc3
+github.com/robfig/soy/parse.(*tree).textOrTag(0xc0003dd900, 0x3, 0x3dd, 0xc0003f49dc, 0x1, 0xc000012f60, 0x3, 0x3, 0x0, 0x1342960, ...)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/parse.go:108 +0x82f fp=0xc0000a1698 sp=0xc0000a15b8 pc=0x114014f
+github.com/robfig/soy/parse.(*tree).itemList(0xc0003dd900, 0xc000012f60, 0x3, 0x3, 0x4)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/parse.go:60 +0x1b6 fp=0xc0000a1760 sp=0xc0000a1698 pc=0x113f5e6
+github.com/robfig/soy/parse.(*tree).parseIf(0xc0003dd900, 0x3e, 0x3c2, 0xc0003f49c0, 0x2, 0xc00005a000, 0xc00005a000)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/parse.go:509 +0x151 fp=0xc0000a1818 sp=0xc0000a1760 pc=0x1146001
+github.com/robfig/soy/parse.(*tree).beginTag(0xc0003dd900, 0x3c2, 0xc0003f49c0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/parse.go:138 +0x3c0 fp=0xc0000a18d0 sp=0xc0000a1818 pc=0x11406f0
+github.com/robfig/soy/parse.(*tree).textOrTag(0xc0003dd900, 0x3, 0x3c0, 0xc0003f49bf, 0x1, 0xc0000a1ad0, 0x1, 0x1, 0x0, 0xc0000a1a68, ...)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/parse.go:108 +0x82f fp=0xc0000a19b0 sp=0xc0000a18d0 pc=0x114014f
+github.com/robfig/soy/parse.(*tree).itemList(0xc0003dd900, 0xc0000a1ad0, 0x1, 0x1, 0x4)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/parse.go:60 +0x1b6 fp=0xc0000a1a78 sp=0xc0000a19b0 pc=0x113f5e6
+github.com/robfig/soy/parse.(*tree).parseTemplate(0xc0003dd900, 0x48, 0x3b0, 0xc0003f49a8, 0x8, 0xc00005a000, 0xc00005a000)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/parse.go:754 +0x1c7 fp=0xc0000a1b10 sp=0xc0000a1a78 pc=0x1149757
+github.com/robfig/soy/parse.(*tree).beginTag(0xc0003dd900, 0x3b0, 0xc0003f49a8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/parse.go:135 +0x9ba fp=0xc0000a1bc8 sp=0xc0000a1b10 pc=0x1140cea
+github.com/robfig/soy/parse.(*tree).textOrTag(0xc0003dd900, 0x3, 0x3a8, 0xc0003f49a7, 0x1, 0xc0000a1d98, 0x1, 0x1, 0x12105c0, 0xc0003f0380, ...)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/parse.go:108 +0x82f fp=0xc0000a1ca8 sp=0xc0000a1bc8 pc=0x114014f
+github.com/robfig/soy/parse.(*tree).itemList(0xc0003dd900, 0xc0000a1d98, 0x1, 0x1, 0xc0003f61c0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/parse.go:60 +0x1b6 fp=0xc0000a1d70 sp=0xc0000a1ca8 pc=0x113f5e6
+github.com/robfig/soy/parse.SoyFile(0x0, 0x0, 0xc0003f4600, 0x5fb, 0x0, 0x0, 0x0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/parse.go:41 +0x171 fp=0xc0000a1dd0 sp=0xc0000a1d70 pc=0x113f2a1
+github.com/robfig/soy.(*Bundle).Compile(0xc00005a360, 0x0, 0x0, 0x0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/bundle.go:146 +0x11d fp=0xc0000a1ea0 sp=0xc0000a1dd0 pc=0x118f7cd
+github.com/robfig/soy.Fuzz(0x4010000, 0x5fb, 0x200000, 0x3)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/fuzz.go:7 +0x165 fp=0xc0000a1f10 sp=0xc0000a1ea0 pc=0x1190625
+go-fuzz-dep.Main(0x11f0280)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/goroot/src/go-fuzz-dep/main.go:54 +0xad fp=0xc0000a1f80 sp=0xc0000a1f10 pc=0x1075a1d
+main.main()
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/go.fuzz.main/main.go:10 +0x2d fp=0xc0000a1f98 sp=0xc0000a1f80 pc=0x119133d
+runtime.main()
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/goroot/src/runtime/proc.go:201 +0x207 fp=0xc0000a1fe0 sp=0xc0000a1f98 pc=0x102afc7
+runtime.goexit()
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/goroot/src/runtime/asm_amd64.s:1333 +0x1 fp=0xc0000a1fe8 sp=0xc0000a1fe0 pc=0x1055551
+
+goroutine 1190 [chan send]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0003f61c0, 0x11ed513, 0x24, 0x0, 0x0, 0x0, 0x0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.stringLexer.func1(0xc0003f61c0, 0xc000016e50)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:769 +0x245
+github.com/robfig/soy/parse.(*lexer).run(0xc0003f61c0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lex
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:337 +0xe0
+
+rax    0xc0003ec480
+rbx    0x0
+rcx    0xc000000300
+rdx    0x1342960
+rdi    0xc000022e50
+rsi    0x80
+rbp    0xc0000a0f10
+rsp    0xc0000a0ee8
+r8     0xc000022e18
+r9     0x0
+r10    0xc0003ec4d0
+r11    0x0
+r12    0xffffffffffffffff
+r13    0xa2
+r14    0xa1
+r15    0xaa
+rip    0x1009704
+rflags 0x206
+cs     0x2b
+fs     0x0
+gs     0x0
+exit status 2

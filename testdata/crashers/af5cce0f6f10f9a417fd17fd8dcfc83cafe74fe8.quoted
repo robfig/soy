@@ -1,0 +1,597 @@
+	"ense.copy of the Lic" +
+	"ense at/org/licenses" +
+	"/LICENSE-2.0/w or ag" +
+	"reed to in writing, " +
+	"softwareis distribut" +
+	"ed on an \"AS IS\" BAS" +
+	"IS,F ANY KIND, eithe" +
+	"r express or implied" +
+	". language governing" +
+	" permissions andnder" +
+	" the License.\n\n exam" +
+	"ples.Kai Huang\n\n{nam" +
+	"espace soy.examples." +
+	"features}\n\n\nmments.\n" +
+	" */\n{template.demoCo" +
+	"mments}\n  blah blah<" +
+	"br>   comment\n    co" +
+	"mment */\n  ' because" +
+	" it's preceded by a " +
+	"non-whitespace.\n  ht" +
+	"tp://www.google.com<" +
+	"br>\n{/template}\n\n\n j" +
+	"oining.\n */\n{templat" +
+	"e.demoLineJoining}\n\n" +
+	"  irst line or start" +
+	" of the second line," +
+	" the two\n  d by addi" +
+	"ng a space.\n  First\n" +
+	"  second.<br>\n\n  oin" +
+	" location (end of th" +
+	"e first line or star" +
+	"t of\n   be joined wi" +
+	"thout adding a space" +
+	".\n   at end of first" +
+	" line:\n  <i>First</i" +
+	">\n  second.<br>\n  t " +
+	"start of second line" +
+	":\n  First\n  {''}seco" +
+	"nd.<br>\n\n  e a space" +
+	" would not normally " +
+	"be added (because\n  " +
+	"y tag), use the {sp}" +
+	" tag.\n  <i>First</i>" +
+	"{sp}\n  second.<br>\n\n" +
+	"  joining location w" +
+	"here a space would n" +
+	"ormally be\n  {l}(emp" +
+	"ty string), but caus" +
+	"es the line-joining\n" +
+	"   preventing the li" +
+	"ne-joining space.\n  " +
+	"First{il}\n  second.<" +
+	"br>\n\n{/template}\n\n\nt" +
+	" commands.\n */\n{temp" +
+	"late .demoRawTextCom" +
+	"mands}\n  <pre>\n  har" +
+	"acters.\n  Space     " +
+	"  : AA{sp}BB<br>\n  E" +
+	"mpty string: AA{nil}" +
+	"BB<br>\n  New line   " +
+	" : AA{n}BB<br>\n  Car" +
+	"riage ret: AA{r}BB<b" +
+	"r>\n  Tab         : A" +
+	"A{t}BB<br>\n  Left br" +
+	"ace  : AA{lb}BB<br>\n" +
+	"  Right brace : AA{r" +
+	"b}BB<br>\n\n  l block." +
+	"\n  ot stripped, so t" +
+	"he new line and 2-sp" +
+	"ace indent\n   in the" +
+	" output exactly as w" +
+	"ritten.\n  Literal   " +
+	"  : {literal}F{/lite" +
+	"ral}\n  </pre>\n{/temp" +
+	"late}\n\n\n * @param tw" +
+	"o Preferably the num" +
+	"ber 2.\n */\n{template" +
+	" .demoPrint}  {print" +
+	"'Boo!'}<br>  a strin" +
+	"g\n  {'oo!'}<br>  'pr" +
+	"int' is implied\n  {1" +
+	" + 2}<br>   of an ex" +
+	"pression\n  {$boo}<br" +
+	">  data value\n  {1+ " +
+	"$two}<br>  ession th" +
+	"at uses a data value" +
+	"\n  {LOBAL_INT}, {GLO" +
+	"BAL_BOOL}.<br>  glob" +
+	"als\n{/template}\n\n\n/*" +
+	" print directives.\n " +
+	"* @param longVarName" +
+	" Some ridiculously l" +
+	"ong variable name.\n " +
+	"* @param elementId T" +
+	"he id for an element" +
+	".\n * @param cssClass" +
+	" A CSS class name.\n " +
+	"emoPrintDirectives}\n" +
+	"  insertWordBreaks:<" +
+	"br>\n  <div style=\"wi" +
+	"dth:150px; border:1p" +
+	"x solid #00CC00\">\n  " +
+	"  {$longVarName}<br>" +
+	"  // will run outsid" +
+	"e the div border\n   " +
+	" {$longVarName |inse" +
+	"rtWordBreaks:5}<br> " +
+	" // will be allowed " +
+	"to wrap\n  </div>\n\n  " +
+	"id:<br>\n  // The 'id" +
+	"' and 'class' attrib" +
+	"utes of this span wi" +
+	"ll not be needlessly" +
+	" autoescaped because" +
+	" they\n  // are marke" +
+	"d with the print dir" +
+	"ective '|id'.\n  // N" +
+	"ote: Only use '|id' " +
+	"with identifiers lik" +
+	"e id and class (othe" +
+	"rwise use '|noAutoes" +
+	"cape').\n  <span id=\"" +
+	"{$elementId|id}\" cla" +
+	"ss=\"{$cssClass|id}\" " +
+	"style=\"border:1px so" +
+	"lid #000000\">\n    He" +
+	"llo\n  </span>\n{/temp" +
+	"late}\n\n\n/**\n * Demo " +
+	"autoescape true.\n * " +
+	"@param italicHtml A " +
+	"string surrounded by" +
+	" HTML italics tags.\n" +
+	" */\n{template .demoA" +
+	"utoescapeTrue autoes" +
+	"cape=\"true\"}   the '" +
+	"template' tag for de" +
+	"monstration. Usually" +
+	"\n   the attribute's " +
+	"default value.\n  tra" +
+	"tes the good practic" +
+	"e of adding the suff" +
+	"ix\n  ain HTML tags a" +
+	"nd are known to be s" +
+	"afe.\n\n  {italicHtml}" +
+	"<br>  tags to appear" +
+	" literally\n  {$itali" +
+	"cHtml |noAutoescape}" +
+	"<br>  e prevents aut" +
+	"oescaping\n{/template" +
+	"}\n\nA string surround" +
+	"ed by HTML italics t" +
+	"ags.\n */\n{template ." +
+	"demoAutoescapeFalse " +
+	"autoescape=\"false\"} " +
+	" e cross-site script" +
+	"ing bugs may slip th" +
+	"rough.\n\n  {italicHtm" +
+	"l}<br>   will be app" +
+	"lied\n  {$italicHtml " +
+	"|escapeHtml}<br>   a" +
+	"pplies HTML escaping" +
+	"\n{/template}\n\n/* mo\xb6" +
+	"'msg'.\n * @param nam" +
+	"e The name of the pe" +
+	"rson to say hello to" +
+	".\n * @param labsUrl " +
+	"The URL of the unrel" +
+	"eased 'Labs' feature" +
+	".\n person.\"}\n    Hel" +
+	"lo {$name}!\n  {/msg}" +
+	"<br>\n\n  {msg desc=\"L" +
+	"ink to the unrelease" +
+	"d 'Labs' feature.\"}\n" +
+	"    Click <a href=\"{" +
+	"$labsUrl}\">here</a> " +
+	"to access Labs.\n  {/" +
+	"msg}<br>\n\n  // The '" +
+	"meaning' attribute i" +
+	"s used when you have" +
+	" two messages that a" +
+	"re exactly the same " +
+	"string in\n  // Engli" +
+	"sh, but may be trans" +
+	"lated to different s" +
+	"trings in other lang" +
+	"uages. The 'meaning'" +
+	" attribute\n  // shou" +
+	"ld then be a short s" +
+	"tring that distingui" +
+	"shes the two strings" +
+	", and will be used f" +
+	"or\n  // generating d" +
+	"ifferent message ids" +
+	". The 'meaning' will" +
+	" not be shown to tra" +
+	"nslators, so you mus" +
+	"t\n  // still communi" +
+	"cate all the details" +
+	" in the 'desc' text." +
+	"\n  {msg meaning=\"nou" +
+	"n\" desc=\"The word 'A" +
+	"rchive' used as a no" +
+	"un, i.e. an informat" +
+	"ion store.\"}\n    Arc" +
+	"hive\n  {/msg}<br>\n  " +
+	"{msg meaning=\"verb\" " +
+	"desc=\"The word 'Arch" +
+	"ive' used as a verb," +
+	" i.e. to store infor" +
+	"mation.\"}\n    Archiv" +
+	"e\n  {/msg}<br>\n\n{/te" +
+	"mplate}\n\n\n/**\n * Dem" +
+	"o 'if'.\n * @param pi" +
+	" An approximate valu" +
+	"e for pi.\n nd($pi, 2" +
+	") == 3.14}\n    {msg " +
+	"desc=\"Example: 3.141" +
+	"6 is a good approxim" +
+	"ation of pi.\"}\n     " +
+	" {$pi} is a good app" +
+	"roximation of pi.\n  " +
+	"  {/msg}\n  {elseif r" +
+	"ound($pi) == 3}\n    " +
+	"{msg desc=\"Example: " +
+	"3.1 is a bad approxi" +
+	"mation of pi.\"}\n    " +
+	"  {$pi} is a bad app" +
+	"roximation of pi.\n  " +
+	"  {/msg}\n  {else}\n  " +
+	"  {msg desc=\"Example" +
+	": 5 is nowhere near " +
+	"the value of pi.\"}\n " +
+	"     {$pi} is nowher" +
+	"e near the value of " +
+	"pi.\n    {/msg}\n  {/i" +
+	"f}\n  <br>\n{/template" +
+	"}\n\n\n/**\n * Demo 'plu" +
+	"ral'.\n * @param eggs" +
+	" The number of eggs " +
+	"you need to buy\n */\n" +
+	"{template .demoPlura" +
+	"l}   {msg desc=\"he n" +
+	"umber of eggs you ne" +
+	"ed.\"}\n      {plural " +
+	"$eggs}\n        {case" +
+	" 1}You have one egg\n" +
+	"        {default}You" +
+	" have {$eggs} eggs\n " +
+	"     {/plural}\n    {" +
+	"/msg}\n  <br>\n{/templ" +
+	"ate}\n\n\name The name " +
+	"of a kid.\n */\n{templ" +
+	"ate .demoSwitch}\n  D" +
+	"ear {$name}, &nbsp;\n" +
+	"\n  {switch $name}\n  " +
+	"  {case 'Go'}\n      " +
+	"You've been bad this" +
+	" year.\n    {case 'Fa" +
+	"y', 'Ivy'}\n      You" +
+	"'ve been good this y" +
+	"ear.\n    {default}\n " +
+	"     You don't reall" +
+	"y believe in me, do " +
+	"you?\n  {/switch}\n\n  " +
+	"&nbsp; --Santa<br>\n{" +
+	"/template}\n\n\n/**\n * " +
+	"Demo 'foreach'.\n * @" +
+	"param persons List o" +
+	"f persons. Each pers" +
+	"on must have 'name' " +
+	"and 'numWaffles'.\n *" +
+	"/\n{template .demoFor" +
+	"each}\n\n  {foreach $p" +
+	"erson in $persons}\n\n" +
+	"    {if isFirst($per" +
+	"son)}\n      First,\n " +
+	"   {elseif isLast($p" +
+	"erson)}\n      Finall" +
+	"y,\n    {else}\n      " +
+	"Then\n    {/if}\n    {" +
+	"sp}\n\n    {if $person" +
+	".numWaffles == 1}\n  " +
+	"    {$person.name} a" +
+	"te 1 waffle.\n    {el" +
+	"se}\n      {$person.n" +
+	"ame} ate {$person.nu" +
+	"mWaffles} waffles.\n " +
+	"   {/if}\n    <br>\n\n " +
+	" {ifempty}\n    Nobod" +
+	"y here ate any waffl" +
+	"es.<br>\n\n  {/foreach" +
+	"}\n\n{/template}\n\n\n/**" +
+	"\n * Demo 'for'.\n * @" +
+	"param numLines The n" +
+	"umber of lines to di" +
+	"splay.\n */\n{template" +
+	" .demoFor}\n\n  {for $" +
+	"i in range($numLines" +
+	")}\n    Line {$i + 1}" +
+	" of {$numLines}.<br>" +
+	"\n  {/for}\n\n  {for $i" +
+	" in range(2, 10, 2)}" +
+	"\n    {$i}...{sp}\n  {" +
+	"/for}\n  Who do we ap" +
+	"preciate?<br>\n\n{/tem" +
+	"plate}\n\n\n/**\n * Demo" +
+	" 'call' without 'par" +
+	"am's.\n * @param name" +
+	" The name of the per" +
+	"son who took a trip." +
+	"\n * @param tripInfo " +
+	"The full record of t" +
+	"he trip ('name' and " +
+	"'destination').\n */\n" +
+	"{template .demoCallW" +
+	"ithoutParam}\n\n  // C" +
+	"all template defined" +
+	" in a different file" +
+	".\n  {call soy.exampl" +
+	"es.simple.helloWorld" +
+	" /}<br>\n\n  // Call t" +
+	"emplate defined in t" +
+	"his file.\n  {call .t" +
+	"ripReport_ /}<br>\n\n " +
+	" // Pass all of the " +
+	"current template dat" +
+	"a to the callee.\n  /" +
+	"/ Note: Only the top" +
+	"-level key 'name' wi" +
+	"ll be used because i" +
+	"t matches the name o" +
+	"f a parameter\n  // e" +
+	"xpected by the calle" +
+	"e.\n  {call .tripRepo" +
+	"rt_ data=\"all\" /}<br" +
+	">\n\n  // Pass a subse" +
+	"t of the current tem" +
+	"plate data to the ca" +
+	"llee.\n  {call .tripR" +
+	"eport_ data=\"$tripIn" +
+	"fo\" /}<br>\n\n{/templa" +
+	"te}\n\n\n/**\n * Demo 'c" +
+	"all' with 'param's.\n" +
+	" * @param name The n" +
+	"ame of the person wh" +
+	"o took the trips.\n *" +
+	" @param companionNam" +
+	"e The name of the pe" +
+	"rson who went along " +
+	"for the odd-numbered" +
+	" trips only.\n * @par" +
+	"am destinations List" +
+	" of destinations vis" +
+	"ited by this person." +
+	"\n */\n{template .demo" +
+	"CallWithParam}\n\n  {f" +
+	"oreach $destination " +
+	"in $destinations}\n\n " +
+	"   // Pass the curre" +
+	"nt template data and" +
+	" also pass a paramet" +
+	"er.\n    // Note: Onl" +
+	"y passing data=\"all\"" +
+	" is not sufficient f" +
+	"or providing the 'de" +
+	"stination' parameter" +
+	" of\n    // the calle" +
+	"e because $destinati" +
+	"on is a local variab" +
+	"le here, not part of" +
+	" the template data\n " +
+	"   // passed by data" +
+	"=\"all\".\n    {call .t" +
+	"ripReport_ data=\"all" +
+	"\"}\n      {param dest" +
+	"ination: $destinatio" +
+	"n /}\n    {/call}<br>" +
+	"\n\n    {if index($des" +
+	"tination) % 2 == 0} " +
+	" // even index means" +
+	" odd-numbered trip s" +
+	"ince index is 0-base" +
+	"d\n      // Pass two " +
+	"parameters.\n      {c" +
+	"all .tripReport_}\n  " +
+	"      {param name: $" +
+	"companionName /}\n   " +
+	"     {param destinat" +
+	"ion: $destination /}" +
+	"\n      {/call}<br>\n " +
+	"   {/if}\n\n  {/foreac" +
+	"h}\n\n{/template}\n\n\n/*" +
+	"*\n * Demo 'call' wit" +
+	"h a 'param' block.\n " +
+	"* @param name The na" +
+	"me of the person who" +
+	" took the trip.\n */\n" +
+	"{template .demoCallW" +
+	"ithParamBlock}\n  // " +
+	"Pass 2 parameters, o" +
+	"ne of which is built" +
+	" using Soy code.\n  {" +
+	"call .tripReport_}\n " +
+	"   {param name: $nam" +
+	"e /}\n    {param dest" +
+	"ination}\n      {swit" +
+	"ch randomInt(3)}\n   " +
+	"     {case 0}Boston\n" +
+	"        {case 1}Sing" +
+	"apore\n        {case " +
+	"2}Zurich\n      {/swi" +
+	"tch}\n    {/param}\n  " +
+	"{/call}\n  <br>\n{/tem" +
+	"plate}\n\n\n/**\n * Priv" +
+	"ate helper for demoC" +
+	"allWithoutParams, de" +
+	"moCallWithParams, an" +
+	"d demoCallWithParamB" +
+	"lock.\n * Reports on " +
+	"a trip.\n * @param? n" +
+	"ame The name of the " +
+	"person who took a tr" +
+	"ip (optional).\n * @p" +
+	"aram? destination Th" +
+	"e destination of the" +
+	" trip (optional).\n *" +
+	"/\n{template .tripRep" +
+	"ort_ private=\"true\"}" +
+	"\n  // Note: The temp" +
+	"late name demonstrat" +
+	"es the good practice" +
+	" of adding a trailin" +
+	"g underscore to\n  //" +
+	" private templates (" +
+	"template that should" +
+	" never be called fro" +
+	"m hand-written code)" +
+	".\n\n  // Note: All pa" +
+	"rameters to this tem" +
+	"plate are optional. " +
+	"Therefore, below, we" +
+	" must check for\n  //" +
+	" \"not (hasData() and" +
+	" $name)\" rather than" +
+	" simply \"not $name\" " +
+	"because if absolutel" +
+	"y no data is\n  // pa" +
+	"ssed, then evaluatin" +
+	"g \"$name\" will cause" +
+	" an exception.\n  {if" +
+	" not (hasData() and " +
+	"$name)}\n    // Note:" +
+	" The message below d" +
+	"emonstrates that the" +
+	" 'desc' attribute ca" +
+	"n be left empty. How" +
+	"ever,\n    // this is" +
+	" not recommended exc" +
+	"ept for the simplest" +
+	" messages, otherwise" +
+	" you risk confusing " +
+	"some\n    // translat" +
+	"ors and getting poor" +
+	" translations.\n    {" +
+	"msg desc=\"\"}\n      A" +
+	" trip was taken.\n   " +
+	" {/msg}\n  {elseif no" +
+	"t $destination}\n    " +
+	"{msg desc=\"Example: " +
+	"Alice took a trip.\"}" +
+	"\n      {$name} took " +
+	"a trip.\n    {/msg}\n " +
+	" {else}\n    {msg des" +
+	"c=\"Example: Alice to" +
+	"ok a trip to wonderl" +
+	"and.\"}\n      {$name}" +
+	" took a trip to {$de" +
+	"stination}.\n    {/ms" +
+	"g}\n  {/if}\n{/templat" +
+	"e}\n\n\n/**\n * Demo {pa" +
+	"ram} blocks with 'ki" +
+	"nd' attribute.\n * @p" +
+	"aram message A messa" +
+	"ge text.\n * @param l" +
+	"ist A list of things" +
+	".\n */\n{template .dem" +
+	"oParamWithKindAttrib" +
+	"ute autoescape=\"cont" +
+	"extual\"}\n  <div>\n   " +
+	" {call .demoParamWit" +
+	"hKindAttributeCallee" +
+	"_}\n      // Note tha" +
+	"t the {param} blocks" +
+	" for the message and" +
+	" listItems parameter" +
+	" are declared to hav" +
+	"e\n      // content o" +
+	"f kind HTML. This in" +
+	"structs the contextu" +
+	"al autoescaper to pr" +
+	"ocess the content of" +
+	"\n      // these bloc" +
+	"ks as HTML, and to w" +
+	"rap the the value of" +
+	" the parameter as a " +
+	"soydata.SanitizedHtm" +
+	"l\n      // object.\n " +
+	"     {param message " +
+	"kind=\"html\"}\n       " +
+	" <b>{$message}</b>\n " +
+	"     {/param}\n      " +
+	"{param listItems kin" +
+	"d=\"html\"}\n        {f" +
+	"oreach $i in $list}\n" +
+	"          <li>{$i}</" +
+	"li>\n        {/foreac" +
+	"h}\n      {/param}\n  " +
+	"  {/call}\n  </div>\n{" +
+	"/template}\n\n\n/**\n * " +
+	"Demo {param} blocks " +
+	"with 'kind' attribut" +
+	"e.\n * @param message" +
+	" A message with HTML" +
+	" markup.\n * @param l" +
+	"istItems A HTML-form" +
+	"atted list.\n */\n{tem" +
+	"plate .demoParamWith" +
+	"KindAttributeCallee_" +
+	" private=\"true\" auto" +
+	"escape=\"contextual\"}" +
+	"\n  // Note that both" +
+	" $message and $listI" +
+	"tems contain HTML ma" +
+	"rkup produced by a {" +
+	"param} block in the\n" +
+	"  // the calling tem" +
+	"plate.  Since the {p" +
+	"aram} blocks are dec" +
+	"lared to have HTML c" +
+	"ontent, their values" +
+	"\n  // are wrapped as" +
+	" soydata.SanitizedHt" +
+	"ml objects.  This in" +
+	" turn causes them to" +
+	" be emitted here\n  /" +
+	"/ without further es" +
+	"caping.  In particul" +
+	"ar, it is not necess" +
+	"ary to use the |noAu" +
+	"toescape print\n  // " +
+	"directive to prevent" +
+	" double-escaping.\n  " +
+	"<div>{$message}</div" +
+	">\n  <ol>\n    {$listI" +
+	"tems}\n  </ol>\n{/temp" +
+	"late}\n\n\n/**\n * Demo " +
+	"expressions.\n * @par" +
+	"am students Nonempty" +
+	" list of students. E" +
+	"ach student must hav" +
+	"e 'name', 'major', a" +
+	"nd 'year'.\n * @param" +
+	" currentYear The cur" +
+	"rent year.\n */\n{temp" +
+	"late .demoExpression" +
+	"s}\n\n  First student'" +
+	"s major: {$students." +
+	"0.major}<br>\n  Last " +
+	"student's year: {$st" +
+	"udents[length($stude" +
+	"nts) - 1].year}<br>\n" +
+	"  Random student's m" +
+	"ajor: {$students[ran" +
+	"domInt(length($stude" +
+	"nts))].major}<br>\n\n " +
+	" {foreach $student i" +
+	"n $students}\n    {$s" +
+	"tudent.name}:\n\n    {" +
+	"if isFirst($student)" +
+	"}\n      {sp}First.\n " +
+	"   {elseif isLast($s" +
+	"tudent)}\n      {sp}L" +
+	"ast.\n    // Note: mu" +
+	"st use floor() in ne" +
+	"xt check since divis" +
+	"ion is floating-poin" +
+	"t.\n    {elseif index" +
+	"($student) == ceilin" +
+	"g(length($students) " +
+	"/ 2) - 1}\n      {sp}" +
+	"Middle.\n    {/if}\n\n " +
+	"   {if index($studen" +
+	"t) % 2 == 1} Even.{/" +
+	"if}\n    {sp}{$studen" +
+	"t.major}.\n    {if $s" +
+	"tudent.major == 'Phy" +
+	"si\\s'"

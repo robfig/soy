@@ -1,0 +1,84 @@
+	"008 Google Inc./nse," +
+	" Version 2.0 (the \"L" +
+	"icense\");pt in compl" +
+	"iance with the Licen" +
+	"se.copy of the Licen" +
+	"se at/org/licenses/L" +
+	"ICENSE-2.0/w or agre" +
+	"ed to in writing, so" +
+	"ftwareis distributed" +
+	" on an \"AS IS\" BASIS" +
+	",F ANY KIND, either " +
+	"express or implied. " +
+	"language governing p" +
+	"ermissions andnder t" +
+	"he License.\n\n exampl" +
+	"es.Kai Huang\n\n{names" +
+	"pace soy.examples.fe" +
+	"atures}\n\n\nmments.\n *" +
+	"/\n{template.demoComm" +
+	"ents}\n  blah blah<br" +
+	">   comment\n    comm" +
+	"ent */\n  ' because i" +
+	"t's preceded by a no" +
+	"n-whitespace.\n  http" +
+	"://www.google.com<br" +
+	">\n{/template}\n\n\n joi" +
+	"ning.\n */\n{template." +
+	"demoLineJoining}\n\n  " +
+	"irst line or start o" +
+	"f the second line, t" +
+	"he two\n  d by adding" +
+	" a space.\n  First\n  " +
+	"second.<br>\n\n  oin l" +
+	"ocation (end of the " +
+	"first line or start " +
+	"of\n   be joined with" +
+	"out adding a space.\n" +
+	"   at end of first l" +
+	"ine:\n  <i>First</i>\n" +
+	"  second.<br>\n  t st" +
+	"art of second line:\n" +
+	"  First\n  {''}second" +
+	".<br>\n\n  e a space w" +
+	"ould not normally be" +
+	" added (because\n  y " +
+	"tag), use the {sp} t" +
+	"ag.\n  <i>First</i>{s" +
+	"p}\n  second.<br>\n\n  " +
+	"joining location whe" +
+	"re a space would nor" +
+	"mally be\n  {l}(empty" +
+	" string), but causes" +
+	" the line-joining\n  " +
+	" preventing the line" +
+	"-joining space.\n  Fi" +
+	"rst{il}\n  second.<br" +
+	">\n\n{/template}\n\n\nt c" +
+	"ommands.\n */\n{templa" +
+	"te .demoRawTextComma" +
+	"nds}\n  <pre>\n  harac" +
+	"ters.\n  Space       " +
+	": AA{sp}BB<br>\n  Emp" +
+	"ty string: AA{nil}BB" +
+	"<br>\n  New line    :" +
+	" AA{n}BB<br>\n  Carri" +
+	"age ret: AA{r}BB<br>" +
+	"\n  Tab         : AA{" +
+	"t}BB<br>\n  Left brac" +
+	"e  : AA{lb}BB<br>\n  " +
+	"Right brace : AA{rb}" +
+	"BB<br>\n\n  l block.\n " +
+	" ot stripped, so the" +
+	" new line and 2-spac" +
+	"e indent\n   in the o" +
+	"utput exactly as wri" +
+	"tten.\n  Literal     " +
+	": {literal}F{/litera" +
+	"l}\n  </pre>\n{/templa" +
+	"te}\n\n\n * @param two " +
+	"Preferably the numbe" +
+	"r 2.\n */\n{template ." +
+	"demoPrint}  {print'B" +
+	"oo!'}<br>  a string\n" +
+	"  {'o\\!'"

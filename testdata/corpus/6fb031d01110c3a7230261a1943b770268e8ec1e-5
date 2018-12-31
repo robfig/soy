@@ -1,0 +1,71 @@
+{y}{template.}{/template}{template.}{''}{p}{p}{l}{l}{/template}{template.}{p}{l}{n}{r}{t}{b}{b}{literal}F{/literal}{/template}{template.}{print''}{''}{1}{o}{1+o}{T}{L}{/template}{template. autoescape="tr\\"}{l}{l}{/template}{template. autoescape="false"}{l}{l}{/template}{template.}{msg desc=""}{plural$}{case 1}{default}{s}{/plural}{/msg}{/template}{template.}{e}{switch$}{case''}{case'',''}{t}{/switch}{/template}{template.}{foreach$ in$}{if(n)}{e()}{e}{/if}{p}{if$==1}{n}{e}{n}{n}{/if}{y}{/foreach}{/template}{template.}{for$ in range()}{i}{s}{/for}{for$ in range(2)}{i}{p}{/for}{/template}{template.}{call./}{call. data="l"/}{call. data="o"/}{/template}{template.}{foreach$ in$}{call. data="l"}{param n:n/}{/call}{if(n)%2==0}
+{call.}{param e:$/}{param n:$/}{/call}>{/if}{/foreach}{/template}/**.*/{template.}{ll.}{arame/}{}{}{}{}{}{}{}{}{}{""}{}{""}{}{}{""}{}{}{}{""}{}{}{}{}{}{}{""}{}{}{""}{}{}{""}{}{}{}{}{}{}{}{""""}{}{}{}{}{}{}{.}{}{}{}{}{}{}{}{}{ }{}{}{}{}{}{}{''''}{}{}{}{}{2 9''''}{}{2}{9}{}{}{}{}{}{{""}}owing: (a) the output of the 'call' must not contain translated content, otherwise the
+    // message would be translated in multiple parts and may not read correctly in some languages,
+    // (b) since the whole 'call' turns into a single placeholder, be sure to provide a clear
+    // description and example to the translator.
+    The set of {$setName} is {lb}
+    {call .buildCommaSeparatedList_}
+      {param items: $setMembers /}
+    {/call}
+    , ...{rb}.
+  {/msg}
+{/template}
+
+
+/**
+ * Private helper to build a comma separated list.
+ * @param items The list of items.
+ */
+{template .buildCommaSeparatedList_ private="true"}
+  {foreach $item in $items}
+    {if not isFirst($item)}
+      ,{sp}
+    {/if}
+    {$item}
+  {/foreach}
+{/template}
+
+
+/**
+ * Demo B2 parameters, one of which is built using Soy code.
+  {call .tripReport_}
+    {param name: $name /}
+    {param destination}
+      {switch randomInt(3)}
+        {case 0}Boston
+        {case 1}Singapore
+        {case 2}Zurich
+      {switch}
+    {param}
+  {call}
+  <br>
+{template}
+
+
+/**
+ * Private helper for demoCallWithoutParams, demoCallWithParams, and demoCallWithParamBlock.
+ * Reports on a trip.
+ * @param? name The name of the person who took a trip (option(b) sincal).
+ * @param? destination The destination of the trip (optional).
+ */
+{template .tripReport_ private="true"}
+  // Note: The template name demonstrates the good practice of adding a trailing underscore to
+  // private templates (template that should never be called from hand-written code).
+
+  // Note: All parameters to this template are optional. Therefore, below, we must check for
+  // "not (hasData() and $name)" rather than simply "not $name" because if absolutely no data is
+  // passed, then evaluating "$name" will cause an exception.
+  {if not (hasData() and $name)}
+    // Note: The message below demonstrates that the 'desc' attribute can be left empty. However,
+    // this is not recommended except for the simplest messages, otherwise you risk confusing some
+    // translators and getting poor translations.
+    {msg desc=""}
+      A trip was taken.
+    {msg}
+  {elseif not $destination}
+    {msg desc="Example: Alice took a trip."}
+      {$name} took a trip.
+    {msg}
+  {else}
+    {msg desc="Example: Alice took a trip to wonderland."}
+     

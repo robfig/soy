@@ -1,0 +1,1010 @@
+panic: runtime error: slice bounds out of range
+
+goroutine 129 [running]:
+github.com/robfig/soy/parse.(*lexer).emit(...)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:389
+github.com/robfig/soy/parse.lexSoyDocParam(0xc00012a850)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:721 +0x6df
+github.com/robfig/soy/parse.lexSoyDoc(0xc00012a850, 0x2a)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:677 +0x487
+github.com/robfig/soy/parse.lexText(0xc00012a850, 0x0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:481 +0x5ac
+github.com/robfig/soy/parse.(*lexer).run(0xc00012a850)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lex
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:337 +0xe0
+
+goroutine 1 [chan receive]:
+github.com/robfig/soy/parse.(*lexer).nextItem(...)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:320
+github.com/robfig/soy/parse.(*tree).next(...)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/parse.go:1147
+github.com/robfig/soy/parse.(*tree).expect(0xc00011efa0, 0x10, 0x11e7d6c, 0xc, 0x11f03f0, 0xc0000b9b80, 0xc0000b9b70, 0x109024e)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/parse.go:1202 +0x313
+github.com/robfig/soy/parse.(*tree).parseSoyDoc(0xc00011efa0, 0x2c, 0x3, 0xc000017130, 0x3, 0x11ca860, 0x3)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/parse.go:535 +0x181
+github.com/robfig/soy/parse.(*tree).textOrTag(0xc00011efa0, 0x2c, 0x3, 0xc000017130, 0x3, 0xc0000b9d98, 0x1, 0x1, 0xc000000300, 0xc000020080, ...)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/parse.go:110 +0x743
+github.com/robfig/soy/parse.(*tree).itemList(0xc00011efa0, 0xc0000b9d98, 0x1, 0x1, 0xc00012a850)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/parse.go:60 +0x1b6
+github.com/robfig/soy/parse.SoyFile(0x0, 0x0, 0xc000017130, 0xa, 0x0, 0x0, 0x0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/parse.go:41 +0x171
+github.com/robfig/soy.(*Bundle).Compile(0xc000097800, 0x0, 0x0, 0x0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/bundle.go:146 +0x11d
+github.com/robfig/soy.Fuzz(0x4010000, 0xa, 0x200000, 0x3)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/fuzz.go:7 +0x165
+go-fuzz-dep.Main(0x11f0280)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/goroot/src/go-fuzz-dep/main.go:54 +0xad
+main.main()
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/go.fuzz.main/main.go:10 +0x2d
+
+goroutine 4 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000a5880, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc000043fa8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000a5880, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000a5880)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 5 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000a58f0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000a5940)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000a58f0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000a58f0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 6 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000a5960, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0x1)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000a5960, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000a5960)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 7 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000a59d0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000457a8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000a59d0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000a59d0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 9 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000a5ab0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc000045fa8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000a5ab0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000a5ab0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 10 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000a5b20, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000a5b70)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000a5b20, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000a5b20)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 11 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000a5b90, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0x1)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000a5b90, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000a5b90)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 12 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000a5c00, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc00003f7a8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000a5c00, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000a5c00)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 14 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000a5ce0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc00003ffa8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000a5ce0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000a5ce0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 15 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000a5d50, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000a5da0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000a5d50, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000a5d50)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 16 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000a5dc0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0x1)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000a5dc0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000a5dc0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 33 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000a5e30, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000417a8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000a5e30, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000a5e30)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 35 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000a5f10, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc000041fa8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000a5f10, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000a5f10)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 36 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000a5f80, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000a5fd0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000a5f80, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000a5f80)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 37 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e6000, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0x1)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e6000, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e6000)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 38 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e6070, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000e37a8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e6070, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e6070)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 40 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e6150, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000e3fa8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e6150, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e6150)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 41 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e61c0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000e6210)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e61c0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e61c0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 42 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e6230, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0x1)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e6230, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e6230)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 43 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e62a0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000e57a8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e62a0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e62a0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 45 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e6380, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000e5fa8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e6380, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e6380)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 46 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e63f0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000e6440)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e63f0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e63f0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 47 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e6460, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0x1)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e6460, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e6460)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 48 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e64d0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000df7a8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e64d0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e64d0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 50 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e65b0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000dffa8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e65b0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e65b0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 51 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e6620, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000e6670)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e6620, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e6620)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 52 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e6690, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0x1)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e6690, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e6690)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 53 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e6700, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000e17a8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e6700, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e6700)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 55 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e67e0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000e1fa8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e67e0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e67e0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 56 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e6850, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000e68a0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e6850, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e6850)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 57 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e68c0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0x1)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e68c0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e68c0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 58 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e6930, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000f77a8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e6930, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e6930)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 60 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e6a10, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000f7fa8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e6a10, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e6a10)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 61 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e6a80, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000e6ad0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e6a80, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e6a80)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 62 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e6af0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0x1)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e6af0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e6af0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 63 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e6b60, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000f97a8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e6b60, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e6b60)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 65 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e6c40, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000f9fa8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e6c40, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e6c40)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 66 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e6cb0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000e6d00)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e6cb0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e6cb0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 67 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e6d20, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0x1)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e6d20, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e6d20)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 68 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e6d90, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000f37a8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e6d90, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e6d90)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 70 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e6e70, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000f3fa8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e6e70, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e6e70)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 71 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e6ee0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000e6f30)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e6ee0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e6ee0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 72 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e6f50, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0x1)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e6f50, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e6f50)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 73 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e6fc0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000f57a8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e6fc0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e6fc0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 75 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e70a0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000f5fa8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e70a0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e70a0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 76 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e7110, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000e7160)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e7110, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e7110)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 77 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e7180, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0x1)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e7180, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e7180)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 78 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e71f0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0001037a8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e71f0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e71f0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 80 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e72d0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc000103fa8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e72d0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e72d0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 81 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e7340, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000e7390)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e7340, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e7340)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 82 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e73b0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0x1)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e73b0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e73b0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 83 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e7420, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0001057a8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e7420, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e7420)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 84 [runnable]:
+github.com/robfig/soy/parse.(*lexer).emit(...)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:390
+github.com/robfig/soy/parse.lexText(0xc0000e7490, 0x0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:500 +0x2b8
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e7490)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lex
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:337 +0xe0
+
+goroutine 85 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e7500, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000fe7a8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e7500, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e7500)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 86 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e7570, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000e75c0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e7570, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e7570)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 87 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e75e0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0x1)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e75e0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e75e0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 88 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e7650, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000fffa8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e7650, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e7650)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 89 [runnable]:
+github.com/robfig/soy/parse.(*lexer).emit(...)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:390
+github.com/robfig/soy/parse.lexText(0xc0000e76c0, 0x0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:500 +0x2b8
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e76c0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lex
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:337 +0xe0
+
+goroutine 90 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e7730, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc000100fa8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e7730, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e7730)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 91 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e77a0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000e77f0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e77a0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e77a0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 92 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e7810, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0x1)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e7810, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e7810)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 93 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e7880, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0001127a8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e7880, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e7880)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 94 [runnable]:
+github.com/robfig/soy/parse.(*lexer).emit(...)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:390
+github.com/robfig/soy/parse.lexText(0xc0000e78f0, 0x0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:500 +0x2b8
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e78f0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lex
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:337 +0xe0
+
+goroutine 95 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e7960, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0001137a8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e7960, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e7960)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 96 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e79d0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000e7a20)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e79d0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e79d0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 97 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e7a40, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0x1)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e7a40, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e7a40)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 98 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e7ab0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc000114fa8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e7ab0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e7ab0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 99 [runnable]:
+github.com/robfig/soy/parse.(*lexer).emit(...)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:390
+github.com/robfig/soy/parse.lexText(0xc0000e7b20, 0x0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:500 +0x2b8
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e7b20)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lex
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:337 +0xe0
+
+goroutine 100 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e7b90, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc000115fa8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e7b90, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e7b90)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 101 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e7c00, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000e7c50)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e7c00, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e7c00)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 102 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e7c70, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0x1)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e7c70, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e7c70)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 103 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e7ce0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc00010f7a8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e7ce0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e7ce0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 104 [runnable]:
+github.com/robfig/soy/parse.(*lexer).emit(...)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:390
+github.com/robfig/soy/parse.lexText(0xc0000e7d50, 0x0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:500 +0x2b8
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e7d50)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lex
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:337 +0xe0
+
+goroutine 105 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e7dc0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0001107a8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e7dc0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e7dc0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 106 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e7e30, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0000e7e80)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e7e30, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e7e30)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 107 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e7ea0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0x1)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e7ea0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e7ea0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 108 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc0000e7f10, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc000111fa8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc0000e7f10, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e7f10)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 109 [runnable]:
+github.com/robfig/soy/parse.(*lexer).emit(...)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:390
+github.com/robfig/soy/parse.lexText(0xc0000e7f80, 0x0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:500 +0x2b8
+github.com/robfig/soy/parse.(*lexer).run(0xc0000e7f80)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lex
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:337 +0xe0
+
+goroutine 110 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc00012a000, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc000124fa8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc00012a000, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc00012a000)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 111 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc00012a070, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc00012a0c0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc00012a070, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc00012a070)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 112 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc00012a0e0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0x1)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc00012a0e0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc00012a0e0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 113 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc00012a150, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0001267a8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc00012a150, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc00012a150)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 114 [runnable]:
+github.com/robfig/soy/parse.(*lexer).emit(...)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:390
+github.com/robfig/soy/parse.lexText(0xc00012a1c0, 0x0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:500 +0x2b8
+github.com/robfig/soy/parse.(*lexer).run(0xc00012a1c0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lex
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:337 +0xe0
+
+goroutine 115 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc00012a230, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0001277a8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc00012a230, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc00012a230)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 116 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc00012a2a0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc00012a2f0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc00012a2a0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc00012a2a0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 117 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc00012a310, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0x1)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc00012a310, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc00012a310)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 118 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc00012a380, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc000120fa8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc00012a380, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc00012a380)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 119 [runnable]:
+github.com/robfig/soy/parse.(*lexer).emit(...)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:390
+github.com/robfig/soy/parse.lexText(0xc00012a3f0, 0x0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:500 +0x2b8
+github.com/robfig/soy/parse.(*lexer).run(0xc00012a3f0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lex
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:337 +0xe0
+
+goroutine 120 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc00012a460, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc000121fa8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc00012a460, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc00012a460)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 121 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc00012a4d0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc00012a520)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc00012a4d0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc00012a4d0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 122 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc00012a540, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0x1)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc00012a540, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc00012a540)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 123 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc00012a5b0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0001237a8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc00012a5b0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc00012a5b0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 124 [runnable]:
+github.com/robfig/soy/parse.(*lexer).emit(...)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:390
+github.com/robfig/soy/parse.lexText(0xc00012a620, 0x0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:500 +0x2b8
+github.com/robfig/soy/parse.(*lexer).run(0xc00012a620)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lex
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:337 +0xe0
+
+goroutine 125 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc00012a690, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc0001367a8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc00012a690, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc00012a690)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 126 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc00012a700, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc00012a750)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc00012a700, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc00012a700)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 127 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc00012a770, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0x1)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc00012a770, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc00012a770)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+
+goroutine 128 [runnable]:
+github.com/robfig/soy/parse.(*lexer).errorf(0xc00012a7e0, 0x11e7d90, 0xc, 0x0, 0x0, 0x0, 0xc000137fa8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:435 +0xc7
+github.com/robfig/soy/parse.lexInsideTag(0xc00012a7e0, 0x11f02b8)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:607 +0xda3
+github.com/robfig/soy/parse.(*lexer).run(0xc00012a7e0)
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:356 +0x6a
+created by github.com/robfig/soy/parse.lexExpr
+	/var/folders/0z/jj76r3z526g9lf3k87cmydyh0000gn/T/go-fuzz-build540080373/gopath/src/github.com/robfig/soy/parse/lexer.go:349 +0xe0
+exit status 2

@@ -1,0 +1,74 @@
+008 Google Inc./nse, Version 2.0 (the "License");pt in compliance with the License.copy of the License at/org/licenses/LICENSE-2.0/w or agreed to in writing, softwareis distributed on an "AS IS" BASIS,F ANY KIND, either express or implied. language governing permissions andnder the License.
+
+ examples.Kai Huang
+
+{namespace soy.examples.features}
+
+
+mments.
+ */
+{template.demoComments}
+  blah blah<br>   comment
+    comment */
+  ' because it's preceded by a non-whitespace.
+  http://www.google.com<br>
+{/template}
+
+
+ joining.
+ */
+{template.demoLineJoining}
+
+  irst line or start of the second line, the two
+  d by adding a space.
+  First
+  second.<br>
+
+  oin location (end of the first line or start of
+   be joined without adding a space.
+   at end of first line:
+  <i>First</i>
+  second.<br>
+  t start of second line:
+  First
+  {''}second.<br>
+
+  e a space would not normally be added (because
+  y tag), use the {sp} tag.
+  <i>First</i>{sp}
+  second.<br>
+
+  joining location where a space would normally be
+  {l}(empty string), but causes the line-joining
+   preventing the line-joining space.
+  First{il}
+  second.<br>
+
+{/template}
+
+
+t commands.
+ */
+{template .demoRawTextCommands}
+  <pre>
+  haracters.
+  Space       : AA{sp}BB<br>
+  Empty string: AA{nil}BB<br>
+  New line    : AA{n}BB<br>
+  Carriage ret: AA{r}BB<br>
+  Tab         : AA{t}BB<br>
+  Left brace  : AA{lb}BB<br>
+  Right brace : AA{rb}BB<br>
+
+  l block.
+  ot stripped, so the new line and 2-space indent
+   in the output exactly as written.
+  Literal     : {literal}F{/literal}
+  </pre>
+{/template}
+
+
+ * @param two Preferably the number 2.
+ */
+{template .demoPrint}  {print'Boo!'}<br>  a string
+  {'o\!'

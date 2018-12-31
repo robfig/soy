@@ -1,0 +1,180 @@
+{namespacey}{template.}whitespace.
+  http://www.google.com<br>
+{/template}
+
+
+ joining.
+ */
+{template.demoLineJoining}
+
+  irst line or start of the second line, the two
+  d by adding a space.
+  First
+  second.<br>
+
+  oin location (end of the first line or start of
+   be joined without adding a space.
+   at end of first line:
+  <i>First</i>
+  second.<br>
+  t start of second line:
+  First
+  {''}second.<br>
+
+  e a space would not normally be added (because
+  y tag), use the {sp} tag.
+  <i>First</i>{sp}
+  second.<br>
+
+  joining location where a space would normally be
+  {l}(empty string), but causes the line-joining
+   preventing the line-joining space.
+  First{il}
+  second.<br>
+
+{/template}
+
+
+t commands.
+ */
+{template .demoRawTextCommands}
+  <pre>
+  haracters.
+  Space       : AA{sp}BB<br>
+  Empty string: AA{nil}BB<br>
+  New line    : AA{n}BB<br>
+  Carriage ret: AA{r}BB<br>
+  Tab         : AA{t}BB<br>
+  Left brace  : AA{lb}BB<br>
+  Right brace : AA{rb}BB<br>
+
+  l block.
+  ot stripped, so the new line and 2-space indent
+   in the output exactly as written.
+  Literal     : {literal}F{/literal}
+  </pre>
+{/template}
+
+
+ * @param two Preferably the number 2.
+ */
+{template .demoPrint}  {print'Boo!'}<br>  a string
+  {'oo!'}<br>  'print' is implied
+  {1 + 2}<br>   of an expression
+  {$boo}<br>  data value
+  {1+ $two}<br>  ession that uses a data value
+  {LOBAL_INT}, {GLOBAL_BOOL}.<br>  globals
+{/template}
+
+
+/* print directives.
+ * @param longVarName Some ridiculously long variable name.
+ * @param elementId The id for an element.
+ * @param cssClass A CSS class name.
+ emoPrintDirectives}
+  insertWordBreaks:<br>
+  <div style="width:150px; border:1px solid #00CC00">
+    {$longVarName}<br>  // will run outside the div border
+    {$longVarName |insertWordBreaks:5}<br>  // will be allowed to wrap
+  </div>
+
+  id:<br>
+  // The 'id' and 'class' attributes of this span will not be needlessly autoescaped because they
+  // are marked with the print directive '|id'.
+  // Note: Only use '|id' with identifiers like id and class (otherwise use '|noAutoescape').
+  <span id="{$elementId|id}" class="{$cssClass|id}" style="border:1px solid #000000">
+    Hello
+  </span>
+{/template}
+
+
+/**
+ * Demo autoescape true.
+ * @param italicHtml A string surrounded by HTML italics tags.
+ */
+{template .demoAutoescapeTrue autoescape="true"}   the 'template' tag for demonstration. Usually
+   the attribute's default value.
+  trates the good practice of adding the suffix
+  ain HTML tags and are known to be safe.
+
+  {italicHtml}<br>  tags to appear literally
+  {$italicHtml |noAutoescape}<br>  e prevents autoescaping
+{/template}
+
+A string surrounded by HTML italics tags.
+ */
+{template .demoAutoescapeFalse autoescape="false"}  e cross-site scripting bugs may slip through.
+
+  {italicHtml}<br>   will be applied
+  {$italicHtml |escapeHtml}<br>   applies HTML escaping
+{/template}
+
+/* mo¶'msg'.
+ * @param name The name of the person to say hello to.
+ * @param labsUrl The URL of the unreleased 'Labs' feature.
+ person."}
+    Hello {$name}!
+  {/msg}<br>
+
+  {msg desc="Link to the unreleased 'Labs' feature."}
+    Click <a href="{$labsUrl}">here</a> to access Labs.
+  {/msg}<br>
+
+  // The 'meaning' attribute is used when you have two messages that are exactly the same string in
+  // English, but may be translated to different strings in other languages. The 'meaning' attribute
+  // should then be a short string that distinguishes the two strings, and will be used for
+  // generating different message ids. The 'meaning' will not be shown to translators, so you must
+  // still communicate all the details in the 'desc' text.
+  {msg meaning="noun" desc="The word 'Archive' used as a noun, i.e. an information store."}
+    Archive
+  {/msg}<br>
+  {msg meaning="verb" desc="The word 'Archive' used as a verb, i.e. to store information."}
+    Archive
+  {/msg}<br>
+
+{/template}
+
+
+/**
+ * Demo 'if'.
+ * @param pi An approximate value for pi.
+ nd($pi, 2) == 3.14}
+    {msg desc="Example: 3.1416 is a good approximation of pi."}
+      {$pi} is a good approximation of pi.
+    {/msg}
+  {elseif round($pi) == 3}
+    {msg desc="Example: 3.1 is a bad approximation of pi."}
+      {$pi} is a bad approximation of pi.
+    {/msg}
+  {else}
+    {msg desc="Example: 5 is nowhere near the value of pi."}
+      {$pi} is nowhere near the value of pi.
+    {/msg}
+  {/if}
+  <br>
+{/template}
+
+
+/**
+ * Demo 'plural'.
+ * @param eggs The number of eggs you need to buy
+ */
+{template .demoPlural}   {msg desc="he number of eggs you need."}
+      {plural $eggs}
+        {case 1}You have one egg
+        {default}You have {$eggs} eggs
+      {/plural}
+    {/msg}
+  <br>
+{/template}
+
+
+ame The name of a kid.
+ */
+{template .demoSwitch}
+  Dear {$name}, &nbsp;
+
+  {switch $name}
+    {case 'Go'}
+      You've been bad this year.
+    {case 'Fay', 'I\y'

@@ -1,0 +1,25 @@
+panic: runtime error: slice bounds out of range [recovered]
+github.com/robfig/soy/parse.(*tree).recover
+panic
+github.com/robfig/soy/parse.unquoteString
+github.com/robfig/soy/parse.(*tree).newValueNode
+github.com/robfig/soy/parse.(*tree).parseExprFirstTerm
+github.com/robfig/soy/parse.(*tree).parseExpr
+github.com/robfig/soy/parse.(*tree).parseExpr
+github.com/robfig/soy/parse.(*tree).parseIf
+github.com/robfig/soy/parse.(*tree).beginTag
+github.com/robfig/soy/parse.(*tree).textOrTag
+github.com/robfig/soy/parse.(*tree).itemList
+github.com/robfig/soy/parse.(*tree).parseFor
+github.com/robfig/soy/parse.(*tree).beginTag
+github.com/robfig/soy/parse.(*tree).textOrTag
+github.com/robfig/soy/parse.(*tree).itemList
+github.com/robfig/soy/parse.(*tree).parseTemplate
+github.com/robfig/soy/parse.(*tree).beginTag
+github.com/robfig/soy/parse.(*tree).textOrTag
+github.com/robfig/soy/parse.(*tree).itemList
+github.com/robfig/soy/parse.SoyFile
+github.com/robfig/soy.(*Bundle).Compile
+github.com/robfig/soy.Fuzz
+go-fuzz-dep.Main
+main.main
