@@ -32,7 +32,7 @@ func Msgid(n *ast.MsgNode) string {
 	return msgidn(n, true)
 }
 
-// MsgPlural returns the msgid_plural for the given message.
+// MsgidPlural returns the msgid_plural for the given message.
 func MsgidPlural(n *ast.MsgNode) string {
 	return msgidn(n, false)
 }
