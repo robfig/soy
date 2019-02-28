@@ -355,6 +355,14 @@ func TestDataRefs(t *testing.T) {
 		exprtestwdata("elvis and nullsafe expr half success", "{$foo?['bar'] ?: 'hello'}", "hello", d{"foo": d{}}),
 		exprtestwdata("elvis and nullsafe chain", "{$foo?.bar?.baz ?: 'hello'}", "hello", d{"foo": d{"bar": d{}}}),
 
+		// nullsafe + binary op
+		exprtestwdata("elvis and nullsafe key add", "{let $x: $foo + $bar?.baz /}{$x}", "5", d{"foo": 2, "bar": d{"baz": 3}}), // incorrect would give null
+		exprtestwdata("elvis and nullsafe key add rev", "{let $x: $bar?.baz + $foo /}{$x}", "5", d{"foo": 2, "bar": d{"baz": 3}}),
+		exprtestwdata("elvis and nullsafe key or", "{let $x: $foo or $bar?.baz /}{$x}", "hello", d{"foo": "hello", "bar": d{}}), // incorrect would give null
+		exprtestwdata("elvis and nullsafe key or rev", "{let $x: $bar?.baz or $foo /}{$x}", "hello", d{"foo": "hello", "bar": d{}}),
+		exprtestwdata("elvis and nullsafe key comp", "{let $x: $foo == $bar?.baz /}{$x}", "false", d{"foo": "hello", "bar": d{}}), // incorrect would give undefined
+		exprtestwdata("elvis and nullsafe key comp rev", "{let $x: $bar?.baz == $foo /}{$x}", "false", d{"foo": "hello", "bar": d{}}),
+
 		// DIFFERENCE: More tests on nullsafe navigation.
 		exprtestwdata("nullsafe battle royale",
 			"{$foo[2].bar?.baz?['bar']?[3].boo[3]}", "null", d{
