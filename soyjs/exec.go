@@ -720,7 +720,7 @@ func (s *state) block(node ast.Node) string {
 
 func (s *state) op(symbol string, node ast.ParentNode) {
 	var children = node.Children()
-	s.js("(", children[0], " ", symbol, " ", children[1], ")")
+	s.js("((", children[0], ") ", symbol, " (", children[1], "))")
 }
 
 func (s *state) indent() {
