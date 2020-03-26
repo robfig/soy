@@ -498,6 +498,19 @@ func TestParse(t *testing.T) {
 	}
 }
 
+func TestParse_Regression(t *testing.T) {
+	_, err := SoyFile("unterminated string", `
+{namespace foo}
+
+{template .bar}
+  {call .baz data="all /}
+{/template}
+`)
+	if err == nil {
+		t.Errorf("expected an error, got none")
+	}
+}
+
 func eqTree(t *testing.T, expected, actual ast.Node) bool {
 	if reflect.TypeOf(actual) != reflect.TypeOf(expected) {
 		t.Errorf("expected %T, got %T", expected, actual)

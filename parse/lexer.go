@@ -766,7 +766,7 @@ func stringLexer(quoteChar rune) stateFn {
 		for {
 			switch l.next() {
 			case eof:
-				l.errorf("unexpected eof while scanning string")
+				return l.errorf("unexpected eof while scanning string")
 			case '\\':
 				l.next() // skip escape sequences
 			case quoteChar:
@@ -799,7 +799,7 @@ func lexIdent(l *lexer) stateFn {
 	case '?':
 		dot := l.next()
 		if dot != '.' {
-			l.errorf("unexpected beginning to ident: ?%v", dot)
+			return l.errorf("unexpected beginning to ident: ?%v", dot)
 		}
 		if isDigit(l.next()) {
 			itemType = itemQuestionDotIndex
