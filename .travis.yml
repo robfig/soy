@@ -1,16 +1,10 @@
 language: go
 go:
-  - 1.8
-  - 1.9
-  - "1.10"
-  - 1.11
+  - "1.12"
+  - "1.13"
+  - "1.14"
   - tip
-install:
-  - go get golang.org/x/tools/cmd/cover || true
-  - go get code.google.com/p/go.tools/cmd/cover || true
-  - go get github.com/andreyvit/diff
-  - go get github.com/robertkrimen/otto
-  - go get github.com/fsnotify/fsnotify
-  - go get github.com/robfig/gettext/po
+env:
+  - GO111MODULE=on
 script:
-  - go test github.com/robfig/soy/...
+  - go test ./...
