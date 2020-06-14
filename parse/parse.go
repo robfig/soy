@@ -200,7 +200,7 @@ func (t *tree) parsePrint(token item) ast.Node {
 			var id = t.expect(itemIdent, "print directive")
 			var args []ast.Node
 			for {
-				// each argument is preceeded by a colon (first arg) or comma (subsequent)
+				// each argument is preceded by a colon (first arg) or comma (subsequent)
 				switch next := t.next(); next.typ {
 				case itemColon, itemComma:
 					args = append(args, t.parseExpr(0))

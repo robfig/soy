@@ -471,7 +471,7 @@ func lexText(l *lexer) stateFn {
 				if lastCharEmitted == 0 || isSpaceEOL(lastCharEmitted) {
 					maybeEmitText(l, 3)
 					if lastChar != 0 {
-						l.start++ // ignore the preceeding space, if present.
+						l.start++ // ignore the preceding space, if present.
 					}
 					return lexLineComment(l)
 				}
