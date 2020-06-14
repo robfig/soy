@@ -3,7 +3,7 @@ package template
 import "github.com/robfig/soy/ast"
 
 // Template is a Soy template's parse tree, including the relevant context
-// (preceeding soydoc and namespace).
+// (preceding soydoc and namespace).
 type Template struct {
 	Doc       *ast.SoyDocNode    // this template's SoyDoc
 	Node      *ast.TemplateNode  // this template's node
