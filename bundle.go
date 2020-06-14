@@ -23,8 +23,8 @@ var Logger = log.New(os.Stderr, "[soy] ", 0)
 
 type soyFile struct{ name, content string }
 
-// Bundle is a collection of soy content (templates and globals).  It acts as
-// input for the soy compiler.
+// Bundle is a collection of Soy content (templates and globals).  It acts as
+// input for the Soy compiler.
 type Bundle struct {
 	files                 []soyFile
 	globals               data.Map
@@ -39,7 +39,7 @@ func NewBundle() *Bundle {
 	return &Bundle{globals: make(data.Map)}
 }
 
-// WatchFiles tells soy to watch any template files added to this bundle,
+// WatchFiles tells Soy to watch any template files added to this bundle,
 // re-compile as necessary, and propagate the updates to your tofu.  It should
 // be called once, before adding any files.
 func (b *Bundle) WatchFiles(watch bool) *Bundle {
@@ -71,7 +71,7 @@ func (b *Bundle) AddTemplateDir(root string) *Bundle {
 	return b
 }
 
-// AddTemplateFile adds the given soy template file text to this bundle.
+// AddTemplateFile adds the given Soy template file text to this bundle.
 // If WatchFiles is on, it will be subsequently watched for updates.
 func (b *Bundle) AddTemplateFile(filename string) *Bundle {
 	content, err := ioutil.ReadFile(filename)
@@ -127,20 +127,20 @@ func (b *Bundle) SetRecompilationCallback(c func(*template.Registry)) *Bundle {
 }
 
 // AddParsePass adds a function to the bundle that will be called
-// after the soy is parsed
+// after the Soy is parsed.
 func (b *Bundle) AddParsePass(f func(template.Registry) error) *Bundle {
 	b.parsepasses = append(b.parsepasses, f)
 	return b
 }
 
-// Compile parses all of the soy files in this bundle, verifies a number of
+// Compile parses all of the Soy files in this bundle, verifies a number of
 // rules about data references, and returns the completed template registry.
 func (b *Bundle) Compile() (*template.Registry, error) {
 	if b.err != nil {
 		return nil, b.err
 	}
 
-	// Compile all the soy (globals are already parsed)
+	// Compile all the Soy (globals are already parsed).
 	var registry = template.Registry{}
 	for _, soyfile := range b.files {
 		var tree, err = parse.SoyFile(soyfile.name, soyfile.content)
@@ -193,7 +193,7 @@ func (b *Bundle) recompiler(reg *template.Registry) {
 				}
 			}
 
-			// Recompile all the soy.
+			// Recompile all the Soy.
 			var bundle = NewBundle().
 				AddGlobalsMap(b.globals)
 			for _, soyfile := range b.files {

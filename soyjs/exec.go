@@ -358,7 +358,7 @@ func (s *state) visitPrint(node *ast.PrintNode) {
 			s.js(",")
 			s.walk(arg)
 		}
-		// soy specifies truncate adds ellipsis by default, so we have to pass
+		// Soy specifies truncate adds ellipsis by default, so we have to pass
 		// doAddEllipsis = true to soy.$$truncate
 		if dir.Name == "truncate" && len(dir.Args) == 1 {
 			s.js(",true")

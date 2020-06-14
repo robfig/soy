@@ -10,13 +10,13 @@ import (
 
 var timeType = reflect.TypeOf(time.Time{})
 
-// New converts the given data into a soy data value, using
+// New converts the given data into a Soy data value, using
 // DefaultStructOptions for structs.
 func New(value interface{}) Value {
 	return NewWith(DefaultStructOptions, value)
 }
 
-// NewWith converts the given data value soy data value, using the provided
+// NewWith converts the given data value Soy data value, using the provided
 // StructOptions for any structs encountered.
 func NewWith(convert StructOptions, value interface{}) Value {
 	// quick return if we're passed an existing data.Value

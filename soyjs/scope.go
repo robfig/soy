@@ -2,7 +2,7 @@ package soyjs
 
 import "strconv"
 
-// scope provides a lookup from soy variable name to the JS name.
+// scope provides a lookup from Soy variable name to the JS name.
 // it is pushed and popped upon entering and leaving loop scopes.
 type scope struct {
 	stack []map[string]string

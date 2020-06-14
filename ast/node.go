@@ -10,10 +10,10 @@ import (
 	"github.com/robfig/soy/data"
 )
 
-// Node represents any singular piece of a soy template.  For example, a
+// Node represents any singular piece of a Soy template.  For example, a
 // sequence of raw text or a print tag.
 type Node interface {
-	String() string // String returns the soy source representation of this node.
+	String() string // String returns the Soy source representation of this node.
 	Position() Pos  // byte position of start of node in full original input string
 }
 
@@ -34,7 +34,7 @@ func (p Pos) Position() Pos {
 	return p
 }
 
-// SoyFileNode represents a soy file.
+// SoyFileNode represents a Soy file.
 type SoyFileNode struct {
 	Name string
 	Text string
@@ -84,7 +84,7 @@ func (t *RawTextNode) String() string {
 	return string(t.Text)
 }
 
-// NamespaceNode registers the namespace of the soy file.
+// NamespaceNode registers the namespace of the Soy file.
 type NamespaceNode struct {
 	Pos
 	Name       string
@@ -145,7 +145,7 @@ func (n *SoyDocNode) Children() []Node {
 	return nodes
 }
 
-// SoyDocParam represents a parameter to a soy template.
+// SoyDocParam represents a parameter to a Soy template.
 // e.g.
 //  /**
 //   * Says hello to the person

@@ -31,7 +31,7 @@ func NewGenerator(registry *template.Registry) *Generator {
 
 var ErrNotFound = errors.New("file not found")
 
-// WriteFile generates javascript corresponding to the soy file of the given name.
+// WriteFile generates javascript corresponding to the Soy file of the given name.
 func (gen *Generator) WriteFile(out io.Writer, filename string) error {
 	for _, soyfile := range gen.registry.SoyFiles {
 		if soyfile.Name == filename {
