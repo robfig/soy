@@ -20,7 +20,7 @@ func NewTofu(registry *template.Registry) *Tofu {
 	return &Tofu{registry}
 }
 
-// Render is a convenience function that executes the soy template of the given
+// Render is a convenience function that executes the Soy template of the given
 // name, using the given object (converted to data.Map) as context, and writes
 // the results to the given Writer.
 //
@@ -40,7 +40,7 @@ func (tofu Tofu) Render(wr io.Writer, name string, obj interface{}) error {
 	return tofu.NewRenderer(name).Execute(wr, m)
 }
 
-// NewRenderer returns a new instance of a soy html renderer, given the
+// NewRenderer returns a new instance of a Soy html renderer, given the
 // fully-qualified name of the template to render.
 func (tofu *Tofu) NewRenderer(name string) *Renderer {
 	return &Renderer{

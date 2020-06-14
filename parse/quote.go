@@ -39,7 +39,7 @@ func quoteString(s string) string {
 	return string(append(q, '\''))
 }
 
-// unquoteString takes a quoted soy string (including the surrounding quotes)
+// unquoteString takes a quoted Soy string (including the surrounding quotes)
 // and returns the unquoted string, along with any error encountered.
 func unquoteString(s string) (string, error) {
 	n := len(s)

@@ -94,7 +94,7 @@ func TestExpressions(t *testing.T) {
 		exprtest("arithmetic2", "{2.0-1.5}", "0.5"),
 		exprtest("bools", "{not false and (2 > 5.0 or (null ?: true))}", "true"),
 		exprtest("bools2", "{2*(1.5+1) < 3 ? 'nope' : (2 >= 2) == (5.5<6) != true }", "false"),
-		// DIFFERENCE: official soy returns true but prints nothing.  (weird!)
+		// DIFFERENCE: official Soy returns true but prints nothing.  (weird!)
 		// ({true} prints true. {[:]} is truthy but prints nothing.)
 		// exprtest("bools3", "{null or 0.0 or ([:] and [])}", "true"), // map/list is truthy
 		exprtest("bools4", "{'a' == 'a'}", "true"),

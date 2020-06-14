@@ -79,7 +79,7 @@ template data to the callee template.
 This example is from
 https://developers.google.com/closure/templates/docs/helloworld_java.
 
-Many more examples of soy language features/commands may be seen here:
+Many more examples of Soy language features/commands may be seen here:
 https://github.com/robfig/soy/blob/master/testdata/features.soy
 
 Usage example
@@ -101,16 +101,16 @@ your pages.  For example:
   app/views/feed/
   ...
 
-This code snippet will parse a file of globals, all soy templates within
+This code snippet will parse a file of globals, all Soy templates within
 app/views, and provide back a Tofu intance that can be used to render any
-declared template.  Additionally, if "mode == dev", it will watch the soy files
+declared template.  Additionally, if "mode == dev", it will watch the Soy files
 for changes and update your compiled templates in the background (or log compile
 errors to soy.Logger).  Error checking is omitted.
 
 On startup:
 
   tofu, _ := soy.NewBundle().
-      WatchFiles(true).                     // watch soy files, reload on changes
+      WatchFiles(true).                     // watch Soy files, reload on changes
       AddGlobalsFile("views/globals.txt").  // parse a file of globals
       AddTemplateDir("views").              // load *.soy in all sub-directories
       CompileToTofu()

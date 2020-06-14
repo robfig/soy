@@ -1,4 +1,4 @@
-// Package parse converts a soy template into its in-memory representation (AST)
+// Package parse converts a Soy template into its in-memory representation (AST)
 package parse
 
 import (
@@ -15,7 +15,7 @@ import (
 	"github.com/robfig/soy/errortypes"
 )
 
-// tree is the parsed representation of a single soy file.
+// tree is the parsed representation of a single Soy file.
 type tree struct {
 	name      string            // name provided for the input
 	root      *ast.ListNode     // top-level root of the tree
@@ -29,7 +29,7 @@ type tree struct {
 }
 
 // SoyFile parses the input into a SoyFileNode (the AST).
-// The result may be used as input to a soy backend to generate HTML or JS.
+// The result may be used as input to a Soy backend to generate HTML or JS.
 func SoyFile(name, text string) (node *ast.SoyFileNode, err error) {
 	var t = &tree{
 		name:    name,
@@ -761,7 +761,7 @@ func (t *tree) parseTemplate(token item) ast.Node {
 
 // Expressions ----------
 
-// Expr returns the parsed representation of the given soy expression.
+// Expr returns the parsed representation of the given Soy expression.
 // An expression is basically anything that you can put inside a print tag.
 // For example, string, list or map literals, arithmetic, boolean operations, etc.
 func Expr(str string) (node ast.Node, err error) {

@@ -16,7 +16,7 @@ func (s *state) Write(args ...interface{}) {
 	s.js(args...)
 }
 
-// Func represents a soy function that may invoked within a template.
+// Func represents a Soy function that may invoked within a template.
 type Func struct {
 	Name            string
 	Apply           func(js JSWriter, args []ast.Node)
@@ -42,7 +42,7 @@ var funcs = []Func{
 	{"bidiEndEdge", funcBidiEndEdge, []int{0}},
 }
 
-// Funcs contains the available soy functions.
+// Funcs contains the available Soy functions.
 // Callers may add custom functions to this map.
 var Funcs = make(map[string]Func, len(funcs))
 

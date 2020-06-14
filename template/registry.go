@@ -1,4 +1,4 @@
-// Package template provides convenient access to groups of parsed soy files.
+// Package template provides convenient access to groups of parsed Soy files.
 package template
 
 import (
@@ -19,7 +19,7 @@ type Registry struct {
 	fileByTemplateName   map[string]string
 }
 
-// Add the given soy file node (and all contained templates) to this registry.
+// Add the given Soy file node (and all contained templates) to this registry.
 func (r *Registry) Add(soyfile *ast.SoyFileNode) error {
 	if r.sourceByTemplateName == nil {
 		r.sourceByTemplateName = make(map[string]string)
