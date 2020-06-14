@@ -322,7 +322,7 @@ func (l *lexer) nextItem() item {
 
 // drain drains the output so the lexing goroutine will exit.
 func (l *lexer) drain() {
-	for _ = range l.items {
+	for range l.items {
 	}
 }
 

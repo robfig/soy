@@ -1,7 +1,7 @@
 package soyjs
 
 import (
-    "strings"
+	"strings"
 )
 
 // The JSFormatter interface allows for callers to choose which
@@ -10,18 +10,18 @@ import (
 // in the Options, soyjs will default to the ES5Formatter implemented
 // in exec.go
 type JSFormatter interface {
-    // Template returns two values, the name of the template to save
-    // in the defined functions map, and how the function should be defined.
+	// Template returns two values, the name of the template to save
+	// in the defined functions map, and how the function should be defined.
 	Template(name string) (string, string)
-    // Call returns two values, the name of the template to save
-    // in the called functions map, and a string that is written
-    // into the imports
+	// Call returns two values, the name of the template to save
+	// in the called functions map, and a string that is written
+	// into the imports
 	Call(name string) (string, string)
-    // Directive takes in a PrintDirective and returns a string
-    // that is written into the imports
+	// Directive takes in a PrintDirective and returns a string
+	// that is written into the imports
 	Directive(PrintDirective) string
-    // Function takes in a Func and returns a string
-    // that is written into the imports
+	// Function takes in a Func and returns a string
+	// that is written into the imports
 	Function(Func) string
 }
 
