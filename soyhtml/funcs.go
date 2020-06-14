@@ -63,7 +63,7 @@ func funcLength(v []data.Value) data.Value {
 
 func funcKeys(v []data.Value) data.Value {
 	var keys data.List
-	for k, _ := range v[0].(data.Map) {
+	for k := range v[0].(data.Map) {
 		keys = append(keys, data.String(k))
 	}
 	return keys

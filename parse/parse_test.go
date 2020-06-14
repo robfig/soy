@@ -240,18 +240,16 @@ var parseTests = []parseTest{
   Blah {$moo}
 {/if}`, tFile(
 		&ast.IfNode{0, []*ast.IfCondNode{
-			&ast.IfCondNode{0, &ast.DataRefNode{0, "zoo", nil}, tList(&ast.PrintNode{0, &ast.DataRefNode{0, "zoo", nil}, nil})},
+			{0, &ast.DataRefNode{0, "zoo", nil}, tList(&ast.PrintNode{0, &ast.DataRefNode{0, "zoo", nil}, nil})},
 		}},
 		&ast.IfNode{0, []*ast.IfCondNode{
-			&ast.IfCondNode{0, &ast.DataRefNode{0, "boo", nil}, tList(newText(0, "Blah"))},
-			&ast.IfCondNode{0,
+			{0, &ast.DataRefNode{0, "boo", nil}, tList(newText(0, "Blah"))},
+			{0,
 				&ast.GtNode{bin(
 					&ast.DataRefNode{0, "foo", []ast.Node{&ast.DataRefKeyNode{0, false, "goo"}}},
 					&ast.IntNode{0, 2})},
 				tList(&ast.PrintNode{0, &ast.DataRefNode{0, "boo", nil}, nil})},
-			&ast.IfCondNode{0,
-				nil,
-				tList(newText(0, "Blah "), &ast.PrintNode{0, &ast.DataRefNode{0, "moo", nil}, nil})},
+			{0, nil, tList(newText(0, "Blah "), &ast.PrintNode{0, &ast.DataRefNode{0, "moo", nil}, nil})},
 		}},
 	)},
 
@@ -265,14 +263,14 @@ var parseTests = []parseTest{
     Bloh
 {/switch}`, tFile(
 		&ast.SwitchNode{0, &ast.DataRefNode{0, "boo", nil}, []*ast.SwitchCaseNode{
-			&ast.SwitchCaseNode{0, []ast.Node{&ast.IntNode{0, 0}}, tList(newText(0, "Blah"))},
-			&ast.SwitchCaseNode{0, []ast.Node{&ast.DataRefNode{0, "foo", []ast.Node{&ast.DataRefKeyNode{0, false, "goo"}}}},
+			{0, []ast.Node{&ast.IntNode{0, 0}}, tList(newText(0, "Blah"))},
+			{0, []ast.Node{&ast.DataRefNode{0, "foo", []ast.Node{&ast.DataRefKeyNode{0, false, "goo"}}}},
 				tList(newText(0, "Bleh"))},
-			&ast.SwitchCaseNode{0, []ast.Node{
+			{0, []ast.Node{
 				&ast.IntNode{0, -1},
 				&ast.AddNode{bin(&ast.IntNode{0, 1}, &ast.IntNode{0, 1})},
 				&ast.DataRefNode{0, "moo", nil}}, tList(newText(0, "Bluh"))},
-			&ast.SwitchCaseNode{0, nil, tList(newText(0, "Bloh"))},
+			{0, nil, tList(newText(0, "Bloh"))},
 		}},
 	)},
 
@@ -297,7 +295,7 @@ var parseTests = []parseTest{
 				&ast.PrintNode{0, &ast.DataRefNode{0, "boo", []ast.Node{&ast.DataRefKeyNode{0, false, "name"}}}, nil},
 				newText(0, "!"),
 				&ast.IfNode{0,
-					[]*ast.IfCondNode{&ast.IfCondNode{0,
+					[]*ast.IfCondNode{{0,
 						&ast.NotNode{0, &ast.FunctionNode{0, "isLast", []ast.Node{&ast.DataRefNode{0, "boo", nil}}}},
 						tList(newText(0, "\n"))}}}),
 			tList(

@@ -709,11 +709,11 @@ func (s *state) writeRawText(text []byte) {
 func (s *state) block(node ast.Node) string {
 	var buf bytes.Buffer
 	(&state{
-	    wr: &buf,
-	    scope: s.scope,
-	    options: s.options,
-	    funcsCalled: s.funcsCalled,
-	    funcsInFile: s.funcsInFile,
+		wr:          &buf,
+		scope:       s.scope,
+		options:     s.options,
+		funcsCalled: s.funcsCalled,
+		funcsInFile: s.funcsInFile,
 	}).walk(node)
 	return buf.String()
 }

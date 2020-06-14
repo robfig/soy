@@ -48,7 +48,7 @@ func (s scope) alldata() scope {
 	for i := range s {
 		var ri = len(s) - i - 1
 		if s[ri].entered {
-			return s[:ri+1 : ri+1]
+			return s[: ri+1 : ri+1]
 		}
 	}
 	panic("impossible")

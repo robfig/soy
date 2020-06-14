@@ -117,15 +117,15 @@ func TestNewMessage(t *testing.T) {
 					soymsg.PluralPart{
 						VarName: "EGGS_1",
 						Cases: []soymsg.PluralCase{
-							soymsg.PluralCase{
+							{
 								Spec:  soymsg.PluralSpec{Type: soymsg.PluralSpecOther, ExplicitValue: -1},
 								Parts: []soymsg.Part{soymsg.RawTextPart{Text: "zYou zhave zone zegg"}},
 							},
-							soymsg.PluralCase{
+							{
 								Spec:  soymsg.PluralSpec{Type: soymsg.PluralSpecOther, ExplicitValue: -1},
 								Parts: []soymsg.Part{soymsg.RawTextPart{Text: "zYou zhave z{$EGGS_2} zeggs"}},
 							},
-							soymsg.PluralCase{
+							{
 								Spec:  soymsg.PluralSpec{Type: soymsg.PluralSpecOther, ExplicitValue: -1},
 								Parts: []soymsg.Part{soymsg.RawTextPart{Text: "zYou zhave ztwo zeggs"}},
 							},
