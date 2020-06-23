@@ -1,11 +1,13 @@
-soy
-===
-
-Go implementation for Soy templates (Google Closure templates).  See [the godoc](http://godoc.org/github.com/robfig/soy)
+# soy
 
 [![GoDoc](http://godoc.org/github.com/robfig/soy?status.png)](http://godoc.org/github.com/robfig/soy)
 [![Build Status](https://travis-ci.org/robfig/soy.png?branch=master)](https://travis-ci.org/robfig/soy)
 [![Go Report Card](https://goreportcard.com/badge/robfig/soy)](https://goreportcard.com/report/robfig/soy)
+
+Go implementation for Soy templates aka [Google Closure
+Templates](https://github.com/google/closure-templates).  See
+[godoc](http://godoc.org/github.com/robfig/soy) for more details and usage
+examples.
 
 This project requires Go 1.12 or higher due to one of the transitive
 dependencies requires it as a minimum version; otherwise, Go 1.11 would
