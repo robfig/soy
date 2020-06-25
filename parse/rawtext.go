@@ -81,7 +81,6 @@ func rawtext(s string, trimBefore, trimAfter bool) []byte {
 				// ignore the space
 			}
 			spaces = 0
-			seenNewline = false
 		}
 
 		// begin to trim
