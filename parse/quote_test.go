@@ -41,3 +41,17 @@ func TestUnquote(t *testing.T) {
 		}
 	}
 }
+
+func TestUnquoteUnrecognized(t *testing.T) {
+	var tests = []string{
+		`'\0'`,
+		`'\a'`,
+		`'\z'`,
+	}
+	for _, tc := range tests {
+		_, err := unquoteString(tc)
+		if err == nil {
+			t.Errorf("expected unrecognized escape sequence %s to fail", tc)
+		}
+	}
+}
