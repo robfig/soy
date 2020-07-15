@@ -76,7 +76,7 @@ func unquoteString(s string) (string, error) {
 			} else {
 				replacement, ok := unescapes[r]
 				if !ok {
-					return "", errors.New("unrecognized escape code: \\" + s[i:i+1])
+					return "", errors.New("unrecognized escape code: \\" + s[i-1:i])
 				}
 				r = rune(replacement)
 			}
