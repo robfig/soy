@@ -86,6 +86,8 @@ func (s *state) walk(node ast.Node) {
 			s.autoescape = node.Autoescape
 		}
 		s.walk(node.Body)
+	case *ast.HeaderParamNode:
+		// TODO: Validate param types.
 	case *ast.ListNode:
 		for _, node := range node.Nodes {
 			s.walk(node)

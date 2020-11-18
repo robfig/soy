@@ -121,6 +121,49 @@ func (n *TemplateNode) Children() []Node {
 	return []Node{n.Body}
 }
 
+// TypeNode holds a type definition for a template parameter.
+//
+// Presently this is just a string value which is not validated or processed.
+// Backwards-incompatible changes in the future may elaborate this data model to
+// add functionality.
+type TypeNode struct {
+	Pos
+	Expr string
+}
+
+func (n TypeNode) String() string {
+	return n.Expr
+}
+
+// HeaderParamNode holds a parameter declaration.
+//
+// HeaderParams MUST appear at the beginning of a TemplateNode's Body.
+type HeaderParamNode struct {
+	Pos
+	Optional bool
+	Name     string
+	Type     TypeNode // empty if inferred from the default value
+	Default  Node     // nil if no default was specified
+}
+
+func (n *HeaderParamNode) String() string {
+	var expr string
+	if !n.Optional {
+		expr = "{@param "
+	} else {
+		expr = "{@param? "
+	}
+	expr += n.Name + ":"
+	if typ := n.Type.String(); typ != "" {
+		expr += " " + typ + " "
+	}
+	if n.Default != nil {
+		expr += "= " + n.Default.String()
+	}
+	expr += "}\n"
+	return expr
+}
+
 type SoyDocNode struct {
 	Pos
 	Params []*SoyDocParamNode
