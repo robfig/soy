@@ -52,6 +52,16 @@ func TestBasicExec(t *testing.T) {
 	{/template}`,
 			"Hello Rob!",
 			d{"name": "Rob"}, true},
+		{"hello world w/ header param", "test.sayHello",
+			`{namespace test}
+
+	{template .sayHello}
+	{@param name: ?}
+	{@param? optName: ?}
+	Hello {$name}!
+	{/template}`,
+			"Hello Rob!",
+			d{"name": "Rob"}, true},
 
 		{"call w/ line join", "test.callLine",
 			`{namespace test}
@@ -1109,6 +1119,27 @@ func TestMessages(t *testing.T) {
 		},
 	})
 }
+
+func TestHeaderParams(t *testing.T) {
+	runExecTests(t, []execTest{
+		{
+			name: "param works",
+			templateName: "test.main",
+			input: `{namespace test}
+{template .main}
+{@param a: ?}
+{@param? opt: string}
+Hello {$a}
+{if $opt} and {$opt}{/if}
+{/template}
+`,
+			output: "Hello world",
+			data: d{"a": "world"},
+			ok: true,
+		},
+	})
+}
+
 
 // testing cross namespace stuff requires multiple file bodies
 type nsExecTest struct {

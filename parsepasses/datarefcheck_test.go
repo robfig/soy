@@ -41,11 +41,29 @@ Hello {$paramName}
 {/template}`, true},
 
 		{`
+{template .paramOnly}
+{@param paramName: ?}
+Hello {$paramName}
+{/template}`, true},
+
+		{`
 /**
  * @param param1
  * @param? param2
  */
 {template .everything}
+{let $let1: 'hello'/}
+{if true}{let $let2}let body{/let}
+Hello {$param1} {$param2} {$let1} {$let2}
+{else}
+Goodbye {$param1} {$param2} {$let1}
+{/if}
+{/template}`, true},
+
+		{`
+{template .everything}
+{@param param1: ?}
+{@param? param2: ?}
 {let $let1: 'hello'/}
 {if true}{let $let2}let body{/let}
 Hello {$param1} {$param2} {$let1} {$let2}
@@ -109,6 +127,12 @@ func TestAllParamsAreUsed(t *testing.T) {
 {/template}`, true},
 
 		{`
+{template .ParamUsedInExpr}
+{@param used: ?}
+  Hello {not true ? 'a' : 'b' + $used}.
+{/template}`, true},
+
+		{`
 /** @param param */
 {template .UsedInCallData}
   Hello {call .Other data="$param"/}.
@@ -166,6 +190,21 @@ func TestAllParamsAreUsed(t *testing.T) {
 {/template}`, false},
 
 		{`
+/**
+ * @param used
+ * @param notused
+ */
+{template .CallPassesAllDataButNotDeclaredByCallee}
+  Hello {call .Other data="all"/}.
+{/template}
+
+{template .Other}
+{@param used: ?}
+{@param? other: ?}
+ {$used}
+{/template}`, false},
+
+		{`
 /** @param var */
 {template .ParamShadowedByLet}
   {let $var: 0/}
@@ -190,6 +229,21 @@ func TestAllCallParamsAreDeclaredByCallee(t *testing.T) {
  * @param? param2
  */
 {template .Other}
+  {$param1} {$param2}
+{/template}
+`, true},
+
+		{`
+{template .ParamsPresent}
+  {call .Other}
+    {param param1: 0/}
+    {param param2}hello{/param}
+  {/call}
+{/template}
+
+{template .Other}
+{@param param1: ?}
+{@param? param2: ?}
   {$param1} {$param2}
 {/template}
 `, true},
@@ -369,6 +423,18 @@ func TestIJVarsAllowed(t *testing.T) {
 	})
 }
 
+func TestTwoTypesOfParamsDisallowed(t *testing.T) {
+	runSimpleCheckerTests(t, []simpleCheckerTest{
+		{`
+/** @param var */
+{template .CalledTemplateDoesNotExist}
+{@param var: ?}
+Hello {$var}
+{/template}
+`, false},
+	})
+}
+
 func runSimpleCheckerTests(t *testing.T, tests []simpleCheckerTest) {
 	var result []checkerTest
 	for _, simpleTest := range tests {
@@ -390,22 +456,29 @@ func runCheckerTests(t *testing.T, tests []checkerTest) {
 		for _, body := range test.body {
 			tree, err = parse.SoyFile("", body)
 			if err != nil {
-				t.Error(err)
-				continue
+				break
 			}
 
-			if err := reg.Add(tree); err != nil {
-				t.Error(err)
-				continue
+			if err = reg.Add(tree); err != nil {
+				break
 			}
+		}
+		if err != nil {
+			if test.success {
+				t.Error(err)
+			}
+			continue
 		}
 
 		err = CheckDataRefs(reg)
 		if test.success && err != nil {
 			t.Error(err)
 		} else if !test.success && err == nil {
-			t.Errorf("%s: expected to fail validation, but no error was raised.",
-				reg.Templates[0].Node.Name)
+			var name = "(empty)"
+			if len(reg.Templates) > 0 {
+				name = reg.Templates[0].Node.Name
+			}
+			t.Errorf("%s: expected to fail validation, but no error was raised.", name)
 		}
 	}
 }

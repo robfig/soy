@@ -133,6 +133,8 @@ func (t *tree) beginTag() ast.Node {
 		return t.parseNamespace(token)
 	case itemTemplate:
 		return t.parseTemplate(token)
+	case itemHeaderParam, itemHeaderOptionalParam:
+		return t.parseHeaderParam(token)
 	case itemIf:
 		t.notmsg(token)
 		return t.parseIf(token)
@@ -757,6 +759,28 @@ func (t *tree) parseTemplate(token item) ast.Node {
 	}
 	t.expect(itemRightDelim, ctx)
 	return tmpl
+}
+
+func (t *tree) parseHeaderParam(token item) ast.Node {
+	const ctx = "@param tag"
+	var opt = token.typ == itemHeaderOptionalParam
+	var name = t.expect(itemIdent, ctx)
+	t.expect(itemColon, ctx)
+	var typ = t.expect(itemHeaderParamType, ctx)
+	var defval ast.Node
+	if tok := t.next(); tok.typ == itemEquals {
+		defval = t.parseExpr(0)
+	} else {
+		t.backup()
+	}
+	t.expect(itemRightDelim, ctx)
+	return &ast.HeaderParamNode{
+		Pos:      token.pos,
+		Optional: opt,
+		Name:     name.val,
+		Type:     ast.TypeNode{Pos: typ.pos, Expr: typ.val},
+		Default:  defval,
+	}
 }
 
 // Expressions ----------

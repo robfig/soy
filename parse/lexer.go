@@ -101,6 +101,11 @@ const (
 	itemSoyDocEnd           // */
 	itemComment             // line comments (//) or block comments (/*)
 
+	// Headers
+	itemHeaderParam         // {@param NAME: TYPE = DEFAULT}
+	itemHeaderOptionalParam // {@param? NAME: TYPE = DEFAULT}
+	itemHeaderParamType     // e.g. ? any int string map<int, string> list<string> [age: int, name: string]
+
 	// Commands
 	itemCommand     // used only to delimit the commands
 	itemAlias       // {alias ...}
@@ -612,6 +617,8 @@ func lexInsideTag(l *lexer) stateFn {
 		return lexIdent
 	case r == ',':
 		l.emit(itemComma)
+	case r == '@':
+		return lexHeaderParam
 	default:
 		return l.errorf("unrecognized character in action: %#U", r)
 	}
@@ -839,6 +846,49 @@ func lexIdent(l *lexer) stateFn {
 	return lexInsideTag
 }
 
+// lexHeaderParam lexes a "header param" such as {@param ...}.
+// '@' has just been read.
+func lexHeaderParam(l *lexer) stateFn {
+	if !strings.HasPrefix(l.input[l.pos:], "param") {
+		return l.errorf("expected {@param ...}")
+	}
+	l.pos += ast.Pos(len("param"))
+
+	if l.next() == '?' {
+		l.emit(itemHeaderOptionalParam)
+	} else {
+		l.backup()
+		l.emit(itemHeaderParam)
+	}
+	skipSpace(l)
+
+	// Consume the (simple) identifier.
+	for isAlphaNumeric(l.next()) {}
+	l.backup()
+	l.emit(itemIdent)
+	skipSpace(l)
+
+	// Consume the ':'
+	if l.next() != ':' {
+		return l.errorf("expected {@param name: ...}")
+	}
+	l.emit(itemColon)
+	skipSpace(l)
+
+	// Consume until the equals or end of the tag.
+	var lastNonSpace = l.pos
+	for ch := l.next(); ch != '=' && ch != '}' ; ch = l.next() {
+		if !isSpace(ch) {
+			lastNonSpace = l.pos
+		}
+	}
+	l.pos = lastNonSpace
+	l.emit(itemHeaderParamType)
+	skipSpace(l)
+
+	return lexInsideTag
+}
+
 // lexCss scans the body of the {css} command into an itemText.
 // This is required because css classes are unquoted and may have hyphens (and
 // thus are not recognized as idents).
@@ -1032,4 +1082,13 @@ func allSpaceWithNewline(str string) bool {
 		}
 	}
 	return seenNewline
+}
+
+func skipSpace(l *lexer) {
+	ch := l.next()
+	for isSpaceEOL(ch) {
+		ch = l.next()
+	}
+	l.backup()
+	l.ignore()
 }

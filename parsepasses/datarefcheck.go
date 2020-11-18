@@ -16,6 +16,7 @@ import (
 //  5. {call}'d templates actually exist in the registry.
 //  6. any variable created by {let} is used somewhere
 //  7. {let} variable names are valid.  ('ij' is not allowed.)
+//  8. Only one parameter declaration mechanism (soydoc vs headers) is used.
 func CheckDataRefs(reg template.Registry) (err error) {
 	var currentTemplate string
 	defer func() {
@@ -26,8 +27,8 @@ func CheckDataRefs(reg template.Registry) (err error) {
 
 	for _, t := range reg.Templates {
 		currentTemplate = t.Node.Name
-		tc := newTemplateChecker(reg, t.Doc.Params)
-		tc.checkTemplate(t.Node.Body)
+		tc := newTemplateChecker(reg, t)
+		tc.checkTemplate(t.Node)
 
 		// check that all params appear in the usedKeys
 		for _, param := range tc.params {
@@ -47,9 +48,9 @@ type templateChecker struct {
 	usedKeys []string
 }
 
-func newTemplateChecker(reg template.Registry, params []*ast.SoyDocParamNode) *templateChecker {
+func newTemplateChecker(reg template.Registry, tpl template.Template) *templateChecker {
 	var paramNames []string
-	for _, param := range params {
+	for _, param := range tpl.Doc.Params {
 		paramNames = append(paramNames, param.Name)
 	}
 	return &templateChecker{reg, paramNames, nil, nil, nil}
@@ -69,6 +70,8 @@ func (tc *templateChecker) checkTemplate(node ast.Node) {
 		tc.forVars = append(tc.forVars, node.Var)
 	case *ast.DataRefNode:
 		tc.visitKey(node.Key)
+	case *ast.HeaderParamNode:
+		panic(fmt.Errorf("unexpected {@param ...} tag found"))
 	}
 	if parent, ok := node.(ast.ParentNode); ok {
 		tc.recurse(parent)

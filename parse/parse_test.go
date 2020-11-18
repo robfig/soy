@@ -97,6 +97,27 @@ var parseTests = []parseTest{
 		{0, "name", false},
 	}})},
 
+	{"header param", `{template .main}
+{@param NAME:?}
+{@param NAME:any} // A required param of type any.
+{@param NAME:='default'}
+{@param NAME:int=10}
+{@param? NAME:[age: int, name: string]}
+{@param? NAME:map<int, string>}
+{@param? NAME:list<string>}
+Hello world.
+{/template}
+`, tFile(&ast.TemplateNode{Name: ".main", Body: &ast.ListNode{Nodes: []ast.Node{
+		&ast.HeaderParamNode{0, false, "NAME", ast.TypeNode{0, "?"}, nil},
+		&ast.HeaderParamNode{0, false, "NAME", ast.TypeNode{0, "any"}, nil},
+		&ast.HeaderParamNode{0, false, "NAME", ast.TypeNode{0, ""}, &ast.StringNode{0, "'default'", "default"}},
+		&ast.HeaderParamNode{0, false, "NAME", ast.TypeNode{0, "int"}, &ast.IntNode{0, 10}},
+		&ast.HeaderParamNode{0, true, "NAME", ast.TypeNode{0, "[age: int, name: string]"}, nil},
+		&ast.HeaderParamNode{0, true, "NAME", ast.TypeNode{0, "map<int, string>"}, nil},
+		&ast.HeaderParamNode{0, true, "NAME", ast.TypeNode{0, "list<string>"}, nil},
+		&ast.RawTextNode{0, []byte("Hello world.")},
+	}}})},
+
 	{"rawtext (linejoin)", "\n  a \n\tb\r\n  c  \n\n", tFile(newText(0, "a b c"))},
 	{"rawtext+html", "\n  a <br>\n\tb\r\n\n  c\n\n<br> ", tFile(newText(0, "a <br>b c<br> "))},
 	{"rawtext+comment", "a <br> // comment \n\tb\t// comment2\r\n  c\n\n", tFile(
@@ -654,6 +675,12 @@ func eqTree(t *testing.T, expected, actual ast.Node) bool {
 	case *ast.SwitchCaseNode:
 		return eqTree(t, expected.(*ast.SwitchCaseNode).Body, actual.(*ast.SwitchCaseNode).Body) &&
 			eqNodes(t, expected.(*ast.SwitchCaseNode).Values, actual.(*ast.SwitchCaseNode).Values)
+
+	case *ast.HeaderParamNode:
+		return eqbool(t, "@param optional?", expected.(*ast.HeaderParamNode).Optional, actual.(*ast.HeaderParamNode).Optional) &&
+			eqstr(t, "@param name",  expected.(*ast.HeaderParamNode).Name, actual.(*ast.HeaderParamNode).Name) &&
+			eqstr(t, "@param type", expected.(*ast.HeaderParamNode).Type.Expr, actual.(*ast.HeaderParamNode).Type.Expr) &&
+			eqTree(t, expected.(*ast.HeaderParamNode).Default, actual.(*ast.HeaderParamNode).Default)
 	}
 	panic(fmt.Sprintf("type not implemented: %T", actual))
 }

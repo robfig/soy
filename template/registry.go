@@ -58,6 +58,29 @@ func (r *Registry) Add(soyfile *ast.SoyFileNode) error {
 		if !ok {
 			sdn = &ast.SoyDocNode{tn.Pos, nil}
 		}
+		hasSoyDocParams := len(sdn.Params) > 0
+
+		// Extract leading Header Params from the template body.
+		// Add them to Soy.Params for backwards compatibility.
+		var headerParams []*ast.HeaderParamNode
+		for _, n := range tn.Body.Nodes {
+			if param, ok := n.(*ast.HeaderParamNode); ok {
+
+				headerParams = append(headerParams, param)
+				sdn.Params = append(sdn.Params, &ast.SoyDocParamNode{
+					Pos:      param.Pos,
+					Name:     param.Name,
+					Optional: param.Optional,
+				})
+			} else {
+				break
+			}
+		}
+		if len(headerParams) > 0 && hasSoyDocParams {
+			return fmt.Errorf("template may not have both soydoc and header params specified")
+		}
+		tn.Body.Nodes = tn.Body.Nodes[len(headerParams):]
+
 		r.Templates = append(r.Templates, Template{sdn, tn, ns})
 		r.sourceByTemplateName[tn.Name] = soyfile.Text
 		r.fileByTemplateName[tn.Name] = soyfile.Name

@@ -1,6 +1,8 @@
 package parse
 
-import "testing"
+import (
+	"testing"
+)
 
 type lexTest struct {
 	name  string
@@ -537,6 +539,78 @@ var lexTests = []lexTest{
 		{itemSoyDocOptionalParam, 0, "@param?"},
 		{itemIdent, 0, "goo"},
 		{itemSoyDocEnd, 0, "*/"},
+		tEOF,
+	}},
+
+	{"@param", `
+{@param NAME: ?} // A required param.
+{@param NAME: any} // A required param of type any.
+{@param NAME:= 'default'} // A default param with an inferred type.
+{@param NAME: int = 10} // A default param with an explicit type.
+{@param? NAME: [age: int, name: string]} // An optional param.
+{@param? NAME: map<int, string>} // A map param.
+{@param? NAME: list<string>} // A list param.
+`, []item{
+		tLeft,
+		{itemHeaderParam, 0, "@param"},
+		{itemIdent, 0, "NAME"},
+		{itemColon, 0, ":"},
+		{itemHeaderParamType, 0, "?"},
+		tRight,
+		{itemComment, 0, "// A required param.\n"},
+
+		tLeft,
+		{itemHeaderParam, 0, "@param"},
+		{itemIdent, 0, "NAME"},
+		{itemColon, 0, ":"},
+		{itemHeaderParamType, 0, "any"},
+		tRight,
+		{itemComment, 0, "// A required param of type any.\n"},
+
+		tLeft,
+		{itemHeaderParam, 0, "@param"},
+		{itemIdent, 0, "NAME"},
+		{itemColon, 0, ":"},
+		{itemHeaderParamType, 0, ""},
+		{itemEquals, 0, "="},
+		{itemString, 0, "'default'"},
+		tRight,
+		{itemComment, 0, "// A default param with an inferred type.\n"},
+
+		tLeft,
+		{itemHeaderParam, 0, "@param"},
+		{itemIdent, 0, "NAME"},
+		{itemColon, 0, ":"},
+		{itemHeaderParamType, 0, "int"},
+		{itemEquals, 0, "="},
+		{itemInteger, 0, "10"},
+		tRight,
+		{itemComment, 0, "// A default param with an explicit type.\n"},
+
+		tLeft,
+		{itemHeaderOptionalParam, 0, "@param?"},
+		{itemIdent, 0, "NAME"},
+		{itemColon, 0, ":"},
+		{itemHeaderParamType, 0, "[age: int, name: string]"},
+		tRight,
+		{itemComment, 0, "// An optional param.\n"},
+
+		tLeft,
+		{itemHeaderOptionalParam, 0, "@param?"},
+		{itemIdent, 0, "NAME"},
+		{itemColon, 0, ":"},
+		{itemHeaderParamType, 0, "map<int, string>"},
+		tRight,
+		{itemComment, 0, "// A map param.\n"},
+
+		tLeft,
+		{itemHeaderOptionalParam, 0, "@param?"},
+		{itemIdent, 0, "NAME"},
+		{itemColon, 0, ":"},
+		{itemHeaderParamType, 0, "list<string>"},
+		tRight,
+		{itemComment, 0, "// A list param.\n"},
+
 		tEOF,
 	}},
 
