@@ -605,8 +605,13 @@ func (n *SwitchCaseNode) Children() []Node {
 }
 
 // Note:
-// - "For" node is required to have a range() call as the List
+// - "For" node may have anything as the List
 // - "Foreach" node is required to have a DataRefNode as the List
+//
+// There is no difference in the parsed representation between them.
+// We do not bother to maintain that, because it's not important, as
+// upstream has dropped support for {foreach} entirely, so we treat
+// this as deprecated.
 type ForNode struct {
 	Pos
 	Var     string // without the leading $
@@ -616,18 +621,12 @@ type ForNode struct {
 }
 
 func (n *ForNode) String() string {
-	var _, isForeach = n.List.(*DataRefNode)
-	var name = "for"
-	if isForeach {
-		name = "foreach"
-	}
-
-	var expr = "{" + name + " "
+	var expr = "{for "
 	expr += "$" + n.Var + " in " + n.List.String() + "}" + n.Body.String()
 	if n.IfEmpty != nil {
 		expr += "{ifempty}" + n.IfEmpty.String()
 	}
-	return expr + "{/" + name + "}"
+	return expr + "{/for}"
 }
 
 func (n *ForNode) Children() []Node {

@@ -469,7 +469,7 @@ func (t *tree) parseCase(token item) *ast.SwitchCaseNode {
 func (t *tree) parseFor(token item) ast.Node {
 	var ctx = token.val
 	// for and foreach have the same syntax, differing only in the requirement they impose:
-	// - for requires the collection to be a function call to "range"
+	// - for accepts any list value
 	// - foreach requires the collection to be a variable reference.
 	var vartoken = t.expect(itemDollarIdent, ctx)
 	var intoken = t.expect(itemIdent, ctx)
@@ -479,13 +479,7 @@ func (t *tree) parseFor(token item) ast.Node {
 
 	// get the collection to iterate through and enforce the requirements
 	var collection = t.parseExpr(0)
-	t.expect(itemRightDelim, "foreach")
-	if token.typ == itemFor {
-		f, ok := collection.(*ast.FunctionNode)
-		if !ok || f.Name != "range" {
-			t.errorf("for: expected to iterate through range()")
-		}
-	}
+	t.expect(itemRightDelim, "for")
 
 	var body = t.itemList(itemIfempty, itemForeachEnd, itemForEnd)
 	t.backup()
@@ -494,7 +488,7 @@ func (t *tree) parseFor(token item) ast.Node {
 		t.expect(itemRightDelim, "ifempty")
 		ifempty = t.itemList(itemForeachEnd, itemForEnd)
 	}
-	t.expect(itemRightDelim, "/foreach")
+	t.expect(itemRightDelim, "/for")
 	return &ast.ForNode{token.pos, vartoken.val[1:], collection, body, ifempty}
 }
 

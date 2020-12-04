@@ -204,6 +204,52 @@ func TestFor(t *testing.T) {
 		{d{"items": nil}}, // null is not a valid slice
 		{d{"items": "a"}}, // string is not a valid slice
 	}))
+
+	// NOTE: The remainder is copied from TestForeach
+	runExecTests(t, multidatatest("foreach", `
+{for $goo in $goose}
+  {$goo.numKids} goslings.{\n}
+{/for}
+{for $boo in $foo.booze}
+  {if isFirst($boo)}->{\n}{/if}
+  {index($boo)}: Scary drink {$boo.name}!
+  {if not isLast($boo)}{\n}{/if}
+{ifempty}
+  Sorry, no booze.
+{/for}`, []datatest{
+		{d{
+			"goose": []interface{}{},
+			"foo":   d{"booze": []interface{}{}},
+		}, "Sorry, no booze."},
+		{d{
+			"goose": []interface{}{},
+			"foo":   d{"booze": []interface{}{d{"name": "boo"}}},
+		}, "->\n0: Scary drink boo!"},
+		{d{
+			"goose": []interface{}{},
+			"foo":   d{"booze": []interface{}{d{"name": "a"}, d{"name": "b"}}},
+		}, "->\n0: Scary drink a!\n1: Scary drink b!"},
+		{d{
+			"goose": []interface{}{d{"numKids": 1}, d{"numKids": 2}},
+			"foo":   d{"booze": []interface{}{}},
+		}, "1 goslings.\n2 goslings.\nSorry, no booze."},
+	}, []errortest{
+		{nil},                           // non-null-safe eval of $foo.booze fails
+		{d{"foo": nil}},                 // ditto
+		{d{"foo": d{}}},                 // $foo.booze must be a list
+		{d{"foo": d{"booze": "str"}}},   // $foo.booze must be list
+		{d{"foo": d{"booze": 5}}},       // $foo.booze must be list
+		{d{"foo": d{"booze": d{}}}},     // $foo.booze must be list
+		{d{"foo": d{"booze": true}}},    // $foo.booze must be list
+		{d{"foo": d{"booze": []d{{}}}}}, // $boo.name fails
+	}))
+
+	runExecTests(t, multidatatest("forkeys", `
+{for $var in keys($map)}
+  {$var}
+{/for}`, []datatest{
+		{d{"map": d{"a": nil}}, "a"},
+	}, nil))
 }
 
 func TestSwitch(t *testing.T) {

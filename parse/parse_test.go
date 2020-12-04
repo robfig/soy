@@ -323,6 +323,35 @@ Hello world.
 				newText(0, "Sorry, no booze."))},
 	)},
 
+	// NOTE: Copy of the above case, using {for} instead of {foreach}.
+	{"foreach to for", `
+{for $goo in $goose}
+  {$goose.numKids} goslings.{\n}
+{/for}
+{for $boo in $foo.booze}
+  Scary drink {$boo.name}!
+  {if not isLast($boo)}{\n}{/if}
+{ifempty}
+  Sorry, no booze.
+{/for}`, tFile(
+		&ast.ForNode{0, "goo", &ast.DataRefNode{0, "goose", nil}, tList(
+			&ast.PrintNode{0, &ast.DataRefNode{0, "goose", []ast.Node{&ast.DataRefKeyNode{0, false, "numKids"}}}, nil},
+			newText(0, " goslings."),
+			newText(0, "\n"),
+		), nil},
+		&ast.ForNode{0, "boo", &ast.DataRefNode{0, "foo", []ast.Node{&ast.DataRefKeyNode{0, false, "booze"}}},
+			tList(
+				newText(0, "Scary drink "),
+				&ast.PrintNode{0, &ast.DataRefNode{0, "boo", []ast.Node{&ast.DataRefKeyNode{0, false, "name"}}}, nil},
+				newText(0, "!"),
+				&ast.IfNode{0,
+					[]*ast.IfCondNode{{0,
+						&ast.NotNode{0, &ast.FunctionNode{0, "isLast", []ast.Node{&ast.DataRefNode{0, "boo", nil}}}},
+						tList(newText(0, "\n"))}}}),
+			tList(
+				newText(0, "Sorry, no booze."))},
+	)},
+
 	{"for", `
 {for $i in range(1, $items.length + 1)}
   {msg meaning="verb" desc="Numbered item."}
