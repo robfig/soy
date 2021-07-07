@@ -12,6 +12,7 @@ import (
 
 	"github.com/robfig/gettext/po"
 	"github.com/robfig/soy/soymsg"
+	"golang.org/x/text/language"
 )
 
 type provider struct {
@@ -26,9 +27,10 @@ type FileOpener interface {
 }
 
 // Load returns a soymsg.Provider that takes its translations by passing in the
-// specifified locales to the given PoFileProvider.
+// specified locales to the given PoFileProvider.
 //
-// TODO: Fallbacks between <lang> and <lang>_<territory>
+// Supports fallbacks for when a given locale does not exist, as long as the fallback files are in
+// canonical form.
 func Load(opener FileOpener, locales []string) (soymsg.Provider, error) {
 	var prov = provider{make(map[string]soymsg.Bundle)}
 	for _, locale := range locales {
@@ -36,8 +38,25 @@ func Load(opener FileOpener, locales []string) (soymsg.Provider, error) {
 		if err != nil {
 			return nil, err
 		} else if r == nil {
-			continue
+			localeTag, err := language.Parse(locale)
+			if err != nil {
+				return nil, err
+			}
+			var r io.ReadCloser
+			for _, fallbackLocale := range fallbacks(localeTag) {
+				r, err = opener.Open(fallbackLocale.String())
+				if err != nil {
+					return nil, err
+				}
+				if r != nil {
+					break
+				}
+			}
+			if r == nil {
+				continue
+			}
 		}
+
 
 		pofile, err := po.Parse(r)
 		r.Close()
@@ -74,8 +93,6 @@ func (o fsFileOpener) Open(locale string) (io.ReadCloser, error) {
 // For example, if dir is "/usr/local/msgs", po files should be of the form:
 //   /usr/local/msgs/<lang>.po
 //   /usr/local/msgs/<lang>_<territory>.po
-//
-// TODO: Fallbacks between <lang> and <lang>_<territory>
 func Dir(dirname string) (soymsg.Provider, error) {
 	var files, err = ioutil.ReadDir(dirname)
 	if err != nil {
@@ -92,7 +109,20 @@ func Dir(dirname string) (soymsg.Provider, error) {
 }
 
 func (p provider) Bundle(locale string) soymsg.Bundle {
-	return p.bundles[locale]
+	bundle, ok := p.bundles[locale]
+	if !ok {
+		tag, err := language.Parse(locale)
+		if err != nil {
+			return nil
+		}
+		for _, fb := range fallbacks(tag) {
+			bundle, ok = p.bundles[fb.String()]
+			if ok {
+				break
+			}
+		}
+	}
+	return bundle
 }
 
 type bundle struct {
