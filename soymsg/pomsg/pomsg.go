@@ -38,25 +38,8 @@ func Load(opener FileOpener, locales []string) (soymsg.Provider, error) {
 		if err != nil {
 			return nil, err
 		} else if r == nil {
-			localeTag, err := language.Parse(locale)
-			if err != nil {
-				return nil, err
-			}
-			var r io.ReadCloser
-			for _, fallbackLocale := range fallbacks(localeTag) {
-				r, err = opener.Open(fallbackLocale.String())
-				if err != nil {
-					return nil, err
-				}
-				if r != nil {
-					break
-				}
-			}
-			if r == nil {
-				continue
-			}
+			continue
 		}
-
 
 		pofile, err := po.Parse(r)
 		r.Close()
