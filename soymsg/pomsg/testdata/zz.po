@@ -1,0 +1,33 @@
+# Test data
+msgid ""
+msgstr ""
+"Plural-Forms: nplurals=3; plural=n==1 ? 0 : n==2 ? 1 : 2;\n"
+
+#.
+#: id=3329840836245051515
+msgid "A trip was taken."
+msgstr "zA ztrip zwas ztaken."
+
+#. Says hello to a person.
+#: id=6936162475751860807
+msgid "Hello {NAME}!"
+msgstr "zHello z{NAME}!"
+
+#. The word 'Archive' used as a noun, i.e. an information store.
+#: id=7224011416745566687
+msgctxt "noun"
+msgid "Archive"
+msgstr "zArchiveNoun"
+
+#. The word 'Archive' used as a verb, i.e. to store information.
+#: id=4826315192146469447
+msgctxt "verb"
+msgid "Archive"
+msgstr "zArchiveVerb"
+
+#: id=176798647517908084 var=EGGS_1
+msgid "You have one egg"
+msgid_plural "You have {EGGS_2} eggs"
+msgstr[0] "zYou zhave zone zegg"
+msgstr[1] "zYou zhave z{$EGGS_2} zeggs"
+msgstr[2] "zYou zhave ztwo zeggs"

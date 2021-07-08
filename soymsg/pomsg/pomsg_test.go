@@ -13,7 +13,7 @@ func TestPOBundle(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	locales := []string{"en", "en_UK"}
+	locales := []string{"en", "en_UK", "zz"}
 	for _, locale := range locales {
 		var bundle = pomsgs.Bundle(locale)
 		var tests = []struct {
