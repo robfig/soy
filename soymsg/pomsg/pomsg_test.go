@@ -78,7 +78,7 @@ func TestPlural(t *testing.T) {
 		return
 	}
 
-	const locale = "en"
+	const locale = "zz"
 	var bundle = pomsgs.Bundle(locale)
 	if bundle.Locale() != locale {
 		t.Errorf("actual %v != %v expected", bundle.Locale(), locale)
