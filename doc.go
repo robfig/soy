@@ -142,8 +142,14 @@ The goal is full compatibility and feature parity with the official Closure
 Templates project.
 
 The server-side templating functionality is well tested and nearly complete,
-except for two notable areas: contextual autoescaping and
-internationalization/bidi support.  Contributions welcome.
+except for a few notable areas:
+
+ * contextual autoescaping
+ * strict autoescaping enforcement
+ * internationalization/bidi support
+ * strongly-typed parameter declarations (via the `{@param}` command)
+
+Contributions to address these shortcomings are welcome.
 
 The Javascript generation is early and lacks many generation options, but
 it successfully passes the server-side template test suite. Note that it is

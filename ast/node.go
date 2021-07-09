@@ -102,6 +102,7 @@ const (
 	AutoescapeOn
 	AutoescapeOff
 	AutoescapeContextual
+	AutoescapeStrict
 )
 
 // TemplateNode holds a template body.
