@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"html/template"
 	"io/ioutil"
 	"math/rand"
@@ -173,12 +174,65 @@ BB<br>` +
 
 }
 
+var preParsedTests = []featureTest{
+	{"helloWorld", nil, "Goodbye world!"},
+}
+
 // TestFeatures runs through the feature examples from:
 // http://closure-templates.googlecode.com/svn/trunk/examples/features.soy
 // The expected output is taken directly from that produced by the Java program.
 func TestFeatures(t *testing.T) {
 	rand.Seed(1) // two of the templates use a random number.
 	runFeatureTests(t, featureTests)
+}
+
+// AddPreParsePass runs through the simple.soy parsing, but adds a preParsePass
+// which changes the soy file's content.
+func TestAddPreParsePass(t *testing.T) {
+	rand.Seed(1)
+	preparsepass := func(s string)  (string, error) {
+		return strings.Replace(s, "Hello world!", "Goodbye world!", -1), nil
+	}
+	var registry, err = NewBundle().
+		AddGlobalsFile("testdata/FeaturesUsage_globals.txt").
+		AddTemplateFile("testdata/simple.soy").
+		AddPreParsePass(preparsepass).
+		Compile()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	var otto = initJs(t)
+	for _, soyfile := range registry.SoyFiles {
+		var buf bytes.Buffer
+		var err = soyjs.Write(&buf, soyfile, soyjs.Options{})
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		_, err = otto.Run(buf.String())
+		if err != nil {
+			t.Error(err)
+			return
+		}
+	}
+
+	// Now run all the tests.
+	for _, test := range preParsedTests {
+		var jsonData, _ = json.Marshal(test.data)
+		var renderStatement = fmt.Sprintf("%s(JSON.parse(%q));",
+			"soy.examples.simple."+test.name, string(jsonData))
+		var actual, err = otto.Run(renderStatement)
+		if err != nil {
+			t.Errorf("render error: %v\n%v", err, string(jsonData))
+			continue
+		}
+
+		if actual.String() != test.output {
+			t.Errorf("%s\nexpected\n%q\n\ngot\n%q", test.name, test.output, actual.String())
+		}
+	}
 }
 
 func TestMsgs(t *testing.T) {

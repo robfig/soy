@@ -31,6 +31,7 @@ type Bundle struct {
 	err                   error
 	watcher               *fsnotify.Watcher
 	parsepasses           []func(template.Registry) error
+	preparsepasses        []func(string) (string, error)
 	recompilationCallback func(*template.Registry)
 }
 
@@ -133,11 +134,29 @@ func (b *Bundle) AddParsePass(f func(template.Registry) error) *Bundle {
 	return b
 }
 
+// AddPreParsePass adds a function to the bundle that will be called
+// on each soyFile's content before the soy is parsed.
+func (b *Bundle) AddPreParsePass(f func(string) (string, error)) *Bundle {
+	b.preparsepasses = append(b.preparsepasses, f)
+	return b
+}
+
 // Compile parses all of the Soy files in this bundle, verifies a number of
 // rules about data references, and returns the completed template registry.
 func (b *Bundle) Compile() (*template.Registry, error) {
 	if b.err != nil {
 		return nil, b.err
+	}
+
+	// Apply the pre-parse processing
+	var err error
+	for _, preparsepass := range b.preparsepasses {
+		for i, file := range b.files {
+			b.files[i].content, err = preparsepass(file.content)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	// Compile all the Soy (globals are already parsed).
