@@ -144,10 +144,15 @@ func (s *state) walk(node ast.Node) {
 			break
 		}
 		s.context.push()
+		var (
+			keyVar  = node.Var
+			keyInd  = node.Var + "__index"
+			keyLast = node.Var + "__lastIndex"
+		)
+		s.context.set(keyLast, data.Int(len(list)-1))
 		for i, item := range list {
-			s.context.set(node.Var, item)
-			s.context.set(node.Var+"__index", data.Int(i))
-			s.context.set(node.Var+"__lastIndex", data.Int(len(list)-1))
+			s.context.set(keyVar, item)
+			s.context.set(keyInd, data.Int(i))
 			s.walk(node.Body)
 		}
 		s.context.pop()
