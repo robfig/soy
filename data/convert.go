@@ -61,20 +61,21 @@ func NewWith(convert StructOptions, value interface{}) Value {
 		if v.IsNil() {
 			return List(nil)
 		}
-		slice := []Value{}
-		for i := 0; i < v.Len(); i++ {
-			slice = append(slice, NewWith(convert, v.Index(i).Interface()))
+		slice := make(List, v.Len())
+		for i := range slice {
+			slice[i] = NewWith(convert, v.Index(i).Interface())
 		}
-		return List(slice)
+		return slice
 	case reflect.Map:
-		var m = make(map[string]Value)
-		for _, key := range v.MapKeys() {
+		var keys = v.MapKeys()
+		var m = make(Map, len(keys))
+		for _, key := range keys {
 			if key.Kind() != reflect.String {
 				panic("map keys must be strings")
 			}
 			m[key.String()] = NewWith(convert, v.MapIndex(key).Interface())
 		}
-		return Map(m)
+		return m
 	case reflect.Struct:
 		return convert.Data(v.Interface())
 	default:
@@ -95,10 +96,11 @@ type StructOptions struct {
 }
 
 func (c StructOptions) Data(obj interface{}) Map {
-	var m = make(map[string]Value)
 	var v = reflect.ValueOf(obj)
 	var valType = v.Type()
-	for i := 0; i < valType.NumField(); i++ {
+	var n = valType.NumField()
+	var m = make(Map, n)
+	for i := 0; i < n; i++ {
 		if !v.Field(i).CanInterface() {
 			continue
 		}
@@ -109,7 +111,7 @@ func (c StructOptions) Data(obj interface{}) Map {
 		}
 		m[key] = NewWith(c, v.Field(i).Interface())
 	}
-	return Map(m)
+	return m
 }
 
 // Marshaler is the interface implemented by entities that can marshal
