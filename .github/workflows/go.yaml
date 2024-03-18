@@ -1,0 +1,30 @@
+name: "Go"
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  go:
+    strategy:
+      fail-fast: false
+      matrix:
+        go: [ '1.14', '1.13', '1.12' ]
+        os: [ 'ubuntu-22.04' ]
+    runs-on: ${{ matrix.os }}
+    name: Go ${{ matrix.go }} on ${{ matrix.os }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+
+      - name: Build
+        run: go test ./...
+        env:
+          GO111MODULE: on
