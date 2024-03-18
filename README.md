@@ -1,7 +1,7 @@
 # soy
 
 [![GoDoc](http://godoc.org/github.com/robfig/soy?status.png)](http://godoc.org/github.com/robfig/soy)
-[![Build Status](https://travis-ci.org/robfig/soy.png?branch=master)](https://travis-ci.org/robfig/soy)
+[![Build Status](https://github.com/robfig/soy/actions/workflows/go.yaml/badge.svg?query=branch%3Amaster)](https://github.com/robfig/soy/actions/workflows/go.yaml?query=branch%3Amaster)
 [![Go Report Card](https://goreportcard.com/badge/robfig/soy)](https://goreportcard.com/report/robfig/soy)
 
 Go implementation for Soy templates aka [Google Closure
